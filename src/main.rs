@@ -20,8 +20,7 @@ struct Config {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Load .env file, if any, and parse command line args.
-    let _ = dotenvy::dotenv();
+    // Parse the command line args.
     let config = Config::parse();
 
     // Use the debug level as a default and configure logging.

@@ -2444,7 +2444,6 @@ dependencies = [
  "axum",
  "chrono",
  "clap",
- "dotenvy",
  "futures",
  "log",
  "pulldown-cmark",
