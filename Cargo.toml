@@ -21,3 +21,6 @@ tracing = "0.1.37"
 tracing-subscriber = "0.3.16"
 url = "2.3.1"
 webauthn-rs = { version = "0.4.7", features = ["danger-allow-state-serialisation"] }
+
+[workspace]
+members = ["xtask"]
