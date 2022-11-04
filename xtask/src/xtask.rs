@@ -58,28 +58,30 @@ fn ci(sh: &Shell) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
+const DB_URL: &str = "sqlite:./data/yellhole.db";
+
 fn db_setup(sh: &Shell) -> Result<(), anyhow::Error> {
-    cmd!(sh, "sqlx db setup").run()?;
+    cmd!(sh, "sqlx db setup --database-url={DB_URL}").run()?;
     Ok(())
 }
 
 fn db_reset(sh: &Shell) -> Result<(), anyhow::Error> {
-    cmd!(sh, "sqlx db reset").run()?;
+    cmd!(sh, "sqlx db reset --database-url={DB_URL}").run()?;
     Ok(())
 }
 
 fn db_drop(sh: &Shell) -> Result<(), anyhow::Error> {
-    cmd!(sh, "sqlx db drop").run()?;
+    cmd!(sh, "sqlx db drop --database-url={DB_URL}").run()?;
     Ok(())
 }
 
 fn db_migrate(sh: &Shell) -> Result<(), anyhow::Error> {
-    cmd!(sh, "sqlx migrate run").run()?;
+    cmd!(sh, "sqlx migrate run --database-url={DB_URL}").run()?;
     Ok(())
 }
 
 fn db_prepare(sh: &Shell) -> Result<(), anyhow::Error> {
-    cmd!(sh, "cargo sqlx prepare -- --tests").run()?;
+    cmd!(sh, "cargo sqlx prepare -- --tests").env("DATABASE_URL", DB_URL).run()?;
     Ok(())
 }
 

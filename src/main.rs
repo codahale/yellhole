@@ -1,8 +1,8 @@
 use std::net::SocketAddr;
-use std::str::FromStr;
+use std::path::PathBuf;
 
 use clap::Parser;
-use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 
 mod web;
 
@@ -12,9 +12,9 @@ struct Config {
     #[clap(long, default_value = "127.0.0.1:3000", env("LISTEN_ADDR"))]
     listen_addr: SocketAddr,
 
-    /// Connect the the given database.
-    #[clap(long, env("DATABASE_URL"))]
-    database_url: String,
+    /// The directory in which all persistent data is stored.
+    #[clap(long, default_value = "./data", env("DATA_DIR"))]
+    data_dir: PathBuf,
 }
 
 #[tokio::main]
@@ -30,14 +30,11 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
 
     // Connect to the DB.
-    log::info!("connecting to {}", &config.database_url);
-    let db = SqlitePoolOptions::new()
-        .connect_with(
-            SqliteConnectOptions::from_str(&config.database_url)?
-                .journal_mode(SqliteJournalMode::Wal)
-                .create_if_missing(true),
-        )
-        .await?;
+    let mut db_path = config.data_dir.clone();
+    log::info!("loading data from {:?}", &db_path);
+    db_path.push("yellhole.db");
+    let db_opts = SqliteConnectOptions::new().filename(db_path);
+    let db = SqlitePoolOptions::new().connect_with(db_opts).await?;
 
     // Run any pending migrations.
     log::info!("checking for migrations");
