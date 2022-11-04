@@ -13,18 +13,19 @@ impl Note {
     pub async fn most_recent(db: &SqlitePool, n: u16) -> Result<Vec<Note>, sqlx::Error> {
         sqlx::query_as!(
             Note,
-            r"select note_id, body, created_at from note order by created_at desc limit ?",
+            r"
+            select note_id, body, created_at
+            from note
+            order by created_at desc
+            limit ?
+            ",
             n
         )
         .fetch_all(db)
         .await
     }
 
-    pub async fn month(
-        db: &SqlitePool,
-        year: i32,
-        month: u32,
-    ) -> Result<Vec<Note>, sqlx::Error> {
+    pub async fn month(db: &SqlitePool, year: i32, month: u32) -> Result<Vec<Note>, sqlx::Error> {
         let start = NaiveDate::from_ymd_opt(year, month, 1).unwrap();
         let end = start + Months::new(1);
 
@@ -33,9 +34,14 @@ impl Note {
 
         sqlx::query_as!(
             Note,
-            r"select note_id, body, created_at from note  where created_at >= ? and created_at < ? order by created_at desc",
-            start, end,
-            
+            r"
+            select note_id, body, created_at
+            from note
+            where created_at >= ? and created_at < ?
+            order by created_at desc
+            ",
+            start,
+            end,
         )
         .fetch_all(db)
         .await

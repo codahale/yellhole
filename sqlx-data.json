@@ -1,6 +1,6 @@
 {
   "db": "SQLite",
-  "e58e7511a21e39a40c5d11795d1c174fad422f8d0a383693923353c6af9a0cef": {
+  "6c2c5e5d0a385d6ed32ef9531a34c487d0bf688974a8b75e62d67fded289f976": {
     "describe": {
       "columns": [
         {
@@ -28,9 +28,9 @@
         "Right": 2
       }
     },
-    "query": "select note_id, body, created_at from note  where created_at >= ? and created_at < ? order by created_at desc"
+    "query": "\n            select note_id, body, created_at\n            from note\n            where created_at >= ? and created_at < ?\n            order by created_at desc\n            "
   },
-  "ed59733fc81287646bfc3db837d53d9c68dc691cd0ece8447e2083e6f32daeaf": {
+  "d91e1e404723b448c9eff6ca46bd88da1748fd024b12c935ac6aa52d05020db1": {
     "describe": {
       "columns": [
         {
@@ -58,6 +58,6 @@
         "Right": 1
       }
     },
-    "query": "select note_id, body, created_at from note order by created_at desc limit ?"
+    "query": "\n            select note_id, body, created_at\n            from note\n            order by created_at desc\n            limit ?\n            "
   }
 }
