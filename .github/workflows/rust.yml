@@ -9,11 +9,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust:
-          - stable
-          - beta
     steps:
       - uses: actions/checkout@v3
         name: "Checkout source"
@@ -21,7 +16,7 @@ jobs:
         name: "Install Rust"
         with:
           profile: default
-          toolchain: ${{ matrix.rust }}
+          toolchain: stable
           override: true
       - uses: Swatinem/rust-cache@v2
         name: "Cache dependencies"
