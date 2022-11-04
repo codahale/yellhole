@@ -1,4 +1,4 @@
-use chrono::NaiveDateTime;
+use chrono::{Months, NaiveDate, NaiveDateTime, TimeZone, Utc};
 use pulldown_cmark::{Event, HeadingLevel, Parser, Tag};
 use sqlx::{FromRow, SqlitePool};
 
@@ -15,6 +15,27 @@ impl Note {
             Note,
             r"select note_id, body, created_at from note order by created_at desc limit ?",
             n
+        )
+        .fetch_all(db)
+        .await
+    }
+
+    pub async fn month(
+        db: &SqlitePool,
+        year: i32,
+        month: u32,
+    ) -> Result<Vec<Note>, sqlx::Error> {
+        let start = NaiveDate::from_ymd_opt(year, month, 1).unwrap();
+        let end = start + Months::new(1);
+
+        let start = Utc.from_local_date(&start).unwrap().naive_local();
+        let end = Utc.from_local_date(&end).unwrap().naive_local();
+
+        sqlx::query_as!(
+            Note,
+            r"select note_id, body, created_at from note  where created_at >= ? and created_at < ? order by created_at desc",
+            start, end,
+            
         )
         .fetch_all(db)
         .await
