@@ -14,13 +14,16 @@ struct XTask {
 #[derive(Debug, Subcommand)]
 enum Command {
     /// Format, build, test, and lint.
-    CI,
+    Ci,
 
     /// Database commands.
-    DB {
+    Db {
         #[clap(subcommand)]
         cmd: DatabaseCommand,
     },
+
+    /// Run the server, watch for changes, and restart as needed.
+    Watch,
 }
 
 #[derive(Debug, Subcommand)]
@@ -38,15 +41,16 @@ fn main() -> Result<()> {
     let sh = Shell::new()?;
     sh.change_dir(project_root());
 
-    match xtask.cmd.unwrap_or(Command::CI) {
-        Command::CI => ci(&sh),
-        Command::DB { cmd } => match cmd {
+    match xtask.cmd.unwrap_or(Command::Ci) {
+        Command::Ci => ci(&sh),
+        Command::Db { cmd } => match cmd {
             DatabaseCommand::Setup => db_setup(&sh),
             DatabaseCommand::Reset => db_reset(&sh),
             DatabaseCommand::Drop => db_drop(&sh),
             DatabaseCommand::Migrate => db_migrate(&sh),
             DatabaseCommand::Prepare => db_prepare(&sh),
         },
+        Command::Watch => watch(&sh),
     }
 }
 
@@ -83,6 +87,12 @@ fn db_migrate(sh: &Shell) -> Result<(), anyhow::Error> {
 fn db_prepare(sh: &Shell) -> Result<(), anyhow::Error> {
     cmd!(sh, "rm -f sqlx-data.json").run()?;
     cmd!(sh, "cargo sqlx prepare -- --tests").env("DATABASE_URL", DB_URL).run()?;
+    Ok(())
+}
+
+fn watch(sh: &Shell) -> Result<()> {
+    cmd!(sh, "cargo watch -x run").run()?;
+
     Ok(())
 }
 
