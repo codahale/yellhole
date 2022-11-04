@@ -1,8 +1,8 @@
 use chrono::{Months, NaiveDate, NaiveDateTime, TimeZone, Utc};
 use pulldown_cmark::{Event, HeadingLevel, Parser, Tag};
-use sqlx::{FromRow, SqlitePool};
+use sqlx::SqlitePool;
 
-#[derive(FromRow, Debug)]
+#[derive(Debug)]
 pub struct Note {
     pub note_id: String,
     pub body: String,
@@ -26,11 +26,7 @@ impl Note {
     }
 
     pub async fn month(db: &SqlitePool, year: i32, month: u32) -> Result<Vec<Note>, sqlx::Error> {
-        let start = NaiveDate::from_ymd_opt(year, month, 1).unwrap();
-        let end = start + Months::new(1);
-
-        let start = Utc.from_local_date(&start).unwrap().naive_local();
-        let end = Utc.from_local_date(&end).unwrap().naive_local();
+        let (start, end) = month_range(year, month);
 
         sqlx::query_as!(
             Note,
@@ -62,6 +58,59 @@ impl Note {
         let mut html_output = String::new();
         pulldown_cmark::html::push_html(&mut html_output, p);
         html_output
+    }
+}
+
+fn month_range(year: i32, month: u32) -> (NaiveDate, NaiveDate) {
+    let start = NaiveDate::from_ymd_opt(year, month, 1).unwrap();
+    let end = start + Months::new(1);
+    (
+        Utc.from_local_date(&start).unwrap().naive_local(),
+        Utc.from_local_date(&end).unwrap().naive_local(),
+    )
+}
+
+#[derive(Debug)]
+pub struct Link {
+    pub link_id: String,
+    pub title: String,
+    pub url: String,
+    pub description: Option<String>,
+    pub created_at: NaiveDateTime,
+}
+
+impl Link {
+    pub async fn most_recent(db: &SqlitePool, n: u16) -> Result<Vec<Link>, sqlx::Error> {
+        sqlx::query_as!(
+            Link,
+            r"
+            select link_id, title, url, description, created_at
+            from link
+            order by created_at desc
+            limit ?
+            ",
+            n
+        )
+        .fetch_all(db)
+        .await
+    }
+
+    pub async fn month(db: &SqlitePool, year: i32, month: u32) -> Result<Vec<Link>, sqlx::Error> {
+        let (start, end) = month_range(year, month);
+
+        sqlx::query_as!(
+            Link,
+            r"
+            select link_id, title, url, description, created_at
+            from link
+            where created_at >= ? and created_at < ?
+            order by created_at desc
+            ",
+            start,
+            end,
+        )
+        .fetch_all(db)
+        .await
     }
 }
 

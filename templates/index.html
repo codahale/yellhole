@@ -9,13 +9,25 @@
 </head>
 
 <body>
-    <h1>Notes</h1>
+    <h1>Content</h1>
 
-    {% for n in notes %}
+    {% for c in feed %}
+    {% match c %}
+    {% when Content::Note with (n) %}
     <div>
         <code>{{n.note_id}}</code>
         {{ n.to_html() | safe }}
     </div>
+    {% when Content::Link with (l) %}
+    <div>
+        <code>{{l.link_id}}</code>
+        <a href="{{l.url}}">{{l.title}}</a>
+        {% for d in l.description %}
+        <p>{{d}}</p>
+        {% endfor %}
+    </div>
+    {% endmatch %}
+
     {% endfor %}
 
 </body>

@@ -23,7 +23,7 @@ configuration or stored in a single directory which can be a FUSE/GCE mount when
 
 * [x] Get a hello world Axum server going
 * [x] Get a basic DB setup working
-* [ ] Add links
+* [x] Add links
 * [ ] Make an actual combined feed HTML template
 * [ ] Make a publishing UI
 * [ ] Add images schema
