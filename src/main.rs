@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 use std::str::FromStr;
 
 use clap::Parser;
-use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
+use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
 
 mod web;
 
@@ -32,7 +32,11 @@ async fn main() -> anyhow::Result<()> {
     // Connect to the DB.
     log::info!("connecting to {}", &config.database_url);
     let db = SqlitePoolOptions::new()
-        .connect_with(SqliteConnectOptions::from_str(&config.database_url)?.create_if_missing(true))
+        .connect_with(
+            SqliteConnectOptions::from_str(&config.database_url)?
+                .journal_mode(SqliteJournalMode::Wal)
+                .create_if_missing(true),
+        )
         .await?;
 
     // Run any pending migrations.
