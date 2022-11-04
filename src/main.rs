@@ -1,65 +1,44 @@
 use std::net::SocketAddr;
+use std::str::FromStr;
 
-use askama::Template;
-use axum::http::StatusCode;
-use axum::response::IntoResponse;
-use axum::routing::get;
-use axum::{http, Router};
 use clap::Parser;
-use tower::ServiceBuilder;
-use tower_http::trace::TraceLayer;
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
+
+mod web;
 
 #[derive(Debug, Parser)]
-struct Cli {
+struct Config {
     /// Listen for requests on the given address.
-    #[clap(long, default_value = "127.0.0.1:3000")]
-    addr: SocketAddr,
+    #[clap(long, default_value = "127.0.0.1:3000", env("LISTEN_ADDR"))]
+    listen_addr: SocketAddr,
 
-    /// Log entries with the given level or higher.
-    #[clap(short = 'l', long = "log", default_value = "debug")]
-    log_level: log::Level,
+    /// Connect the the given database.
+    #[clap(long, env("DATABASE_URL"))]
+    database_url: String,
 }
 
 #[tokio::main]
-async fn main() {
-    let cli = Cli::parse();
+async fn main() -> anyhow::Result<()> {
+    // Load .env file, if any, and parse command line args.
+    let _ = dotenvy::dotenv();
+    let config = Config::parse();
 
+    // Use the debug level as a default and configure logging.
     if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", format!("{},hyper=info,mio=info", &cli.log_level))
+        std::env::set_var("RUST_LOG", "debug,hyper=info,mio=info");
     }
     tracing_subscriber::fmt::init();
 
-    let app = Router::new()
-        .route("/", get(handler))
-        .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
+    // Connect to the DB.
+    log::info!("connecting to {}", &config.database_url);
+    let db = SqlitePoolOptions::new()
+        .connect_with(SqliteConnectOptions::from_str(&config.database_url)?.create_if_missing(true))
+        .await?;
 
-    log::info!("listening on http://{}", &cli.addr);
-    axum::Server::bind(&cli.addr).serve(app.into_make_service()).await.unwrap();
-}
+    // Run any pending migrations.
+    log::info!("checking for migrations");
+    sqlx::migrate!().run(&db).await?;
 
-#[derive(Debug, Template)]
-#[template(path = "index.html")]
-struct Index {
-    greeting: String,
-}
-
-#[derive(Debug)]
-struct Html<T: Template>(T);
-
-impl<T: Template> IntoResponse for Html<T> {
-    fn into_response(self) -> axum::response::Response {
-        match self.0.render() {
-            Ok(body) => {
-                let headers =
-                    [(http::header::CONTENT_TYPE, http::HeaderValue::from_static(T::MIME_TYPE))];
-
-                (headers, body).into_response()
-            }
-            Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-        }
-    }
-}
-
-async fn handler() -> Html<Index> {
-    Html(Index { greeting: "Hello, world".to_string() })
+    // Spin up an HTTP server and listen for requests.
+    web::serve(&config.listen_addr, db).await
 }

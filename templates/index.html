@@ -9,7 +9,15 @@
 </head>
 
 <body>
-    {{ greeting }}
+    <h1>Notes</h1>
+
+    {% for n in notes %}
+    <div>
+        <code>{{n.note_id}}</code>
+        {{ n.to_html() | safe }}
+    </div>
+    {% endfor %}
+
 </body>
 
 </html>

@@ -1,0 +1,33 @@
+{
+  "db": "SQLite",
+  "2cca67ae382fc3c3cb5c581c4935143329fdfbf5df06f3669ade27b47f2aab93": {
+    "describe": {
+      "columns": [
+        {
+          "name": "note_id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "body",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 2,
+          "type_info": "Datetime"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 0
+      }
+    },
+    "query": "select note_id, body, created_at from note order by created_at desc limit 50"
+  }
+}
