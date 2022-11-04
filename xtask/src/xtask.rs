@@ -51,10 +51,10 @@ fn main() -> Result<()> {
 }
 
 fn ci(sh: &Shell) -> Result<(), anyhow::Error> {
-    cmd!(sh, "cargo fmt --check").run()?;
-    cmd!(sh, "cargo build --all-targets --all-features").run()?;
-    cmd!(sh, "cargo test --all-features").run()?;
-    cmd!(sh, "cargo clippy --all-features --tests --benches").run()?;
+    cmd!(sh, "cargo fmt --check").env("SQLX_OFFLINE", "true").run()?;
+    cmd!(sh, "cargo build --all-targets --all-features").env("SQLX_OFFLINE", "true").run()?;
+    cmd!(sh, "cargo test --all-features").env("SQLX_OFFLINE", "true").run()?;
+    cmd!(sh, "cargo clippy --all-features --tests --benches").env("SQLX_OFFLINE", "true").run()?;
     Ok(())
 }
 
