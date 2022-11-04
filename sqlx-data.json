@@ -1,6 +1,6 @@
 {
   "db": "SQLite",
-  "2cca67ae382fc3c3cb5c581c4935143329fdfbf5df06f3669ade27b47f2aab93": {
+  "ed59733fc81287646bfc3db837d53d9c68dc691cd0ece8447e2083e6f32daeaf": {
     "describe": {
       "columns": [
         {
@@ -25,9 +25,9 @@
         false
       ],
       "parameters": {
-        "Right": 0
+        "Right": 1
       }
     },
-    "query": "select note_id, body, created_at from note order by created_at desc limit 50"
+    "query": "select note_id, body, created_at from note order by created_at desc limit ?"
   }
 }

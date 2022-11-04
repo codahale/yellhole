@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use clap::Parser;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 
+mod models;
 mod web;
 
 #[derive(Debug, Parser)]
