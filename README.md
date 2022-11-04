@@ -22,7 +22,11 @@ configuration or stored in a single directory which can be a FUSE/GCE mount when
 ## TODO
 
 * [x] Get a hello world Axum server going
-* [ ] Get a basic DB setup working
+* [x] Get a basic DB setup working
+* [ ] Add links
+* [ ] Make an actual combined feed HTML template
+* [ ] Make a publishing UI
+* [ ] Add images schema
 * [ ] Add an `/admin/login` `GET` page
   * [ ] Checks for a `./data/credentials` file
   * [ ] If that doesn't exist, prompts for a WebAuthn registration <https://www.imperialviolet.org/2022/09/22/passkeys.html>
