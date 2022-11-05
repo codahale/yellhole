@@ -1,35 +1,32 @@
 <!DOCTYPE html>
-<html>
+<html lang="en" color-mode="user">
 
 <head>
+    <title>Yellhole</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
     <meta charset='utf-8'>
-    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
-    <title>Example</title>
-    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <link rel="stylesheet" href="https://unpkg.com/mvp.css@1.12/mvp.css">
 </head>
 
 <body>
-    <h1>Content</h1>
-
-    {% for c in feed %}
-    {% match c %}
-    {% when Content::Note with (n) %}
-    <div>
-        <code>{{n.note_id}}</code>
-        {{ n.to_html() | safe }}
-    </div>
-    {% when Content::Link with (l) %}
-    <div>
-        <code>{{l.link_id}}</code>
-        <a href="{{l.url}}">{{l.title}}</a>
-        {% for d in l.description %}
-        <p>{{d}}</p>
+    <header>
+        <h1>Yellhole</h1>
+    </header>
+    <main>
+        {% for n in notes %}
+        <section>
+            <aside>
+                {{ n.to_html() | safe }}
+                <p><small><a href="/note/{{n.note_id}}">{{n.created_at}}</a></small></p>
+            </aside>
+        </section>
         {% endfor %}
-    </div>
-    {% endmatch %}
-
-    {% endfor %}
-
+    </main>
+    <footer>
+        <p>
+            <small>Copyright &copy; 2022 Coda Hale</small>
+        </p>
+    </footer>
 </body>
 
 </html>

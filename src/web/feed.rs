@@ -1,65 +1,44 @@
 use askama::Template;
-use axum::extract::Path;
+use axum::extract::{Path, Query};
 use axum::routing::get;
 use axum::{Extension, Router};
-use chrono::NaiveDateTime;
-
-use crate::models::{Link, Note};
+use serde::Deserialize;
 
 use super::{Context, Html};
+use crate::models::Note;
 
 pub fn router() -> Router {
-    Router::new().route("/", get(index)).route("/feed/:year/:month", get(month))
+    Router::new()
+        .route("/", get(index))
+        .route("/notes/:year/:month", get(month))
+        .route("/note/:note_id", get(single))
 }
 
-async fn index(ctx: Extension<Context>) -> Html<Index> {
-    let notes = Note::most_recent(&ctx.db, 100).await.expect("whoops");
-    let links = Link::most_recent(&ctx.db, 100).await.expect("whoops");
-    let feed = Content::from_parts(notes, links, Some(100));
+#[derive(Debug, Deserialize)]
+struct IndexOpts {
+    n: Option<u16>,
+}
 
-    Html(Index { feed })
+async fn index(ctx: Extension<Context>, opts: Query<IndexOpts>) -> Html<Index> {
+    let notes = Note::most_recent(&ctx.db, opts.n.unwrap_or(100)).await.expect("whoops");
+
+    Html(Index { notes })
 }
 
 async fn month(ctx: Extension<Context>, Path((year, month)): Path<(i32, u32)>) -> Html<Index> {
     let notes = Note::month(&ctx.db, year, month).await.expect("whoops");
-    let links = Link::month(&ctx.db, year, month).await.expect("whoops");
-    let feed = Content::from_parts(notes, links, None);
 
-    Html(Index { feed })
+    Html(Index { notes })
 }
 
-#[derive(Debug)]
-enum Content {
-    Note(Note),
-    Link(Link),
-}
+async fn single(ctx: Extension<Context>, Path(note_id): Path<String>) -> Html<Index> {
+    let note = Note::by_id(&ctx.db, &note_id).await.expect("whoops").expect("not found");
 
-impl Content {
-    pub fn from_parts(notes: Vec<Note>, links: Vec<Link>, n: Option<usize>) -> Vec<Content> {
-        let mut feed = notes
-            .into_iter()
-            .map(Content::Note)
-            .chain(links.into_iter().map(Content::Link))
-            .collect::<Vec<Content>>();
-
-        feed.sort_by_key(|c| -c.created_at().timestamp());
-        if let Some(n) = n {
-            feed.truncate(n);
-        }
-
-        feed
-    }
-
-    pub fn created_at(&self) -> NaiveDateTime {
-        match self {
-            Content::Note(n) => n.created_at,
-            Content::Link(l) => l.created_at,
-        }
-    }
+    Html(Index { notes: vec![note] })
 }
 
 #[derive(Debug, Template)]
 #[template(path = "index.html")]
 struct Index {
-    feed: Vec<Content>,
+    notes: Vec<Note>,
 }

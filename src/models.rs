@@ -10,6 +10,20 @@ pub struct Note {
 }
 
 impl Note {
+    pub async fn by_id(db: &SqlitePool, note_id: &str) -> Result<Option<Note>, sqlx::Error> {
+        sqlx::query_as!(
+            Note,
+            r"
+            select note_id, body, created_at
+            from note
+            where note_id = ?
+            ",
+            note_id
+        )
+        .fetch_optional(db)
+        .await
+    }
+
     pub async fn most_recent(db: &SqlitePool, n: u16) -> Result<Vec<Note>, sqlx::Error> {
         sqlx::query_as!(
             Note,
@@ -55,50 +69,6 @@ fn month_range(year: i32, month: u32) -> (NaiveDate, NaiveDate) {
         Utc.from_local_date(&start).unwrap().naive_local(),
         Utc.from_local_date(&end).unwrap().naive_local(),
     )
-}
-
-#[derive(Debug)]
-pub struct Link {
-    pub link_id: String,
-    pub title: String,
-    pub url: String,
-    pub description: Option<String>,
-    pub created_at: NaiveDateTime,
-}
-
-impl Link {
-    pub async fn most_recent(db: &SqlitePool, n: u16) -> Result<Vec<Link>, sqlx::Error> {
-        sqlx::query_as!(
-            Link,
-            r"
-            select link_id, title, url, description, created_at
-            from link
-            order by created_at desc
-            limit ?
-            ",
-            n
-        )
-        .fetch_all(db)
-        .await
-    }
-
-    pub async fn month(db: &SqlitePool, year: i32, month: u32) -> Result<Vec<Link>, sqlx::Error> {
-        let (start, end) = month_range(year, month);
-
-        sqlx::query_as!(
-            Link,
-            r"
-            select link_id, title, url, description, created_at
-            from link
-            where created_at >= ? and created_at < ?
-            order by created_at desc
-            ",
-            start,
-            end,
-        )
-        .fetch_all(db)
-        .await
-    }
 }
 
 fn render_markdown(md: &str) -> String {

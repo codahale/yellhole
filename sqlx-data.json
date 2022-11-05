@@ -1,5 +1,35 @@
 {
   "db": "SQLite",
+  "2f2785495263630d46588f5d6000fbf7931539d7ed9cf111a1e87a5b1ec6f7d9": {
+    "describe": {
+      "columns": [
+        {
+          "name": "note_id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "body",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 2,
+          "type_info": "Datetime"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "\n            select note_id, body, created_at\n            from note\n            where note_id = ?\n            "
+  },
   "6c2c5e5d0a385d6ed32ef9531a34c487d0bf688974a8b75e62d67fded289f976": {
     "describe": {
       "columns": [
@@ -30,48 +60,6 @@
     },
     "query": "\n            select note_id, body, created_at\n            from note\n            where created_at >= ? and created_at < ?\n            order by created_at desc\n            "
   },
-  "d704ad75335eb0b48759eebfc7d673c4f15b94cb7dd4c7f44d907cb12e4eb39c": {
-    "describe": {
-      "columns": [
-        {
-          "name": "link_id",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "title",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "url",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "description",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "created_at",
-          "ordinal": 4,
-          "type_info": "Datetime"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        true,
-        false
-      ],
-      "parameters": {
-        "Right": 1
-      }
-    },
-    "query": "\n            select link_id, title, url, description, created_at\n            from link\n            order by created_at desc\n            limit ?\n            "
-  },
   "d91e1e404723b448c9eff6ca46bd88da1748fd024b12c935ac6aa52d05020db1": {
     "describe": {
       "columns": [
@@ -101,47 +89,5 @@
       }
     },
     "query": "\n            select note_id, body, created_at\n            from note\n            order by created_at desc\n            limit ?\n            "
-  },
-  "dcb70fb675b02f7178137f94d70c95986c2ba921677509d857904c6cd0e85e90": {
-    "describe": {
-      "columns": [
-        {
-          "name": "link_id",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "title",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "url",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "description",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "created_at",
-          "ordinal": 4,
-          "type_info": "Datetime"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        true,
-        false
-      ],
-      "parameters": {
-        "Right": 2
-      }
-    },
-    "query": "\n            select link_id, title, url, description, created_at\n            from link\n            where created_at >= ? and created_at < ?\n            order by created_at desc\n            "
   }
 }
