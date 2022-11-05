@@ -34,12 +34,7 @@ pub struct Html<T: Template>(T);
 impl<T: Template> IntoResponse for Html<T> {
     fn into_response(self) -> Response {
         match self.0.render() {
-            Ok(body) => {
-                let headers =
-                    [(http::header::CONTENT_TYPE, http::HeaderValue::from_static(T::MIME_TYPE))];
-
-                (headers, body).into_response()
-            }
+            Ok(body) => axum::response::Html(body).into_response(),
             Err(_) => http::StatusCode::INTERNAL_SERVER_ERROR.into_response(),
         }
     }
