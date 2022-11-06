@@ -61,10 +61,13 @@ impl IntoResponse for WebError {
         }
     }
 }
+
+// TODO expand to full template
 #[derive(Template)]
 #[template(source = "Not found.", ext = "html")]
 struct NotFoundPage;
 
+// TODO expand to full template
 #[derive(Template)]
 #[template(source = "Internal error.", ext = "html")]
 struct InternalErrorPage;
