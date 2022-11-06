@@ -27,7 +27,7 @@ configuration or stored in a single directory which can be a FUSE/GCE mount when
 * [x] Make an actual combined feed HTML template
 * [x] Make a publishing UI
 * [x] Add `Cache-Control` for feed pages
-* [ ] Add images schema
+* [x] Add images schema
 * [ ] Add image uploads w/ resizing
   * write original to `data/images/orig/{id}.{mime-ext}`
   * [shell out to ImageMagick](https://docs.rs/tokio/latest/tokio/process/index.html)
