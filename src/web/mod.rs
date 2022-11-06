@@ -9,6 +9,7 @@ use tower::ServiceBuilder;
 use tower_http::add_extension::AddExtensionLayer;
 use tower_http::trace::TraceLayer;
 
+mod admin;
 mod feed;
 
 #[derive(Debug, Clone)]
@@ -17,7 +18,7 @@ pub struct Context {
 }
 
 pub async fn serve(addr: &SocketAddr, db: SqlitePool) -> anyhow::Result<()> {
-    let router = feed::router();
+    let router = feed::router().merge(admin::router());
 
     let app = router
         .layer(AddExtensionLayer::new(Context { db }))

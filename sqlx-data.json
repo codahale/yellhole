@@ -30,6 +30,24 @@
     },
     "query": "\n            select note_id, body, created_at\n            from note\n            where note_id = ?\n            "
   },
+  "56e7592e6c66922445b9f2cdb8dd040578d7ff303968441c5ef6fd9fee0cc991": {
+    "describe": {
+      "columns": [
+        {
+          "name": "note_id",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "\n            insert into note (body) values (?) returning note_id\n            "
+  },
   "6c2c5e5d0a385d6ed32ef9531a34c487d0bf688974a8b75e62d67fded289f976": {
     "describe": {
       "columns": [

@@ -10,6 +10,18 @@ pub struct Note {
 }
 
 impl Note {
+    pub async fn create(db: &SqlitePool, body: &str) -> Result<String, sqlx::Error> {
+        sqlx::query!(
+            r"
+            insert into note (body) values (?) returning note_id
+            ",
+            body
+        )
+        .fetch_one(db)
+        .await
+        .map(|r| r.note_id)
+    }
+
     pub async fn by_id(db: &SqlitePool, note_id: &str) -> Result<Option<Note>, sqlx::Error> {
         sqlx::query_as!(
             Note,
