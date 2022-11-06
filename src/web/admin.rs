@@ -2,7 +2,7 @@ use askama::Template;
 use axum::body::BoxBody;
 use axum::http::StatusCode;
 use axum::response::Response;
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::{Extension, Form, Router};
 use serde::Deserialize;
 
@@ -12,11 +12,11 @@ use super::{Context, Html, WebError};
 
 pub fn router() -> Router {
     // TODO add authentication
-    Router::new().route("/admin/new", get(new_note).post(create_note))
+    Router::new().route("/admin/new", get(new_page)).route("/admin/new-note", post(create_note))
 }
 
-async fn new_note() -> Html<NewNotePage> {
-    Html(NewNotePage {})
+async fn new_page() -> Html<NewPage> {
+    Html(NewPage {})
 }
 
 #[derive(Debug, Deserialize)]
@@ -37,5 +37,5 @@ async fn create_note(
 }
 
 #[derive(Debug, Template)]
-#[template(path = "new_note.html")]
-struct NewNotePage {}
+#[template(path = "new.html")]
+struct NewPage {}
