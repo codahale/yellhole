@@ -19,30 +19,33 @@ struct IndexOpts {
     n: Option<u16>,
 }
 
-async fn index(ctx: Extension<Context>, opts: Query<IndexOpts>) -> Result<Html<Feed>, WebError> {
+async fn index(
+    ctx: Extension<Context>,
+    opts: Query<IndexOpts>,
+) -> Result<Html<FeedPage>, WebError> {
     let notes = Note::most_recent(&ctx.db, opts.n.unwrap_or(100)).await?;
 
-    Ok(Html(Feed { notes }))
+    Ok(Html(FeedPage { notes }))
 }
 
 async fn month(
     ctx: Extension<Context>,
     Path((year, month)): Path<(i32, u32)>,
-) -> Result<Html<Feed>, WebError> {
+) -> Result<Html<FeedPage>, WebError> {
     let notes = Note::month(&ctx.db, year, month).await?.ok_or(WebError::NotFound)?;
-    Ok(Html(Feed { notes }))
+    Ok(Html(FeedPage { notes }))
 }
 
 async fn single(
     ctx: Extension<Context>,
     Path(note_id): Path<String>,
-) -> Result<Html<Feed>, WebError> {
+) -> Result<Html<FeedPage>, WebError> {
     let note = Note::by_id(&ctx.db, &note_id).await?.ok_or(WebError::NotFound)?;
-    Ok(Html(Feed { notes: vec![note] }))
+    Ok(Html(FeedPage { notes: vec![note] }))
 }
 
 #[derive(Debug, Template)]
 #[template(path = "feed.html")]
-struct Feed {
+struct FeedPage {
     notes: Vec<Note>,
 }
