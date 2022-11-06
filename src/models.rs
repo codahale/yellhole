@@ -39,8 +39,15 @@ impl Note {
         .await
     }
 
-    pub async fn month(db: &SqlitePool, year: i32, month: u32) -> Result<Vec<Note>, sqlx::Error> {
-        let (start, end) = month_range(year, month);
+    pub async fn month(
+        db: &SqlitePool,
+        year: i32,
+        month: u32,
+    ) -> Result<Option<Vec<Note>>, sqlx::Error> {
+        let (start, end) = match month_range(year, month) {
+            Some(v) => v,
+            None => return Ok(None),
+        };
 
         sqlx::query_as!(
             Note,
@@ -55,6 +62,7 @@ impl Note {
         )
         .fetch_all(db)
         .await
+        .map(Some)
     }
 
     pub fn to_html(&self) -> String {
@@ -62,13 +70,13 @@ impl Note {
     }
 }
 
-fn month_range(year: i32, month: u32) -> (NaiveDate, NaiveDate) {
-    let start = NaiveDate::from_ymd_opt(year, month, 1).unwrap();
+fn month_range(year: i32, month: u32) -> Option<(NaiveDate, NaiveDate)> {
+    let start = NaiveDate::from_ymd_opt(year, month, 1)?;
     let end = start + Months::new(1);
-    (
-        Utc.from_local_date(&start).unwrap().naive_local(),
-        Utc.from_local_date(&end).unwrap().naive_local(),
-    )
+    Some((
+        Utc.from_local_date(&start).single()?.naive_local(),
+        Utc.from_local_date(&end).single()?.naive_local(),
+    ))
 }
 
 fn render_markdown(md: &str) -> String {

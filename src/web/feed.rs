@@ -26,7 +26,7 @@ async fn index(ctx: Extension<Context>, opts: Query<IndexOpts>) -> Html<Index> {
 }
 
 async fn month(ctx: Extension<Context>, Path((year, month)): Path<(i32, u32)>) -> Html<Index> {
-    let notes = Note::month(&ctx.db, year, month).await.expect("whoops");
+    let notes = Note::month(&ctx.db, year, month).await.expect("whoops").expect("not found");
 
     Html(Index { notes })
 }
