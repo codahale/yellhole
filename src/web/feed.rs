@@ -4,7 +4,7 @@ use axum::routing::get;
 use axum::{Extension, Router};
 use serde::Deserialize;
 
-use super::{Context, Html};
+use super::{Context, Html, WebError};
 use crate::models::Note;
 
 pub fn router() -> Router {
@@ -19,22 +19,26 @@ struct IndexOpts {
     n: Option<u16>,
 }
 
-async fn index(ctx: Extension<Context>, opts: Query<IndexOpts>) -> Html<Index> {
-    let notes = Note::most_recent(&ctx.db, opts.n.unwrap_or(100)).await.expect("whoops");
+async fn index(ctx: Extension<Context>, opts: Query<IndexOpts>) -> Result<Html<Index>, WebError> {
+    let notes = Note::most_recent(&ctx.db, opts.n.unwrap_or(100)).await?;
 
-    Html(Index { notes })
+    Ok(Html(Index { notes }))
 }
 
-async fn month(ctx: Extension<Context>, Path((year, month)): Path<(i32, u32)>) -> Html<Index> {
-    let notes = Note::month(&ctx.db, year, month).await.expect("whoops").expect("not found");
-
-    Html(Index { notes })
+async fn month(
+    ctx: Extension<Context>,
+    Path((year, month)): Path<(i32, u32)>,
+) -> Result<Html<Index>, WebError> {
+    let notes = Note::month(&ctx.db, year, month).await?.ok_or(WebError::NotFound)?;
+    Ok(Html(Index { notes }))
 }
 
-async fn single(ctx: Extension<Context>, Path(note_id): Path<String>) -> Html<Index> {
-    let note = Note::by_id(&ctx.db, &note_id).await.expect("whoops").expect("not found");
-
-    Html(Index { notes: vec![note] })
+async fn single(
+    ctx: Extension<Context>,
+    Path(note_id): Path<String>,
+) -> Result<Html<Index>, WebError> {
+    let note = Note::by_id(&ctx.db, &note_id).await?.ok_or(WebError::NotFound)?;
+    Ok(Html(Index { notes: vec![note] }))
 }
 
 #[derive(Debug, Template)]

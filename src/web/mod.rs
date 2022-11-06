@@ -1,9 +1,10 @@
 use std::net::SocketAddr;
 
 use askama::Template;
-use axum::http;
+use axum::http::{self, StatusCode};
 use axum::response::{IntoResponse, Response};
 use sqlx::SqlitePool;
+use thiserror::Error;
 use tower::ServiceBuilder;
 use tower_http::add_extension::AddExtensionLayer;
 use tower_http::trace::TraceLayer;
@@ -39,3 +40,31 @@ impl<T: Template> IntoResponse for Html<T> {
         }
     }
 }
+
+#[derive(Debug, Error)]
+pub enum WebError {
+    #[error("entity not found")]
+    NotFound,
+
+    #[error("database error: {0}")]
+    DatabaseError(#[from] sqlx::Error),
+}
+
+impl IntoResponse for WebError {
+    fn into_response(self) -> Response {
+        match self {
+            WebError::NotFound => (StatusCode::NOT_FOUND, Html(NotFoundPage)).into_response(),
+            WebError::DatabaseError(e) => {
+                log::error!("error querying database: {}", e);
+                (StatusCode::INTERNAL_SERVER_ERROR, Html(InternalErrorPage)).into_response()
+            }
+        }
+    }
+}
+#[derive(Template)]
+#[template(source = "Not found.", ext = "html")]
+struct NotFoundPage;
+
+#[derive(Template)]
+#[template(source = "Internal error.", ext = "html")]
+struct InternalErrorPage;
