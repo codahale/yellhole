@@ -12,6 +12,7 @@ axum = "0.5.17"
 chrono = "0.4.22"
 clap = { version = "4.0.18", features = ["derive", "env"] }
 log = "0.4.17"
+mime = "0.3.16"
 pulldown-cmark = { version = "0.9.2", default-features = false, features = ["simd"] }
 serde = { version = "1.0.147", features = ["derive"] }
 sqlx = { version = "0.6.2", features = ["runtime-tokio-native-tls", "sqlite", "chrono", "uuid", "offline"] }

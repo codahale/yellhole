@@ -1,4 +1,6 @@
+use std::fmt;
 use std::net::SocketAddr;
+use std::time::Duration;
 
 use askama::Template;
 use axum::http::{self, StatusCode};
@@ -31,12 +33,43 @@ pub async fn serve(addr: &SocketAddr, db: SqlitePool) -> anyhow::Result<()> {
 }
 
 #[derive(Debug)]
-pub struct Html<T: Template>(T);
+pub enum CacheControl {
+    Immutable,
+    MaxAge(Duration),
+    NoCache,
+}
+
+impl fmt::Display for CacheControl {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CacheControl::Immutable => write!(f, "max-age=31536000,immutable"),
+            CacheControl::MaxAge(d) => write!(f, "max-age={},must-revalidate", d.as_secs()),
+            CacheControl::NoCache => write!(f, "no-cache"),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Html<T: Template>(T, CacheControl);
 
 impl<T: Template> IntoResponse for Html<T> {
     fn into_response(self) -> Response {
         match self.0.render() {
-            Ok(body) => axum::response::Html(body).into_response(),
+            Ok(body) => (
+                [
+                    (
+                        http::header::CONTENT_TYPE,
+                        http::HeaderValue::from_static(mime::TEXT_HTML_UTF_8.as_ref()),
+                    ),
+                    (
+                        http::header::CACHE_CONTROL,
+                        http::HeaderValue::from_str(&self.1.to_string())
+                            .expect("invalid Cache-Control value"),
+                    ),
+                ],
+                body,
+            )
+                .into_response(),
             Err(_) => http::StatusCode::INTERNAL_SERVER_ERROR.into_response(),
         }
     }
@@ -54,10 +87,13 @@ pub enum WebError {
 impl IntoResponse for WebError {
     fn into_response(self) -> Response {
         match self {
-            WebError::NotFound => (StatusCode::NOT_FOUND, Html(NotFoundPage)).into_response(),
+            WebError::NotFound => {
+                (StatusCode::NOT_FOUND, Html(NotFoundPage, CacheControl::NoCache)).into_response()
+            }
             WebError::DatabaseError(e) => {
                 log::error!("error querying database: {}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR, Html(InternalErrorPage)).into_response()
+                (StatusCode::INTERNAL_SERVER_ERROR, Html(InternalErrorPage, CacheControl::NoCache))
+                    .into_response()
             }
         }
     }

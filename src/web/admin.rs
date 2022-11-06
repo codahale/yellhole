@@ -8,7 +8,7 @@ use serde::Deserialize;
 
 use crate::models::Note;
 
-use super::{Context, Html, WebError};
+use super::{CacheControl, Context, Html, WebError};
 
 pub fn router() -> Router {
     // TODO add authentication
@@ -16,7 +16,7 @@ pub fn router() -> Router {
 }
 
 async fn new_page() -> Html<NewPage> {
-    Html(NewPage {})
+    Html(NewPage {}, CacheControl::NoCache)
 }
 
 #[derive(Debug, Deserialize)]

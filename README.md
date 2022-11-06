@@ -26,7 +26,7 @@ configuration or stored in a single directory which can be a FUSE/GCE mount when
 * [x] Add links
 * [x] Make an actual combined feed HTML template
 * [x] Make a publishing UI
-* [ ] Add `Cache-Control` for feed pages
+* [x] Add `Cache-Control` for feed pages
 * [ ] Add images schema
 * [ ] Add image uploads w/ resizing
   * write original to `data/images/orig/{id}.{mime-ext}`

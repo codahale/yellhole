@@ -1,10 +1,12 @@
+use std::time::Duration;
+
 use askama::Template;
 use axum::extract::{Path, Query};
 use axum::routing::get;
 use axum::{Extension, Router};
 use serde::Deserialize;
 
-use super::{Context, Html, WebError};
+use super::{CacheControl, Context, Html, WebError};
 use crate::models::Note;
 
 pub fn router() -> Router {
@@ -25,7 +27,7 @@ async fn index(
 ) -> Result<Html<FeedPage>, WebError> {
     let notes = Note::most_recent(&ctx.db, opts.n.unwrap_or(100)).await?;
 
-    Ok(Html(FeedPage { notes }))
+    Ok(Html(FeedPage { notes }, DEFAULT_CACHING))
 }
 
 async fn month(
@@ -33,7 +35,7 @@ async fn month(
     Path((year, month)): Path<(i32, u32)>,
 ) -> Result<Html<FeedPage>, WebError> {
     let notes = Note::month(&ctx.db, year, month).await?.ok_or(WebError::NotFound)?;
-    Ok(Html(FeedPage { notes }))
+    Ok(Html(FeedPage { notes }, DEFAULT_CACHING))
 }
 
 async fn single(
@@ -41,8 +43,10 @@ async fn single(
     Path(note_id): Path<String>,
 ) -> Result<Html<FeedPage>, WebError> {
     let note = Note::by_id(&ctx.db, &note_id).await?.ok_or(WebError::NotFound)?;
-    Ok(Html(FeedPage { notes: vec![note] }))
+    Ok(Html(FeedPage { notes: vec![note] }, CacheControl::Immutable))
 }
+
+const DEFAULT_CACHING: CacheControl = CacheControl::MaxAge(Duration::from_secs(60 * 5));
 
 #[derive(Debug, Template)]
 #[template(path = "feed.html")]
