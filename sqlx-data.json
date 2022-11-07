@@ -78,6 +78,34 @@
     },
     "query": "\n            select note_id, body, created_at\n            from note\n            where created_at >= ? and created_at < ?\n            order by created_at desc\n            "
   },
+  "7b6b5fa4791fb502acf1264cca95ac8eda959f60eafb691a7c3a5f7df1364ddb": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "\n            update image set processed = true where image_id = ? \n            "
+  },
+  "d1f6c4987c86cb2ba60f2af272c38cc5a4a87b114423413d59a416bce2f9dd2d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "image_id",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "\n            insert into image (original_file_ext) values (?) returning image_id\n            "
+  },
   "d91e1e404723b448c9eff6ca46bd88da1748fd024b12c935ac6aa52d05020db1": {
     "describe": {
       "columns": [

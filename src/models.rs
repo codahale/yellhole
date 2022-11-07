@@ -82,6 +82,42 @@ impl Note {
     }
 }
 
+#[derive(Debug)]
+pub struct Image {
+    pub image_id: String,
+    pub original_file_ext: String,
+    pub created_at: NaiveDateTime,
+}
+
+impl Image {
+    pub async fn create(db: &SqlitePool, file_ext: &str) -> Result<String, sqlx::Error> {
+        sqlx::query!(
+            r"
+            insert into image (original_file_ext) values (?) returning image_id
+            ",
+            file_ext
+        )
+        .fetch_one(db)
+        .await
+        .map(|r| r.image_id)
+    }
+
+    pub async fn mark_processed(db: &SqlitePool, image_id: &str) -> Result<(), sqlx::Error> {
+        (sqlx::query!(
+            r"
+            update image set processed = true where image_id = ? 
+            ",
+            image_id
+        )
+        .execute(db)
+        .await?
+        .rows_affected()
+            == 1)
+            .then_some(())
+            .ok_or(sqlx::Error::RowNotFound)
+    }
+}
+
 fn month_range(year: i32, month: u32) -> Option<(NaiveDate, NaiveDate)> {
     let start = NaiveDate::from_ymd_opt(year, month, 1)?;
     let end = start + Months::new(1);

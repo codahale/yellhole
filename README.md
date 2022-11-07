@@ -28,13 +28,14 @@ configuration or stored in a single directory which can be a FUSE/GCE mount when
 * [x] Make a publishing UI
 * [x] Add `Cache-Control` for feed pages
 * [x] Add images schema
-* [ ] Add image uploads w/ resizing
-  * write original to `data/images/orig/{id}.{mime-ext}`
-  * [shell out to ImageMagick](https://docs.rs/tokio/latest/tokio/process/index.html)
-  * transcode to WebP
-  * handle JPEG, PNG, WebP, HEIC, GIF, animated GIFs
-  * strip metadata (`-strip`)
-  * make thumbnail size and feed size
+* [x] Add image uploads w/ resizing
+* [ ] Test images
+  * [ ] JPEG
+  * [ ] PNG
+  * [ ] WebP
+  * [ ] HEIC
+  * [ ] GIF
+  * [ ] Animated GIF
 * [ ] Add image uploads via URL
 * [ ] Add image serving
   * Liberal use of `Cache-Control`

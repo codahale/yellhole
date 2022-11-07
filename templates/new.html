@@ -22,6 +22,17 @@
                 <button type="submit">Post</button>
             </form>
         </section>
+        <hr>
+        <section>
+            <form action="/admin/upload-image" enctype="multipart/form-data" method="post">
+                <header>
+                    <h2>New Image</h2>
+                </header>
+                <label for="image">Upload image:</label>
+                <input type="file" id="image" name="image" accept="image/*" multiple>
+                <button type="submit">Post</button>
+            </form>
+        </section>
     </main>
     <footer>
         <p>

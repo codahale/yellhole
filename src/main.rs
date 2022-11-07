@@ -38,6 +38,11 @@ async fn main() -> anyhow::Result<()> {
     }
     tracing_subscriber::fmt::init();
 
+    // Create the images directory, if necessary.
+    let mut images_dir = config.data_dir.clone();
+    images_dir.push("images");
+    tokio::fs::create_dir_all(&images_dir).await?;
+
     // Connect to the DB.
     let mut db_path = config.data_dir.clone();
     log::info!("loading data from {:?}", &db_path);
@@ -50,5 +55,5 @@ async fn main() -> anyhow::Result<()> {
     sqlx::migrate!().run(&db).await?;
 
     // Spin up an HTTP server and listen for requests.
-    web::serve(&config.listen_addr, db).await
+    web::serve(&config.listen_addr, &config.data_dir, db).await
 }

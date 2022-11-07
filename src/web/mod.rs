@@ -1,5 +1,6 @@
 use std::fmt;
 use std::net::SocketAddr;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use askama::Template;
@@ -7,6 +8,7 @@ use axum::http::{self, StatusCode};
 use axum::response::{IntoResponse, Response};
 use sqlx::SqlitePool;
 use thiserror::Error;
+use tokio::io;
 use tower::ServiceBuilder;
 use tower_http::add_extension::AddExtensionLayer;
 use tower_http::trace::TraceLayer;
@@ -17,13 +19,14 @@ mod feed;
 #[derive(Debug, Clone)]
 pub struct Context {
     db: SqlitePool,
+    dir: PathBuf,
 }
 
-pub async fn serve(addr: &SocketAddr, db: SqlitePool) -> anyhow::Result<()> {
+pub async fn serve(addr: &SocketAddr, dir: impl AsRef<Path>, db: SqlitePool) -> anyhow::Result<()> {
     let router = feed::router().merge(admin::router());
 
     let app = router
-        .layer(AddExtensionLayer::new(Context { db }))
+        .layer(AddExtensionLayer::new(Context { db, dir: dir.as_ref().to_path_buf() }))
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
 
     log::info!("listening on http://{}", addr);
@@ -82,6 +85,9 @@ pub enum WebError {
 
     #[error("database error: {0}")]
     DatabaseError(#[from] sqlx::Error),
+
+    #[error("IO error: {0}")]
+    IoError(#[from] io::Error),
 }
 
 impl IntoResponse for WebError {
@@ -92,6 +98,11 @@ impl IntoResponse for WebError {
             }
             WebError::DatabaseError(e) => {
                 log::error!("error querying database: {}", e);
+                (StatusCode::INTERNAL_SERVER_ERROR, Html(InternalErrorPage, CacheControl::NoCache))
+                    .into_response()
+            }
+            WebError::IoError(e) => {
+                log::error!("IO error: {}", e);
                 (StatusCode::INTERNAL_SERVER_ERROR, Html(InternalErrorPage, CacheControl::NoCache))
                     .into_response()
             }
