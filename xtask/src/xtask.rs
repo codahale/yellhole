@@ -70,11 +70,15 @@ fn db_setup(sh: &Shell) -> Result<(), anyhow::Error> {
 }
 
 fn db_reset(sh: &Shell) -> Result<(), anyhow::Error> {
+    cmd!(sh, "rm -rf ./data/*").run()?;
+    cmd!(sh, "touch ./data/.keep").run()?;
     cmd!(sh, "sqlx db reset --database-url={DB_URL}").run()?;
     Ok(())
 }
 
 fn db_drop(sh: &Shell) -> Result<(), anyhow::Error> {
+    cmd!(sh, "rm -rf ./data/*").run()?;
+    cmd!(sh, "touch ./data/.keep").run()?;
     cmd!(sh, "sqlx db drop --database-url={DB_URL}").run()?;
     Ok(())
 }
