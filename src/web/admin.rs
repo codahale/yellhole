@@ -63,8 +63,7 @@ pub async fn upload_images(
         {
             if content_type.type_() == mime::IMAGE {
                 // 1. create unprocessed image in DB, get image ID
-                let original_ext = content_type.subtype().as_str();
-                let image_id = Image::create(&ctx.db, original_ext).await.map_err(|e| {
+                let image_id = Image::create(&ctx.db, &content_type).await.map_err(|e| {
                     log::warn!("error inserting image: {e}");
                     StatusCode::INTERNAL_SERVER_ERROR
                 })?;
@@ -72,7 +71,7 @@ pub async fn upload_images(
 
                 // 2. write image to dir/uploads/{image_id}.orig.{ext}
                 let original_path =
-                    Image::original_path(&ctx.uploads_dir(), &image_id, original_ext);
+                    Image::original_path(&ctx.uploads_dir(), &image_id, &content_type);
                 stream_to_file(&original_path, field).await.map_err(|e| {
                     log::warn!("error receiving image: {e}");
                     StatusCode::BAD_REQUEST

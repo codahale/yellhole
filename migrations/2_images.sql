@@ -1,6 +1,6 @@
 create table image (
     image_id text primary key not null default (lower(hex(randomblob(16)))),
-    original_file_ext text not null,
+    content_type text not null,
     processed boolean not null default false,
     created_at timestamp not null default current_timestamp
 );

@@ -30,9 +30,9 @@ impl Image {
         proc.wait().await
     }
 
-    pub fn original_path(uploads_dir: &Path, image_id: &str, original_ext: &str) -> PathBuf {
+    pub fn original_path(uploads_dir: &Path, image_id: &str, content_type: &mime::Mime) -> PathBuf {
         let mut path = uploads_dir.to_path_buf();
-        path.push(format!("{image_id}.orig.{original_ext}"));
+        path.push(format!("{image_id}.orig.{}", content_type.subtype()));
         path
     }
 
@@ -48,12 +48,13 @@ impl Image {
         path
     }
 
-    pub async fn create(db: &SqlitePool, file_ext: &str) -> Result<String, sqlx::Error> {
+    pub async fn create(db: &SqlitePool, content_type: &mime::Mime) -> Result<String, sqlx::Error> {
+        let content_type = content_type.to_string();
         sqlx::query!(
             r"
-            insert into image (original_file_ext) values (?) returning image_id
+            insert into image (content_type) values (?) returning image_id
             ",
-            file_ext
+            content_type
         )
         .fetch_one(db)
         .await
