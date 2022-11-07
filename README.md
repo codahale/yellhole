@@ -34,13 +34,15 @@ configuration or stored in a single directory which can be a FUSE/GCE mount when
   * [x] Non-funky 404 errors
   * [x] Don't serve original files
 * [x] Add image gallery w/ click-to-insert UI for notes
-* [ ] Test images
-  * [ ] JPEG
-  * [ ] PNG
-  * [ ] WebP
-  * [ ] HEIC
-  * [ ] GIF
-  * [ ] Animated GIF
+* [x] Test images (ImageMagick 7.1.0-52)
+  * [x] JPEG
+  * [x] PNG
+  * [x] WebP
+  * [x] Animated WebP
+    * produced some very glitchy results
+  * [x] HEIC
+  * [x] GIF
+  * [x] Animated GIF
 * [ ] Add image uploads via URL
 * [ ] Add sessions/authentication/credentials
   * [ ] Add credentials schema
