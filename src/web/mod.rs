@@ -9,7 +9,7 @@ use axum::http::{self, StatusCode};
 use axum::response::{IntoResponse, Response};
 use sqlx::SqlitePool;
 use thiserror::Error;
-use tokio::io;
+use tokio::{io, signal};
 use tower::ServiceBuilder;
 use tower_http::add_extension::AddExtensionLayer;
 use tower_http::trace::TraceLayer;
@@ -39,7 +39,10 @@ pub async fn serve(addr: &SocketAddr, dir: impl AsRef<Path>, db: SqlitePool) -> 
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
 
     log::info!("listening on http://{}", addr);
-    axum::Server::bind(addr).serve(app.into_make_service()).await?;
+    axum::Server::bind(addr)
+        .serve(app.into_make_service())
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
 
     Ok(())
 }
@@ -136,3 +139,27 @@ struct NotFoundPage;
 #[derive(Template)]
 #[template(source = "Internal error.", ext = "html")]
 struct InternalErrorPage;
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        signal::ctrl_c().await.expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+
+    println!("signal received, starting graceful shutdown");
+}
