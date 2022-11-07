@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use askama::Template;
+use axum::extract::multipart::MultipartError;
 use axum::http::{self, StatusCode};
 use axum::response::{IntoResponse, Response};
 use sqlx::SqlitePool;
@@ -20,6 +21,14 @@ mod feed;
 pub struct Context {
     db: SqlitePool,
     dir: PathBuf,
+}
+
+impl Context {
+    pub fn images_dir(&self) -> PathBuf {
+        let mut path = self.dir.clone();
+        path.push("images");
+        path
+    }
 }
 
 pub async fn serve(addr: &SocketAddr, dir: impl AsRef<Path>, db: SqlitePool) -> anyhow::Result<()> {
@@ -88,6 +97,9 @@ pub enum WebError {
 
     #[error("IO error: {0}")]
     IoError(#[from] io::Error),
+
+    #[error("Multipart error: {0}")]
+    MultipartError(#[from] MultipartError),
 }
 
 impl IntoResponse for WebError {
@@ -102,6 +114,11 @@ impl IntoResponse for WebError {
                     .into_response()
             }
             WebError::IoError(e) => {
+                log::error!("IO error: {}", e);
+                (StatusCode::INTERNAL_SERVER_ERROR, Html(InternalErrorPage, CacheControl::NoCache))
+                    .into_response()
+            }
+            WebError::MultipartError(e) => {
                 log::error!("IO error: {}", e);
                 (StatusCode::INTERNAL_SERVER_ERROR, Html(InternalErrorPage, CacheControl::NoCache))
                     .into_response()
