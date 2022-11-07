@@ -1,12 +1,17 @@
+use std::path::Path;
+
 use askama::Template;
-use axum::body::BoxBody;
+use axum::body::{BoxBody, Bytes};
 use axum::extract::Multipart;
 use axum::http::{self, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
-use axum::{Extension, Form, Router};
+use axum::{BoxError, Extension, Form, Router};
+use futures::{Stream, TryStreamExt};
 use serde::Deserialize;
-use tokio::io::AsyncWriteExt;
+use tokio::fs::File;
+use tokio::io::{self, BufWriter};
+use tokio_util::io::StreamReader;
 
 use crate::models::{Image, Note};
 
@@ -61,8 +66,7 @@ pub async fn upload_image(
 
                 // 2. write image to dir/images/{image_id}.orig.{ext}
                 let original_path = Image::original_path(&images_dir, &image_id, original_ext);
-                let mut f = tokio::fs::File::create(&original_path).await?;
-                f.write_all_buf(&mut field.bytes().await?).await?;
+                stream_to_file(&original_path, field).await?;
 
                 // 3. process image, generating thumbnail etc. in parallel
                 let main_path = Image::main_path(&images_dir, &image_id);
@@ -85,4 +89,23 @@ pub async fn upload_image(
         .header(http::header::LOCATION, "/")
         .body(BoxBody::default())
         .unwrap())
+}
+
+async fn stream_to_file<S, E>(path: &Path, stream: S) -> Result<(), WebError>
+where
+    S: Stream<Item = Result<Bytes, E>>,
+    E: Into<BoxError>,
+{
+    // Convert the stream into an `AsyncRead`.
+    let body_with_io_error = stream.map_err(|err| io::Error::new(io::ErrorKind::Other, err));
+    let body_reader = StreamReader::new(body_with_io_error);
+    futures::pin_mut!(body_reader);
+
+    // Create the file. `File` implements `AsyncWrite`.
+    let mut file = BufWriter::new(File::create(path).await?);
+
+    // Copy the body into the file.
+    tokio::io::copy(&mut body_reader, &mut file).await?;
+
+    Ok(())
 }
