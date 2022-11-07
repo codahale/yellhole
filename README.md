@@ -33,6 +33,7 @@ configuration or stored in a single directory which can be a FUSE/GCE mount when
   * [x] Liberal use of `Cache-Control`
   * [x] Non-funky 404 errors
   * [x] Don't serve original files
+* [x] Add image gallery w/ click-to-insert UI for notes
 * [ ] Test images
   * [ ] JPEG
   * [ ] PNG
@@ -41,9 +42,6 @@ configuration or stored in a single directory which can be a FUSE/GCE mount when
   * [ ] GIF
   * [ ] Animated GIF
 * [ ] Add image uploads via URL
-* [ ] Add single-shot upload-and-note UI
-* [ ] Add single-shot URL-and-note UI
-* [ ] Add image gallery w/ click-to-insert UI for notes
 * [ ] Add sessions/authentication/credentials
   * [ ] Add credentials schema
   * [ ] Add sessions schema (IP, User-Agent, geo-location)

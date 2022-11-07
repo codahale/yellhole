@@ -27,10 +27,16 @@ pub fn router() -> Router {
 
 #[derive(Debug, Template)]
 #[template(path = "new.html")]
-struct NewPage {}
+struct NewPage {
+    images: Vec<Image>,
+}
 
-async fn new_page() -> Html<NewPage> {
-    Html(NewPage {}, CacheControl::NoCache)
+async fn new_page(ctx: Extension<Context>) -> Result<Html<NewPage>, StatusCode> {
+    let images = Image::most_recent(&ctx.db, 10).await.map_err(|e| {
+        log::warn!("unable to query recent images: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    Ok(Html(NewPage { images }, CacheControl::NoCache))
 }
 
 #[derive(Debug, Deserialize)]

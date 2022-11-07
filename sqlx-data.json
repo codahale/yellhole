@@ -135,5 +135,29 @@
       }
     },
     "query": "\n            select note_id, body, created_at\n            from note\n            order by created_at desc\n            limit ?\n            "
+  },
+  "f78d9ce7cf5f616396d6c4e83dd7442c428a2d9e96bfd5bfad6f72ab7ea1a5fa": {
+    "describe": {
+      "columns": [
+        {
+          "name": "image_id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 1,
+          "type_info": "Datetime"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "\n            select image_id, created_at\n            from image\n            where processed\n            order by created_at desc\n            limit ?\n            "
   }
 }

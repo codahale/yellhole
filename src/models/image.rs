@@ -9,11 +9,26 @@ use tokio::process::Command;
 #[derive(Debug)]
 pub struct Image {
     pub image_id: String,
-    pub original_file_ext: String,
     pub created_at: NaiveDateTime,
 }
 
 impl Image {
+    pub async fn most_recent(db: &SqlitePool, n: u16) -> Result<Vec<Image>, sqlx::Error> {
+        sqlx::query_as!(
+            Image,
+            r"
+            select image_id, created_at
+            from image
+            where processed
+            order by created_at desc
+            limit ?
+            ",
+            n
+        )
+        .fetch_all(db)
+        .await
+    }
+
     pub async fn process_image(
         input: PathBuf,
         output: PathBuf,
