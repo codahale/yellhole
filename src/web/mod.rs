@@ -5,8 +5,8 @@ use std::time::Duration;
 
 use askama::Template;
 use axum::extract::multipart::MultipartError;
-use axum::handler::Handler;
-use axum::http::{self, StatusCode};
+use axum::http::{self, StatusCode, Uri};
+use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use sqlx::SqlitePool;
 use thiserror::Error;
@@ -41,14 +41,12 @@ impl Context {
 
 pub async fn serve(addr: &SocketAddr, dir: impl AsRef<Path>, db: SqlitePool) -> anyhow::Result<()> {
     let ctx = Context { db, dir: dir.as_ref().to_path_buf() };
-    let router = feed::router()
+    let app = feed::router()
         .merge(admin::router())
         .merge(asset::router(&ctx.images_dir()))
-        .fallback(not_found.into_service());
-
-    let app = router
         .layer(AddExtensionLayer::new(ctx))
-        .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
+        .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
+        .route_layer(middleware::from_fn(handle_errors));
 
     log::info!("listening on http://{}", addr);
     axum::Server::bind(addr)
@@ -59,8 +57,31 @@ pub async fn serve(addr: &SocketAddr, dir: impl AsRef<Path>, db: SqlitePool) -> 
     Ok(())
 }
 
-async fn not_found() -> Result<String, WebError> {
-    Err(WebError::NotFound)
+#[derive(Debug, Template)]
+#[template(path = "error.html")]
+struct ErrorPage {
+    uri: Uri,
+    status: StatusCode,
+}
+
+async fn handle_errors<B>(req: http::Request<B>, next: Next<B>) -> Result<Response, StatusCode> {
+    let uri = req.uri().clone();
+    let resp = next.run(req).await;
+    if resp.status().is_client_error() || resp.status().is_server_error() {
+        let page = ErrorPage { uri, status: resp.status() };
+        if let Ok(body) = page.render() {
+            return Ok((
+                [(
+                    http::header::CONTENT_TYPE,
+                    http::HeaderValue::from_static(mime::TEXT_HTML_UTF_8.as_ref()),
+                )],
+                body,
+            )
+                .into_response());
+        }
+        dbg!(&resp.status());
+    }
+    Ok(resp)
 }
 
 #[derive(Debug)]

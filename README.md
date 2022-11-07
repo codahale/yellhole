@@ -31,7 +31,7 @@ configuration or stored in a single directory which can be a FUSE/GCE mount when
 * [x] Add image uploads w/ resizing
 * [x] Add image serving
   * [x] Liberal use of `Cache-Control`
-  * [ ] Non-funky 404 errors
+  * [x] Non-funky 404 errors
   * [x] Don't serve original files
 * [ ] Test images
   * [ ] JPEG

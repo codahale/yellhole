@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en" color-mode="user">
+
+<head>
+    <title>Yellhole</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <meta charset='utf-8'>
+    <link rel="stylesheet" href="https://unpkg.com/mvp.css@1.12/mvp.css">
+    <link rel="stylesheet" href="https://unpkg.com/prismjs@v1.x/themes/prism.css">
+    <style type="text/css">
+        :root {
+            --width-card: var(--width-card-medium);
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Yellhole</h1>
+    </header>
+    <main>
+        <article>
+            <h2>Uh Oh</h2>
+            {% if status == StatusCode::NOT_FOUND %}
+            <p>Ain't no such thing as <code>{{uri}}</code>, bud.</p>
+            {% else %}
+            <p>Something went did bad.</p>
+            {% endif %}
+        </article>
+    </main>
+    <footer>
+        <p>
+            <small>Copyright &copy; 2022 Coda Hale</small>
+        </p>
+    </footer>
+
+    <script src="https://unpkg.com/prismjs@v1.x/components/prism-core.min.js"></script>
+    <script src="https://unpkg.com/prismjs@v1.x/plugins/autoloader/prism-autoloader.min.js"></script>
+</body>
+
+</html>
