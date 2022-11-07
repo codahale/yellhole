@@ -1,68 +1,50 @@
-<!DOCTYPE html>
-<html lang="en" color-mode="user">
+{% extends "layout.html" %}
 
-<head>
-    <title>Yellhole</title>
-    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-    <meta charset='utf-8'>
-    <link rel="stylesheet" href="https://unpkg.com/mvp.css@1.12/mvp.css">
-    <script type="text/javascript">
-        function insertImage(imageId) {
-            const el = document.getElementById("body");
-            const start = el.selectionStart
-            const end = el.selectionEnd
-            const text = el.value
-            const newText = "![](/images/" + imageId + ".main.webp)";
-            const before = text.substring(0, start)
-            const after = text.substring(end, text.length)
-            el.value = (before + newText + after)
-            el.selectionStart = el.selectionEnd = start + 2
-            el.focus()
-        }
-    </script>
-</head>
-
-<body>
-    <header>
-        <h1>Yellhole</h1>
-    </header>
-    <main>
+{% block content %}
+<div>
+    <details open>
+        <summary>New Note</summary>
         <div>
-            <details open>
-                <summary>New Note</summary>
-                <div>
-                    <form action="/admin/new-note" method="post">
-                        <textarea cols="40" rows="5" id="body" name="body" placeholder="It'sa me, _Mario_."></textarea>
-                        <button type="submit">Post</button>
-                        <details open>
-                            <summary>Recent Images</summary>
-                            <div>
-                                {% for image in images %}
-                                <img src="/images/{{ image.image_id }}.thumb.webp"
-                                    onclick="insertImage('{{image.image_id}}')">
-                                {% endfor %}
-                            </div>
-                        </details>
-                    </form>
-                </div>
-            </details>
-            <details>
-                <summary>Upload Images</summary>
-                <div>
-                    <form action="/admin/upload-images" enctype="multipart/form-data" method="post">
-                        <label for="image">Images:</label>
-                        <input type="file" id="image" name="image" accept="image/*" multiple>
-                        <button type="submit">Upload</button>
-                    </form>
-                </div>
-            </details>
+            <form action="/admin/new-note" method="post">
+                <textarea cols="40" rows="5" id="body" name="body" placeholder="It'sa me, _Mario_."></textarea>
+                <button type="submit">Post</button>
+                <details open>
+                    <summary>Recent Images</summary>
+                    <div>
+                        {% for image in images %}
+                        <img src="/images/{{ image.image_id }}.thumb.webp" onclick="insertImage('{{image.image_id}}')">
+                        {% endfor %}
+                    </div>
+                </details>
+            </form>
         </div>
-    </main>
-    <footer>
-        <p>
-            <small>Copyright &copy; 2022 Coda Hale</small>
-        </p>
-    </footer>
-</body>
+    </details>
+    <details>
+        <summary>Upload Images</summary>
+        <div>
+            <form action="/admin/upload-images" enctype="multipart/form-data" method="post">
+                <label for="image">Images:</label>
+                <input type="file" id="image" name="image" accept="image/*" multiple>
+                <button type="submit">Upload</button>
+            </form>
+        </div>
+    </details>
+</div>
+{% endblock %}
 
-</html>
+{% block tail %}
+<script type="text/javascript">
+    function insertImage(imageId) {
+        const el = document.getElementById("body");
+        const start = el.selectionStart
+        const end = el.selectionEnd
+        const text = el.value
+        const newText = "![](/images/" + imageId + ".main.webp)";
+        const before = text.substring(0, start)
+        const after = text.substring(end, text.length)
+        el.value = (before + newText + after)
+        el.selectionStart = el.selectionEnd = start + 2
+        el.focus()
+    }
+</script>
+{% endblock %}

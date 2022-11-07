@@ -1,41 +1,21 @@
-<!DOCTYPE html>
-<html lang="en" color-mode="user">
+{% extends "layout.html" %}
 
-<head>
-    <title>Yellhole</title>
-    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-    <meta charset='utf-8'>
-    <link rel="stylesheet" href="https://unpkg.com/mvp.css@1.12/mvp.css">
-    <link rel="stylesheet" href="https://unpkg.com/prismjs@v1.x/themes/prism.css">
-    <style type="text/css">
-        :root {
-            --width-card: var(--width-card-medium);
-        }
-    </style>
-</head>
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/prismjs@v1.x/themes/prism.css">
+{% endblock %}
 
-<body>
-    <header>
-        <h1>Yellhole</h1>
-    </header>
-    <main>
-        {% for n in notes %}
-        <section>
-            <aside>
-                {{ n.to_html() | safe }}
-                <p><small><a href="/note/{{n.note_id}}">{{n.created_at}}</a></small></p>
-            </aside>
-        </section>
-        {% endfor %}
-    </main>
-    <footer>
-        <p>
-            <small>Copyright &copy; 2022 Coda Hale</small>
-        </p>
-    </footer>
+{% block content %}
+{% for n in notes %}
+<section>
+    <aside>
+        {{ n.to_html() | safe }}
+        <p><small><a href="/note/{{n.note_id}}">{{n.created_at}}</a></small></p>
+    </aside>
+</section>
+{% endfor %}
+{% endblock %}
 
-    <script src="https://unpkg.com/prismjs@v1.x/components/prism-core.min.js"></script>
-    <script src="https://unpkg.com/prismjs@v1.x/plugins/autoloader/prism-autoloader.min.js"></script>
-</body>
-
-</html>
+{% block tail %}
+<script src="https://unpkg.com/prismjs@v1.x/components/prism-core.min.js"></script>
+<script src="https://unpkg.com/prismjs@v1.x/plugins/autoloader/prism-autoloader.min.js"></script>
+{% endblock %}

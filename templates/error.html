@@ -1,34 +1,13 @@
-<!DOCTYPE html>
-<html lang="en" color-mode="user">
-
-<head>
-    <title>Yellhole</title>
-    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-    <meta charset='utf-8'>
-    <link rel="stylesheet" href="https://unpkg.com/mvp.css@1.12/mvp.css">
-</head>
-
-<body>
-    <header>
-        <h1>Yellhole</h1>
-    </header>
-    <main>
-        <article>
-            <h2>Uh Oh</h2>
-            {% if status == StatusCode::NOT_FOUND %}
-            <p>Ain't no such thing as <code>{{uri}}</code>, bud.</p>
-            {% else if status == StatusCode::BAD_REQUEST %}
-            <p>That request was bad. Don't retry it.</p>
-            {% else %}
-            <p>Something went wrong. Maybe go for a walk about it?</p>
-            {% endif %}
-        </article>
-    </main>
-    <footer>
-        <p>
-            <small>Copyright &copy; 2022 Coda Hale</small>
-        </p>
-    </footer>
-</body>
-
-</html>
+{% extends "layout.html" %}
+{% block content %}
+<article>
+    <h2>Uh Oh</h2>
+    {% if status == StatusCode::NOT_FOUND %}
+    <p>Ain't no such thing as <code>{{uri}}</code>, bud.</p>
+    {% else if status == StatusCode::BAD_REQUEST %}
+    <p>That request was bad. Don't retry it.</p>
+    {% else %}
+    <p>Something went wrong. Maybe go for a walk about it?</p>
+    {% endif %}
+</article>
+{% endblock %}
