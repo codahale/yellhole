@@ -29,6 +29,10 @@ configuration or stored in a single directory which can be a FUSE/GCE mount when
 * [x] Add `Cache-Control` for feed pages
 * [x] Add images schema
 * [x] Add image uploads w/ resizing
+* [x] Add image serving
+  * [ ] Liberal use of `Cache-Control`
+  * [ ] Non-funky 404 errors
+  * [x] Don't serve original files
 * [ ] Test images
   * [ ] JPEG
   * [ ] PNG
@@ -37,9 +41,6 @@ configuration or stored in a single directory which can be a FUSE/GCE mount when
   * [ ] GIF
   * [ ] Animated GIF
 * [ ] Add image uploads via URL
-* [ ] Add image serving
-  * Liberal use of `Cache-Control`
-  * Don't serve original files
 * [ ] Add single-shot upload-and-note UI
 * [ ] Add single-shot URL-and-note UI
 * [ ] Add image gallery w/ click-to-insert UI for notes

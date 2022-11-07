@@ -30,8 +30,8 @@ impl Image {
         proc.wait().await
     }
 
-    pub fn original_path(images_dir: &Path, image_id: &str, original_ext: &str) -> PathBuf {
-        let mut path = images_dir.to_path_buf();
+    pub fn original_path(uploads_dir: &Path, image_id: &str, original_ext: &str) -> PathBuf {
+        let mut path = uploads_dir.to_path_buf();
         path.push(format!("{image_id}.orig.{original_ext}"));
         path
     }

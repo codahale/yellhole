@@ -64,8 +64,9 @@ pub async fn upload_image(
                 let image_id = Image::create(&ctx.db, original_ext).await?;
                 let images_dir = ctx.images_dir();
 
-                // 2. write image to dir/images/{image_id}.orig.{ext}
-                let original_path = Image::original_path(&images_dir, &image_id, original_ext);
+                // 2. write image to dir/uploads/{image_id}.orig.{ext}
+                let original_path =
+                    Image::original_path(&ctx.uploads_dir(), &image_id, original_ext);
                 stream_to_file(&original_path, field).await?;
 
                 // 3. process image, generating thumbnail etc. in parallel

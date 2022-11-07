@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use askama::Template;
 use axum::extract::multipart::MultipartError;
+use axum::handler::Handler;
 use axum::http::{self, StatusCode};
 use axum::response::{IntoResponse, Response};
 use sqlx::SqlitePool;
@@ -15,6 +16,7 @@ use tower_http::add_extension::AddExtensionLayer;
 use tower_http::trace::TraceLayer;
 
 mod admin;
+mod asset;
 mod feed;
 
 #[derive(Debug, Clone)]
@@ -29,13 +31,23 @@ impl Context {
         path.push("images");
         path
     }
+
+    pub fn uploads_dir(&self) -> PathBuf {
+        let mut path = self.dir.clone();
+        path.push("uploads");
+        path
+    }
 }
 
 pub async fn serve(addr: &SocketAddr, dir: impl AsRef<Path>, db: SqlitePool) -> anyhow::Result<()> {
-    let router = feed::router().merge(admin::router());
+    let ctx = Context { db, dir: dir.as_ref().to_path_buf() };
+    let router = feed::router()
+        .merge(admin::router())
+        .merge(asset::router(&ctx.images_dir()))
+        .fallback(not_found.into_service());
 
     let app = router
-        .layer(AddExtensionLayer::new(Context { db, dir: dir.as_ref().to_path_buf() }))
+        .layer(AddExtensionLayer::new(ctx))
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
 
     log::info!("listening on http://{}", addr);
@@ -45,6 +57,10 @@ pub async fn serve(addr: &SocketAddr, dir: impl AsRef<Path>, db: SqlitePool) -> 
         .await?;
 
     Ok(())
+}
+
+async fn not_found() -> Result<String, WebError> {
+    Err(WebError::NotFound)
 }
 
 #[derive(Debug)]

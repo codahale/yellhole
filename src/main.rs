@@ -38,10 +38,14 @@ async fn main() -> anyhow::Result<()> {
     }
     tracing_subscriber::fmt::init();
 
-    // Create the images directory, if necessary.
+    // Create the images and uploads directories, if necessary.
     let mut images_dir = config.data_dir.clone();
     images_dir.push("images");
     tokio::fs::create_dir_all(&images_dir).await?;
+
+    let mut uploads_dir = config.data_dir.clone();
+    uploads_dir.push("uploads");
+    tokio::fs::create_dir_all(&uploads_dir).await?;
 
     // Connect to the DB.
     let mut db_path = config.data_dir.clone();
