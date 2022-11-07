@@ -15,7 +15,7 @@ use tokio_util::io::StreamReader;
 
 use crate::models::{Image, Note};
 
-use super::{CacheControl, Context, Html, WebError};
+use super::{CacheControl, Context, Html};
 
 pub fn router() -> Router {
     // TODO add authentication
@@ -41,8 +41,11 @@ struct NewNote {
 async fn create_note(
     ctx: Extension<Context>,
     Form(new_note): Form<NewNote>,
-) -> Result<Response, WebError> {
-    let id = Note::create(&ctx.db, &new_note.body).await?;
+) -> Result<Response, StatusCode> {
+    let id = Note::create(&ctx.db, &new_note.body).await.map_err(|e| {
+        log::warn!("error inserting note: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
     Ok(Response::builder()
         .status(StatusCode::SEE_OTHER)
         .header("location", format!("/note/{id}"))
@@ -53,21 +56,27 @@ async fn create_note(
 pub async fn upload_image(
     ctx: Extension<Context>,
     mut multipart: Multipart,
-) -> Result<impl IntoResponse, WebError> {
-    while let Some(field) = multipart.next_field().await.expect("bad request") {
+) -> Result<impl IntoResponse, StatusCode> {
+    while let Some(field) = multipart.next_field().await.map_err(|_| StatusCode::BAD_REQUEST)? {
         if let Some(content_type) =
             field.content_type().and_then(|ct| ct.parse::<mime::Mime>().ok())
         {
             if content_type.type_() == mime::IMAGE {
                 // 1. create unprocessed image in DB, get image ID
                 let original_ext = content_type.subtype().as_str();
-                let image_id = Image::create(&ctx.db, original_ext).await?;
+                let image_id = Image::create(&ctx.db, original_ext).await.map_err(|e| {
+                    log::warn!("error inserting image: {e}");
+                    StatusCode::INTERNAL_SERVER_ERROR
+                })?;
                 let images_dir = ctx.images_dir();
 
                 // 2. write image to dir/uploads/{image_id}.orig.{ext}
                 let original_path =
                     Image::original_path(&ctx.uploads_dir(), &image_id, original_ext);
-                stream_to_file(&original_path, field).await?;
+                stream_to_file(&original_path, field).await.map_err(|e| {
+                    log::warn!("error receiving image: {e}");
+                    StatusCode::BAD_REQUEST
+                })?;
 
                 // 3. process image, generating thumbnail etc. in parallel
                 let main_path = Image::main_path(&images_dir, &image_id);
@@ -76,11 +85,20 @@ pub async fn upload_image(
                 let thumbnail_path = Image::thumbnail_path(&images_dir, &image_id);
                 let thumbnail = Image::process_image(original_path.clone(), thumbnail_path, "100");
 
-                main.await?;
-                thumbnail.await?;
+                main.await.map_err(|e| {
+                    log::warn!("error generating image: {e}");
+                    StatusCode::INTERNAL_SERVER_ERROR
+                })?;
+                thumbnail.await.map_err(|e| {
+                    log::warn!("error generating thumbnail: {e}");
+                    StatusCode::INTERNAL_SERVER_ERROR
+                })?;
 
                 // 4. mark image as processed
-                Image::mark_processed(&ctx.db, &image_id).await?;
+                Image::mark_processed(&ctx.db, &image_id).await.map_err(|e| {
+                    log::warn!("error updating image `{image_id}`: {e}");
+                    StatusCode::INTERNAL_SERVER_ERROR
+                })?;
             }
         }
     }
@@ -92,7 +110,7 @@ pub async fn upload_image(
         .unwrap())
 }
 
-async fn stream_to_file<S, E>(path: &Path, stream: S) -> Result<(), WebError>
+async fn stream_to_file<S, E>(path: &Path, stream: S) -> Result<(), io::Error>
 where
     S: Stream<Item = Result<Bytes, E>>,
     E: Into<BoxError>,

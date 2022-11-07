@@ -2,11 +2,12 @@ use std::time::Duration;
 
 use askama::Template;
 use axum::extract::{Path, Query};
+use axum::http::StatusCode;
 use axum::routing::get;
 use axum::{Extension, Router};
 use serde::Deserialize;
 
-use super::{CacheControl, Context, Html, WebError};
+use super::{CacheControl, Context, Html};
 use crate::models::Note;
 
 pub fn router() -> Router {
@@ -30,8 +31,11 @@ struct IndexOpts {
 async fn index(
     ctx: Extension<Context>,
     opts: Query<IndexOpts>,
-) -> Result<Html<FeedPage>, WebError> {
-    let notes = Note::most_recent(&ctx.db, opts.n.unwrap_or(100)).await?;
+) -> Result<Html<FeedPage>, StatusCode> {
+    let notes = Note::most_recent(&ctx.db, opts.n.unwrap_or(100)).await.map_err(|e| {
+        log::warn!("error querying feed index: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
     Ok(Html(FeedPage { notes }, DEFAULT_CACHING))
 }
@@ -39,16 +43,28 @@ async fn index(
 async fn month(
     ctx: Extension<Context>,
     Path((year, month)): Path<(i32, u32)>,
-) -> Result<Html<FeedPage>, WebError> {
-    let notes = Note::month(&ctx.db, year, month).await?.ok_or(WebError::NotFound)?;
+) -> Result<Html<FeedPage>, StatusCode> {
+    let notes = Note::month(&ctx.db, year, month)
+        .await
+        .map_err(|e| {
+            log::warn!("error querying feed for month `{year}/{month}`: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?
+        .ok_or(StatusCode::NOT_FOUND)?;
     Ok(Html(FeedPage { notes }, DEFAULT_CACHING))
 }
 
 async fn single(
     ctx: Extension<Context>,
     Path(note_id): Path<String>,
-) -> Result<Html<FeedPage>, WebError> {
-    let note = Note::by_id(&ctx.db, &note_id).await?.ok_or(WebError::NotFound)?;
+) -> Result<Html<FeedPage>, StatusCode> {
+    let note = Note::by_id(&ctx.db, &note_id)
+        .await
+        .map_err(|e| {
+            log::warn!("error querying feed for note `{note_id}`: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?
+        .ok_or(StatusCode::NOT_FOUND)?;
     Ok(Html(FeedPage { notes: vec![note] }, CacheControl::Immutable))
 }
 

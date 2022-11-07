@@ -4,14 +4,11 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use askama::Template;
-use axum::extract::multipart::MultipartError;
 use axum::http::{self, StatusCode, Uri};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use futures::Future;
 use sqlx::SqlitePool;
-use thiserror::Error;
-use tokio::io;
 use tower::ServiceBuilder;
 use tower_http::add_extension::AddExtensionLayer;
 use tower_http::trace::TraceLayer;
@@ -132,53 +129,3 @@ impl<T: Template> IntoResponse for Html<T> {
         }
     }
 }
-
-#[derive(Debug, Error)]
-pub enum WebError {
-    #[error("entity not found")]
-    NotFound,
-
-    #[error("database error: {0}")]
-    DatabaseError(#[from] sqlx::Error),
-
-    #[error("IO error: {0}")]
-    IoError(#[from] io::Error),
-
-    #[error("Multipart error: {0}")]
-    MultipartError(#[from] MultipartError),
-}
-
-impl IntoResponse for WebError {
-    fn into_response(self) -> Response {
-        match self {
-            WebError::NotFound => {
-                (StatusCode::NOT_FOUND, Html(NotFoundPage, CacheControl::NoCache)).into_response()
-            }
-            WebError::DatabaseError(e) => {
-                log::error!("error querying database: {}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR, Html(InternalErrorPage, CacheControl::NoCache))
-                    .into_response()
-            }
-            WebError::IoError(e) => {
-                log::error!("IO error: {}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR, Html(InternalErrorPage, CacheControl::NoCache))
-                    .into_response()
-            }
-            WebError::MultipartError(e) => {
-                log::error!("IO error: {}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR, Html(InternalErrorPage, CacheControl::NoCache))
-                    .into_response()
-            }
-        }
-    }
-}
-
-// TODO expand to full template
-#[derive(Template)]
-#[template(source = "Not found.", ext = "html")]
-struct NotFoundPage;
-
-// TODO expand to full template
-#[derive(Template)]
-#[template(source = "Internal error.", ext = "html")]
-struct InternalErrorPage;
