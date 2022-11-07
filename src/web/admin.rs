@@ -20,6 +20,10 @@ pub fn router() -> Router {
         .route("/admin/upload-image", post(upload_image))
 }
 
+#[derive(Debug, Template)]
+#[template(path = "new.html")]
+struct NewPage {}
+
 async fn new_page() -> Html<NewPage> {
     Html(NewPage {}, CacheControl::NoCache)
 }
@@ -82,7 +86,3 @@ pub async fn upload_image(
         .body(BoxBody::default())
         .unwrap())
 }
-
-#[derive(Debug, Template)]
-#[template(path = "new.html")]
-struct NewPage {}

@@ -16,6 +16,12 @@ pub fn router() -> Router {
         .route("/note/:note_id", get(single))
 }
 
+#[derive(Debug, Template)]
+#[template(path = "feed.html")]
+struct FeedPage {
+    notes: Vec<Note>,
+}
+
 #[derive(Debug, Deserialize)]
 struct IndexOpts {
     n: Option<u16>,
@@ -47,9 +53,3 @@ async fn single(
 }
 
 const DEFAULT_CACHING: CacheControl = CacheControl::MaxAge(Duration::from_secs(60 * 5));
-
-#[derive(Debug, Template)]
-#[template(path = "feed.html")]
-struct FeedPage {
-    notes: Vec<Note>,
-}
