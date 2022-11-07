@@ -22,7 +22,7 @@ pub fn router() -> Router {
     Router::new()
         .route("/admin/new", get(new_page))
         .route("/admin/new-note", post(create_note))
-        .route("/admin/upload-image", post(upload_image))
+        .route("/admin/upload-images", post(upload_images))
 }
 
 #[derive(Debug, Template)]
@@ -53,7 +53,7 @@ async fn create_note(
         .unwrap())
 }
 
-pub async fn upload_image(
+pub async fn upload_images(
     ctx: Extension<Context>,
     mut multipart: Multipart,
 ) -> Result<impl IntoResponse, StatusCode> {
@@ -105,7 +105,7 @@ pub async fn upload_image(
 
     Ok(Response::builder()
         .status(StatusCode::SEE_OTHER)
-        .header(http::header::LOCATION, "/")
+        .header(http::header::LOCATION, "/admin/new")
         .body(BoxBody::default())
         .unwrap())
 }

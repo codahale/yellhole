@@ -13,26 +13,27 @@
         <h1>Yellhole</h1>
     </header>
     <main>
-        <section>
-            <form action="/admin/new-note" method="post">
-                <header>
-                    <h2>New Note</h2>
-                </header>
-                <textarea cols="40" rows="5" id="body" name="body" placeholder="It'sa me, _Mario_."></textarea>
-                <button type="submit">Post</button>
-            </form>
-        </section>
-        <hr>
-        <section>
-            <form action="/admin/upload-image" enctype="multipart/form-data" method="post">
-                <header>
-                    <h2>New Image</h2>
-                </header>
-                <label for="image">Upload image:</label>
-                <input type="file" id="image" name="image" accept="image/*" multiple>
-                <button type="submit">Post</button>
-            </form>
-        </section>
+        <div>
+            <details open>
+                <summary>New Note</summary>
+                <div>
+                    <form action="/admin/new-note" method="post">
+                        <textarea cols="40" rows="5" id="body" name="body" placeholder="It'sa me, _Mario_."></textarea>
+                        <button type="submit">Post</button>
+                    </form>
+                </div>
+            </details>
+            <details>
+                <summary>Upload Images</summary>
+                <div>
+                    <form action="/admin/upload-images" enctype="multipart/form-data" method="post">
+                        <label for="image">Images:</label>
+                        <input type="file" id="image" name="image" accept="image/*" multiple>
+                        <button type="submit">Upload</button>
+                    </form>
+                </div>
+            </details>
+        </div>
     </main>
     <footer>
         <p>
