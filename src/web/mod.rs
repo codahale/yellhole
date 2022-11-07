@@ -8,9 +8,10 @@ use axum::extract::multipart::MultipartError;
 use axum::http::{self, StatusCode, Uri};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
+use futures::Future;
 use sqlx::SqlitePool;
 use thiserror::Error;
-use tokio::{io, signal};
+use tokio::io;
 use tower::ServiceBuilder;
 use tower_http::add_extension::AddExtensionLayer;
 use tower_http::trace::TraceLayer;
@@ -18,6 +19,29 @@ use tower_http::trace::TraceLayer;
 mod admin;
 mod asset;
 mod feed;
+
+pub async fn serve(
+    addr: &SocketAddr,
+    dir: impl AsRef<Path>,
+    db: SqlitePool,
+    shutdown_hook: impl Future<Output = ()>,
+) -> anyhow::Result<()> {
+    let ctx = Context { db, dir: dir.as_ref().to_path_buf() };
+    let app = feed::router()
+        .merge(admin::router())
+        .merge(asset::router(&ctx.images_dir()))
+        .layer(AddExtensionLayer::new(ctx))
+        .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
+        .route_layer(middleware::from_fn(handle_errors));
+
+    log::info!("listening on http://{}", addr);
+    axum::Server::bind(addr)
+        .serve(app.into_make_service())
+        .with_graceful_shutdown(shutdown_hook)
+        .await?;
+
+    Ok(())
+}
 
 #[derive(Debug, Clone)]
 pub struct Context {
@@ -37,24 +61,6 @@ impl Context {
         path.push("uploads");
         path
     }
-}
-
-pub async fn serve(addr: &SocketAddr, dir: impl AsRef<Path>, db: SqlitePool) -> anyhow::Result<()> {
-    let ctx = Context { db, dir: dir.as_ref().to_path_buf() };
-    let app = feed::router()
-        .merge(admin::router())
-        .merge(asset::router(&ctx.images_dir()))
-        .layer(AddExtensionLayer::new(ctx))
-        .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
-        .route_layer(middleware::from_fn(handle_errors));
-
-    log::info!("listening on http://{}", addr);
-    axum::Server::bind(addr)
-        .serve(app.into_make_service())
-        .with_graceful_shutdown(shutdown_signal())
-        .await?;
-
-    Ok(())
 }
 
 #[derive(Debug, Template)]
@@ -176,27 +182,3 @@ struct NotFoundPage;
 #[derive(Template)]
 #[template(source = "Internal error.", ext = "html")]
 struct InternalErrorPage;
-
-async fn shutdown_signal() {
-    let ctrl_c = async {
-        signal::ctrl_c().await.expect("failed to install Ctrl+C handler");
-    };
-
-    #[cfg(unix)]
-    let terminate = async {
-        signal::unix::signal(signal::unix::SignalKind::terminate())
-            .expect("failed to install signal handler")
-            .recv()
-            .await;
-    };
-
-    #[cfg(not(unix))]
-    let terminate = std::future::pending::<()>();
-
-    tokio::select! {
-        _ = ctrl_c => {},
-        _ = terminate => {},
-    }
-
-    println!("signal received, starting graceful shutdown");
-}
