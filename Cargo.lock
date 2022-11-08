@@ -2948,5 +2948,6 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-subscriber",
+ "url",
  "webauthn-rs",
 ]

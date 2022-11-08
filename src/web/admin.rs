@@ -73,21 +73,20 @@ pub async fn upload_images(
                     tracing::warn!(%err, "error inserting image");
                     StatusCode::INTERNAL_SERVER_ERROR
                 })?;
-                let images_dir = ctx.images_dir();
 
                 // 2. write image to dir/uploads/{image_id}.orig.{ext}
                 let original_path =
-                    Image::original_path(&ctx.uploads_dir(), &image_id, &content_type);
+                    Image::original_path(&ctx.uploads_dir, &image_id, &content_type);
                 stream_to_file(&original_path, field).await.map_err(|err| {
                     tracing::warn!(%err, image_id, "error receiving image");
                     StatusCode::BAD_REQUEST
                 })?;
 
                 // 3. process image, generating thumbnail etc. in parallel
-                let main_path = Image::main_path(&images_dir, &image_id);
+                let main_path = Image::main_path(&ctx.images_dir, &image_id);
                 let main = Image::process_image(original_path.clone(), main_path, "600");
 
-                let thumbnail_path = Image::thumbnail_path(&images_dir, &image_id);
+                let thumbnail_path = Image::thumbnail_path(&ctx.images_dir, &image_id);
                 let thumbnail = Image::process_image(original_path.clone(), thumbnail_path, "100");
 
                 main.await.map_err(|err| {

@@ -6,6 +6,7 @@ use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use tokio::signal;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
+use url::Url;
 
 mod models;
 mod web;
@@ -23,6 +24,18 @@ struct Config {
     /// The time zone to be used for formatting and parsing dates and times.
     #[clap(long)]
     time_zone: Option<String>,
+
+    /// The base URL for the web server.
+    #[clap(long, default_value = "http://127.0.0.1/", env("BASE_URL"))]
+    base_url: Url,
+
+    /// The name of the Yellhole instance.
+    #[clap(long, default_value = "Yellhole", env("NAME"))]
+    name: String,
+
+    /// The name of the person posting this crap.
+    #[clap(long, default_value = "Luther Blissett", env("AUTHOR"))]
+    author: String,
 }
 
 #[tokio::main]
@@ -67,7 +80,9 @@ async fn main() -> anyhow::Result<()> {
     sqlx::migrate!().run(&db).await?;
 
     // Spin up an HTTP server and listen for requests.
-    web::serve(&config.listen_addr, &dir, db, shutdown_signal()).await
+    let ctx =
+        web::Context::new(db, config.base_url, config.name, config.author, images_dir, uploads_dir);
+    web::serve(&config.listen_addr, ctx, shutdown_signal()).await
 }
 
 async fn shutdown_signal() {

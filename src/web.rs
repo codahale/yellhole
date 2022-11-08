@@ -1,6 +1,6 @@
 use std::fmt;
 use std::net::SocketAddr;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::Duration;
 
 use askama::Template;
@@ -13,6 +13,7 @@ use tower_http::add_extension::AddExtensionLayer;
 use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
 use tower_http::sensitive_headers::SetSensitiveRequestHeadersLayer;
 use tower_http::trace::TraceLayer;
+use url::Url;
 
 mod admin;
 mod asset;
@@ -20,14 +21,13 @@ mod feed;
 
 pub async fn serve(
     addr: &SocketAddr,
-    dir: impl AsRef<Path>,
-    db: SqlitePool,
+    ctx: Context,
     shutdown_hook: impl Future<Output = ()>,
 ) -> anyhow::Result<()> {
-    let ctx = Context { db, dir: dir.as_ref().to_path_buf() };
+    let base_url = ctx.base_url.clone();
     let app = feed::router()
         .merge(admin::router())
-        .merge(asset::router(&ctx.images_dir()))
+        .merge(asset::router(&ctx.images_dir))
         .layer(AddExtensionLayer::new(ctx))
         .route_layer(middleware::from_fn(handle_errors))
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
@@ -36,7 +36,7 @@ pub async fn serve(
         .layer(SetSensitiveRequestHeadersLayer::new(std::iter::once(http::header::SET_COOKIE)))
         .layer(PropagateRequestIdLayer::x_request_id());
 
-    tracing::info!(%addr, "starting server");
+    tracing::info!(%addr, %base_url, "starting server");
     axum::Server::bind(addr)
         .serve(app.into_make_service())
         .with_graceful_shutdown(shutdown_hook)
@@ -48,20 +48,23 @@ pub async fn serve(
 #[derive(Debug, Clone)]
 pub struct Context {
     db: SqlitePool,
-    dir: PathBuf,
+    base_url: Url,
+    name: String,
+    author: String,
+    images_dir: PathBuf,
+    uploads_dir: PathBuf,
 }
 
 impl Context {
-    pub fn images_dir(&self) -> PathBuf {
-        let mut path = self.dir.clone();
-        path.push("images");
-        path
-    }
-
-    pub fn uploads_dir(&self) -> PathBuf {
-        let mut path = self.dir.clone();
-        path.push("uploads");
-        path
+    pub fn new(
+        db: SqlitePool,
+        base_url: Url,
+        name: String,
+        author: String,
+        images_dir: PathBuf,
+        uploads_dir: PathBuf,
+    ) -> Context {
+        Context { db, base_url, name, author, images_dir, uploads_dir }
     }
 }
 

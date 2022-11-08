@@ -47,8 +47,6 @@ async fn index(
 }
 
 async fn atom(ctx: Extension<Context>) -> Result<Response, StatusCode> {
-    // TODO accept base URL as config
-    // TODO accept author name as config
     let notes = Note::most_recent(&ctx.db, 20).await.map_err(|e| {
         tracing::warn!(err=?e, "error querying atom index");
         StatusCode::INTERNAL_SERVER_ERROR
@@ -57,8 +55,11 @@ async fn atom(ctx: Extension<Context>) -> Result<Response, StatusCode> {
     let entries = notes
         .iter()
         .map(|n| Entry {
-            id: format!("https://cloudslap.club/note/{}", n.note_id),
-            authors: vec![Person { name: "yellhole".into(), ..Default::default() }],
+            id: ctx
+                .base_url
+                .join(&format!("/note/{}", n.note_id))
+                .expect("invalid URl")
+                .to_string(),
             title: Text { value: n.note_id.clone(), ..Default::default() },
             content: Some(Content {
                 content_type: Some("html".into()),
@@ -71,12 +72,13 @@ async fn atom(ctx: Extension<Context>) -> Result<Response, StatusCode> {
         .collect();
 
     let feed = Feed {
-        id: "https://cloudslap.club/".into(),
-        base: Some("https://cloudslap.club".into()),
-        title: Text { value: "yellhole".into(), ..Default::default() },
+        id: ctx.base_url.to_string(),
+        authors: vec![Person { name: ctx.author.clone(), ..Default::default() }],
+        base: Some(ctx.base_url.to_string()),
+        title: Text { value: ctx.name.clone(), ..Default::default() },
         entries,
         links: vec![Link {
-            href: "https://cloudslap.club/".into(),
+            href: ctx.base_url.to_string(),
             rel: "self".into(),
             ..Default::default()
         }],
