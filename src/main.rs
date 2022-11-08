@@ -4,6 +4,8 @@ use std::path::PathBuf;
 use clap::Parser;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use tokio::signal;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
 
 mod models;
 mod web;
@@ -33,11 +35,13 @@ async fn main() -> anyhow::Result<()> {
         std::env::set_var("TZ", tz);
     }
 
-    // Use the debug level as a default and configure logging.
-    if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", "debug,hyper=info,mio=info");
-    }
-    tracing_subscriber::fmt::init();
+    // Configure tracing, defaulting to debug levels.
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::new(std::env::var("RUST_LOG").unwrap_or_else(|_| {
+            "yellhole=debug,sqlx=info,hyper=info,mio=info,tower_http=debug".into()
+        })))
+        .with(tracing_subscriber::fmt::layer())
+        .init();
 
     // Create the images and uploads directories, if necessary.
     let mut images_dir = config.data_dir.clone();
@@ -50,13 +54,13 @@ async fn main() -> anyhow::Result<()> {
 
     // Connect to the DB.
     let mut db_path = config.data_dir.clone();
-    log::info!("loading data from {:?}", &db_path);
+    tracing::info!(?db_path);
     db_path.push("yellhole.db");
     let db_opts = SqliteConnectOptions::new().filename(db_path);
     let db = SqlitePoolOptions::new().connect_with(db_opts).await?;
 
     // Run any pending migrations.
-    log::info!("checking for migrations");
+    tracing::info!("running migrations");
     sqlx::migrate!().run(&db).await?;
 
     // Spin up an HTTP server and listen for requests.

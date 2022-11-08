@@ -32,8 +32,9 @@ async fn index(
     ctx: Extension<Context>,
     opts: Query<IndexOpts>,
 ) -> Result<Html<FeedPage>, StatusCode> {
-    let notes = Note::most_recent(&ctx.db, opts.n.unwrap_or(100)).await.map_err(|e| {
-        log::warn!("error querying feed index: {e}");
+    let n = opts.n.unwrap_or(100);
+    let notes = Note::most_recent(&ctx.db, n).await.map_err(|e| {
+        tracing::warn!(err=?e, n, "error querying feed index");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
@@ -47,7 +48,7 @@ async fn month(
     let notes = Note::month(&ctx.db, year, month)
         .await
         .map_err(|e| {
-            log::warn!("error querying feed for month `{year}/{month}`: {e}");
+            tracing::warn!(err=?e, year, month, "error querying feed for month");
             StatusCode::INTERNAL_SERVER_ERROR
         })?
         .ok_or(StatusCode::NOT_FOUND)?;
@@ -61,7 +62,7 @@ async fn single(
     let note = Note::by_id(&ctx.db, &note_id)
         .await
         .map_err(|e| {
-            log::warn!("error querying feed for note `{note_id}`: {e}");
+            tracing::warn!(err=?e, note_id, "error querying feed by id");
             StatusCode::INTERNAL_SERVER_ERROR
         })?
         .ok_or(StatusCode::NOT_FOUND)?;

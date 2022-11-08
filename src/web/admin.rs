@@ -32,8 +32,8 @@ struct NewPage {
 }
 
 async fn new_page(ctx: Extension<Context>) -> Result<Html<NewPage>, StatusCode> {
-    let images = Image::most_recent(&ctx.db, 10).await.map_err(|e| {
-        log::warn!("unable to query recent images: {e}");
+    let images = Image::most_recent(&ctx.db, 10).await.map_err(|err| {
+        tracing::warn!(%err, "unable to query recent images");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
     Ok(Html(NewPage { images }, CacheControl::NoCache))
@@ -48,8 +48,8 @@ async fn create_note(
     ctx: Extension<Context>,
     Form(new_note): Form<NewNote>,
 ) -> Result<Response, StatusCode> {
-    let id = Note::create(&ctx.db, &new_note.body).await.map_err(|e| {
-        log::warn!("error inserting note: {e}");
+    let id = Note::create(&ctx.db, &new_note.body).await.map_err(|err| {
+        tracing::warn!(%err, "error inserting note");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
     Ok(Response::builder()
@@ -69,8 +69,8 @@ pub async fn upload_images(
         {
             if content_type.type_() == mime::IMAGE {
                 // 1. create unprocessed image in DB, get image ID
-                let image_id = Image::create(&ctx.db, &content_type).await.map_err(|e| {
-                    log::warn!("error inserting image: {e}");
+                let image_id = Image::create(&ctx.db, &content_type).await.map_err(|err| {
+                    tracing::warn!(%err, "error inserting image");
                     StatusCode::INTERNAL_SERVER_ERROR
                 })?;
                 let images_dir = ctx.images_dir();
@@ -78,8 +78,8 @@ pub async fn upload_images(
                 // 2. write image to dir/uploads/{image_id}.orig.{ext}
                 let original_path =
                     Image::original_path(&ctx.uploads_dir(), &image_id, &content_type);
-                stream_to_file(&original_path, field).await.map_err(|e| {
-                    log::warn!("error receiving image: {e}");
+                stream_to_file(&original_path, field).await.map_err(|err| {
+                    tracing::warn!(%err, image_id, "error receiving image");
                     StatusCode::BAD_REQUEST
                 })?;
 
@@ -90,18 +90,18 @@ pub async fn upload_images(
                 let thumbnail_path = Image::thumbnail_path(&images_dir, &image_id);
                 let thumbnail = Image::process_image(original_path.clone(), thumbnail_path, "100");
 
-                main.await.map_err(|e| {
-                    log::warn!("error generating image: {e}");
+                main.await.map_err(|err| {
+                    tracing::warn!(%err, image_id, "error generating image");
                     StatusCode::INTERNAL_SERVER_ERROR
                 })?;
-                thumbnail.await.map_err(|e| {
-                    log::warn!("error generating thumbnail: {e}");
+                thumbnail.await.map_err(|err| {
+                    tracing::warn!(%err, image_id, "error generating thumbnail");
                     StatusCode::INTERNAL_SERVER_ERROR
                 })?;
 
                 // 4. mark image as processed
-                Image::mark_processed(&ctx.db, &image_id).await.map_err(|e| {
-                    log::warn!("error updating image `{image_id}`: {e}");
+                Image::mark_processed(&ctx.db, &image_id).await.map_err(|err| {
+                    tracing::warn!(%err, image_id, "error updating image");
                     StatusCode::INTERNAL_SERVER_ERROR
                 })?;
             }

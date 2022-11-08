@@ -9,8 +9,8 @@ use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use futures::Future;
 use sqlx::SqlitePool;
-use tower::ServiceBuilder;
 use tower_http::add_extension::AddExtensionLayer;
+use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
 use tower_http::trace::TraceLayer;
 
 mod admin;
@@ -28,10 +28,12 @@ pub async fn serve(
         .merge(admin::router())
         .merge(asset::router(&ctx.images_dir()))
         .layer(AddExtensionLayer::new(ctx))
-        .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
-        .route_layer(middleware::from_fn(handle_errors));
+        .route_layer(middleware::from_fn(handle_errors))
+        .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
+        .layer(TraceLayer::new_for_http())
+        .layer(PropagateRequestIdLayer::x_request_id());
 
-    log::info!("listening on http://{}", addr);
+    tracing::info!(%addr, "starting server");
     axum::Server::bind(addr)
         .serve(app.into_make_service())
         .with_graceful_shutdown(shutdown_hook)

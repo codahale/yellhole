@@ -14,8 +14,8 @@ pub fn router(images_dir: &Path) -> Router {
     Router::new().nest("/images", images).route_layer(middleware::from_fn(cache_indefinitely))
 }
 
-async fn io_error(e: io::Error) -> StatusCode {
-    log::warn!("error handling static asset: {}", e);
+async fn io_error(err: io::Error) -> StatusCode {
+    tracing::warn!(%err, "error handling static asset");
     StatusCode::INTERNAL_SERVER_ERROR
 }
 
