@@ -45,9 +45,11 @@ configuration or stored in a single directory which can be a FUSE/GCE mount when
   * [x] Animated GIF
 * [ ] Add image uploads via URL
 * [ ] Add sessions/authentication/credentials
-  * [ ] Add credentials schema
-  * [ ] Add sessions schema (IP, User-Agent, geo-location)
-  * [ ] Add initial PIN to config
-  * [ ] Use [Passkeys](https://www.imperialviolet.org/2022/09/22/passkeys.html) after first basic auth
+  * <https://github.com/kanidm/webauthn-rs/blob/master/tutorial/server/axum/src/auth.rs>
+  * <https://www.imperialviolet.org/2022/09/22/passkeys.html>
+  * Create file in data directory with unique ID
+  * Prompt for unique ID on initial registration
+  * Add credentials schema `(passkey_id, name, passkey, created_at)`
+  * [ ] Add sessions schema (IP, User-Agent, geo-location?)
   * [ ] Add DB-backed sessions w/ opaque cookies
   * [ ] Add UI for listing/revoking sessions
