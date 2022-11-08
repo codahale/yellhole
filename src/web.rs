@@ -11,6 +11,7 @@ use futures::Future;
 use sqlx::SqlitePool;
 use tower_http::add_extension::AddExtensionLayer;
 use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
+use tower_http::sensitive_headers::SetSensitiveRequestHeadersLayer;
 use tower_http::trace::TraceLayer;
 
 mod admin;
@@ -30,7 +31,9 @@ pub async fn serve(
         .layer(AddExtensionLayer::new(ctx))
         .route_layer(middleware::from_fn(handle_errors))
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
+        .layer(SetSensitiveRequestHeadersLayer::new(std::iter::once(http::header::COOKIE)))
         .layer(TraceLayer::new_for_http())
+        .layer(SetSensitiveRequestHeadersLayer::new(std::iter::once(http::header::SET_COOKIE)))
         .layer(PropagateRequestIdLayer::x_request_id());
 
     tracing::info!(%addr, "starting server");
