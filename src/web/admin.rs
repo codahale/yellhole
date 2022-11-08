@@ -1,4 +1,5 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::process::ExitStatus;
 
 use askama::Template;
 use axum::body::{BoxBody, Bytes};
@@ -12,6 +13,7 @@ use mime::Mime;
 use serde::Deserialize;
 use tokio::fs::File;
 use tokio::io::{self, BufWriter};
+use tokio::process::Command;
 use tokio_util::io::StreamReader;
 use url::Url;
 
@@ -148,10 +150,10 @@ where
 
     // 3. process image, generating thumbnail etc. in parallel
     let main_path = Image::main_path(&ctx.images_dir, &image_id);
-    let main = Image::process_image(original_path.clone(), main_path, "600");
+    let main = process_image(original_path.clone(), main_path, "600");
 
     let thumbnail_path = Image::thumbnail_path(&ctx.images_dir, &image_id);
-    let thumbnail = Image::process_image(original_path.clone(), thumbnail_path, "100");
+    let thumbnail = process_image(original_path.clone(), thumbnail_path, "100");
 
     main.await.map_err(|err| {
         tracing::warn!(%err, image_id, "error generating image");
@@ -188,4 +190,20 @@ where
     tokio::io::copy(&mut body_reader, &mut file).await?;
 
     Ok(())
+}
+
+async fn process_image(
+    input: PathBuf,
+    output: PathBuf,
+    geometry: &'static str,
+) -> io::Result<ExitStatus> {
+    let mut proc = Command::new("magick")
+        .arg(input)
+        .arg("-auto-orient")
+        .arg("-strip")
+        .arg("-thumbnail")
+        .arg(geometry)
+        .arg(output)
+        .spawn()?;
+    proc.wait().await
 }

@@ -1,10 +1,7 @@
 use std::path::{Path, PathBuf};
-use std::process::ExitStatus;
 
 use chrono::NaiveDateTime;
 use sqlx::SqlitePool;
-use tokio::io;
-use tokio::process::Command;
 
 #[derive(Debug)]
 pub struct Image {
@@ -27,22 +24,6 @@ impl Image {
         )
         .fetch_all(db)
         .await
-    }
-
-    pub async fn process_image(
-        input: PathBuf,
-        output: PathBuf,
-        geometry: &'static str,
-    ) -> io::Result<ExitStatus> {
-        let mut proc = Command::new("magick")
-            .arg(input)
-            .arg("-auto-orient")
-            .arg("-strip")
-            .arg("-thumbnail")
-            .arg(geometry)
-            .arg(output)
-            .spawn()?;
-        proc.wait().await
     }
 
     pub fn original_path(uploads_dir: &Path, image_id: &str, content_type: &mime::Mime) -> PathBuf {
