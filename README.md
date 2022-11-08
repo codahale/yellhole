@@ -43,7 +43,7 @@ configuration or stored in a single directory which can be a FUSE/GCE mount when
   * [x] HEIC
   * [x] GIF
   * [x] Animated GIF
-* [ ] Add image uploads via URL
+* [x] Add image uploads via URL
 * [x] Add Atom feed
 * [ ] Add sessions/authentication/credentials
   * <https://github.com/kanidm/webauthn-rs/blob/master/tutorial/server/axum/src/auth.rs>

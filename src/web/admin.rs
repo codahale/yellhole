@@ -8,10 +8,12 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{BoxError, Extension, Form, Router};
 use futures::{Stream, TryStreamExt};
+use mime::Mime;
 use serde::Deserialize;
 use tokio::fs::File;
 use tokio::io::{self, BufWriter};
 use tokio_util::io::StreamReader;
+use url::Url;
 
 use crate::models::{Image, Note};
 
@@ -23,6 +25,7 @@ pub fn router() -> Router {
         .route("/admin/new", get(new_page))
         .route("/admin/new-note", post(create_note))
         .route("/admin/upload-images", post(upload_images))
+        .route("/admin/download-image", post(download_image))
 }
 
 #[derive(Debug, Template)]
@@ -68,41 +71,7 @@ pub async fn upload_images(
             field.content_type().and_then(|ct| ct.parse::<mime::Mime>().ok())
         {
             if content_type.type_() == mime::IMAGE {
-                // 1. create unprocessed image in DB, get image ID
-                let image_id = Image::create(&ctx.db, &content_type).await.map_err(|err| {
-                    tracing::warn!(%err, "error inserting image");
-                    StatusCode::INTERNAL_SERVER_ERROR
-                })?;
-
-                // 2. write image to dir/uploads/{image_id}.orig.{ext}
-                let original_path =
-                    Image::original_path(&ctx.uploads_dir, &image_id, &content_type);
-                stream_to_file(&original_path, field).await.map_err(|err| {
-                    tracing::warn!(%err, image_id, "error receiving image");
-                    StatusCode::BAD_REQUEST
-                })?;
-
-                // 3. process image, generating thumbnail etc. in parallel
-                let main_path = Image::main_path(&ctx.images_dir, &image_id);
-                let main = Image::process_image(original_path.clone(), main_path, "600");
-
-                let thumbnail_path = Image::thumbnail_path(&ctx.images_dir, &image_id);
-                let thumbnail = Image::process_image(original_path.clone(), thumbnail_path, "100");
-
-                main.await.map_err(|err| {
-                    tracing::warn!(%err, image_id, "error generating image");
-                    StatusCode::INTERNAL_SERVER_ERROR
-                })?;
-                thumbnail.await.map_err(|err| {
-                    tracing::warn!(%err, image_id, "error generating thumbnail");
-                    StatusCode::INTERNAL_SERVER_ERROR
-                })?;
-
-                // 4. mark image as processed
-                Image::mark_processed(&ctx.db, &image_id).await.map_err(|err| {
-                    tracing::warn!(%err, image_id, "error updating image");
-                    StatusCode::INTERNAL_SERVER_ERROR
-                })?;
+                add_image(&ctx, &content_type, field).await?;
             }
         }
     }
@@ -112,6 +81,94 @@ pub async fn upload_images(
         .header(http::header::LOCATION, "/admin/new")
         .body(BoxBody::default())
         .unwrap())
+}
+
+#[derive(Debug, Deserialize)]
+struct DownloadImage {
+    url: String,
+}
+
+async fn download_image(
+    ctx: Extension<Context>,
+    Form(image): Form<DownloadImage>,
+) -> Result<Response, StatusCode> {
+    // Parse the URL to see if it's valid.
+    let url = image.url.parse::<Url>().map_err(|err| {
+        tracing::warn!(%err, "invalid URL");
+        StatusCode::BAD_REQUEST
+    })?;
+
+    // Start the request to download the image.
+    let image = reqwest::get(url).await.map_err(|err| {
+        tracing::warn!(%err, "error downloading image");
+        StatusCode::GATEWAY_TIMEOUT
+    })?;
+
+    // Get the image's content type.
+    let Some(content_type) = image
+        .headers()
+        .get(http::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.parse::<mime::Mime>().ok()) else {
+        tracing::warn!("error determining image content type");
+        return Err(StatusCode::GATEWAY_TIMEOUT);
+        };
+
+    let stream = image.bytes_stream();
+    add_image(&ctx, &content_type, stream).await?;
+
+    Ok(Response::builder()
+        .status(StatusCode::SEE_OTHER)
+        .header(http::header::LOCATION, "/admin/new")
+        .body(BoxBody::default())
+        .unwrap())
+}
+
+async fn add_image<S, E>(
+    ctx: &Extension<Context>,
+    content_type: &Mime,
+    stream: S,
+) -> Result<String, StatusCode>
+where
+    S: Stream<Item = Result<Bytes, E>>,
+    E: Into<BoxError>,
+{
+    // 1. create unprocessed image in DB, get image ID
+    let image_id = Image::create(&ctx.db, content_type).await.map_err(|err| {
+        tracing::warn!(%err, "error inserting image");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    // 2. write image to dir/uploads/{image_id}.orig.{ext}
+    let original_path = Image::original_path(&ctx.uploads_dir, &image_id, content_type);
+    stream_to_file(&original_path, stream).await.map_err(|err| {
+        tracing::warn!(%err, image_id, "error downloading image");
+        StatusCode::GATEWAY_TIMEOUT
+    })?;
+
+    // 3. process image, generating thumbnail etc. in parallel
+    let main_path = Image::main_path(&ctx.images_dir, &image_id);
+    let main = Image::process_image(original_path.clone(), main_path, "600");
+
+    let thumbnail_path = Image::thumbnail_path(&ctx.images_dir, &image_id);
+    let thumbnail = Image::process_image(original_path.clone(), thumbnail_path, "100");
+
+    main.await.map_err(|err| {
+        tracing::warn!(%err, image_id, "error generating image");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    thumbnail.await.map_err(|err| {
+        tracing::warn!(%err, image_id, "error generating thumbnail");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    // 4. mark image as processed
+    Image::mark_processed(&ctx.db, &image_id).await.map_err(|err| {
+        tracing::warn!(%err, image_id, "error updating image");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    Ok(image_id)
 }
 
 async fn stream_to_file<S, E>(path: &Path, stream: S) -> Result<(), io::Error>
