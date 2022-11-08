@@ -29,6 +29,7 @@ struct Config {
 async fn main() -> anyhow::Result<()> {
     // Parse the command line args.
     let config = Config::parse();
+    let dir = config.data_dir.canonicalize()?;
 
     // Override the TZ env var with any command line option for time zone.
     if let Some(tz) = config.time_zone {
@@ -44,17 +45,19 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     // Create the images and uploads directories, if necessary.
-    let mut images_dir = config.data_dir.clone();
+    let mut images_dir = dir.clone();
     images_dir.push("images");
+    tracing::info!(?images_dir, "creating directory");
     tokio::fs::create_dir_all(&images_dir).await?;
 
-    let mut uploads_dir = config.data_dir.clone();
+    let mut uploads_dir = dir.clone();
     uploads_dir.push("uploads");
+    tracing::info!(?uploads_dir, "creating directory");
     tokio::fs::create_dir_all(&uploads_dir).await?;
 
     // Connect to the DB.
-    let mut db_path = config.data_dir.clone();
-    tracing::info!(?db_path);
+    let mut db_path = dir.clone();
+    tracing::info!(?db_path, "opening database");
     db_path.push("yellhole.db");
     let db_opts = SqliteConnectOptions::new().filename(db_path);
     let db = SqlitePoolOptions::new().connect_with(db_opts).await?;
@@ -64,7 +67,7 @@ async fn main() -> anyhow::Result<()> {
     sqlx::migrate!().run(&db).await?;
 
     // Spin up an HTTP server and listen for requests.
-    web::serve(&config.listen_addr, &config.data_dir, db, shutdown_signal()).await
+    web::serve(&config.listen_addr, &dir, db, shutdown_signal()).await
 }
 
 async fn shutdown_signal() {
