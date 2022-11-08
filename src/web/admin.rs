@@ -73,7 +73,8 @@ pub async fn upload_images(
             field.content_type().and_then(|ct| ct.parse::<mime::Mime>().ok())
         {
             if content_type.type_() == mime::IMAGE {
-                add_image(&ctx, &content_type, field).await?;
+                let original_filename = field.file_name().unwrap_or("none").to_string();
+                add_image(&ctx, &original_filename, &content_type, field).await?;
             }
         }
     }
@@ -99,6 +100,7 @@ async fn download_image(
         tracing::warn!(%err, "invalid URL");
         StatusCode::BAD_REQUEST
     })?;
+    let original_filename = url.to_string();
 
     // Start the request to download the image.
     let image = reqwest::get(url).await.map_err(|err| {
@@ -117,7 +119,7 @@ async fn download_image(
         };
 
     let stream = image.bytes_stream();
-    add_image(&ctx, &content_type, stream).await?;
+    add_image(&ctx, &original_filename, &content_type, stream).await?;
 
     Ok(Response::builder()
         .status(StatusCode::SEE_OTHER)
@@ -128,6 +130,7 @@ async fn download_image(
 
 async fn add_image<S, E>(
     ctx: &Extension<Context>,
+    original_filename: &str,
     content_type: &Mime,
     stream: S,
 ) -> Result<String, StatusCode>
@@ -136,10 +139,11 @@ where
     E: Into<BoxError>,
 {
     // 1. create unprocessed image in DB, get image ID
-    let image_id = Image::create(&ctx.db, content_type).await.map_err(|err| {
-        tracing::warn!(%err, "error inserting image");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+    let image_id =
+        Image::create(&ctx.db, original_filename, content_type).await.map_err(|err| {
+            tracing::warn!(%err, "error inserting image");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
     // 2. write image to dir/uploads/{image_id}.orig.{ext}
     let original_path = Image::original_path(&ctx.uploads_dir, &image_id, content_type);

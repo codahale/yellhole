@@ -44,12 +44,17 @@ impl Image {
         path
     }
 
-    pub async fn create(db: &SqlitePool, content_type: &mime::Mime) -> Result<String, sqlx::Error> {
+    pub async fn create(
+        db: &SqlitePool,
+        original_filename: &str,
+        content_type: &mime::Mime,
+    ) -> Result<String, sqlx::Error> {
         let content_type = content_type.to_string();
         sqlx::query!(
             r"
-            insert into image (content_type) values (?) returning image_id
+            insert into image (original_filename, content_type) values (?, ?) returning image_id
             ",
+            original_filename,
             content_type
         )
         .fetch_one(db)

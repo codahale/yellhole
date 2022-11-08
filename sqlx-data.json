@@ -88,7 +88,7 @@
     },
     "query": "\n            update image set processed = true where image_id = ? \n            "
   },
-  "c930fecc8b7b0a61469bc0a6308f57ff17b801ab47d1044139b65ab840f21be3": {
+  "b0ad54bca8701ddae56e069464b02d9249d770268ef789d78074de676b6849a7": {
     "describe": {
       "columns": [
         {
@@ -101,10 +101,10 @@
         false
       ],
       "parameters": {
-        "Right": 1
+        "Right": 2
       }
     },
-    "query": "\n            insert into image (content_type) values (?) returning image_id\n            "
+    "query": "\n            insert into image (original_filename, content_type) values (?, ?) returning image_id\n            "
   },
   "d91e1e404723b448c9eff6ca46bd88da1748fd024b12c935ac6aa52d05020db1": {
     "describe": {
