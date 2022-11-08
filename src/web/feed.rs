@@ -1,10 +1,14 @@
 use std::time::Duration;
 
 use askama::Template;
+use atom_syndication::{Content, Entry, Feed, FixedDateTime, Link, Person, Text};
 use axum::extract::{Path, Query};
+use axum::http;
 use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::{Extension, Router};
+use chrono::{FixedOffset, Utc};
 use serde::Deserialize;
 
 use super::{CacheControl, Context, Html};
@@ -13,6 +17,7 @@ use crate::models::Note;
 pub fn router() -> Router {
     Router::new()
         .route("/", get(index))
+        .route("/atom.xml", get(atom))
         .route("/notes/:year/:month", get(month))
         .route("/note/:note_id", get(single))
 }
@@ -39,6 +44,51 @@ async fn index(
     })?;
 
     Ok(Html(FeedPage { notes }, DEFAULT_CACHING))
+}
+
+async fn atom(ctx: Extension<Context>) -> Result<Response, StatusCode> {
+    // TODO accept base URL as config
+    // TODO accept author name as config
+    let notes = Note::most_recent(&ctx.db, 20).await.map_err(|e| {
+        tracing::warn!(err=?e, "error querying atom index");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    let entries = notes
+        .iter()
+        .map(|n| Entry {
+            id: format!("https://cloudslap.club/note/{}", n.note_id),
+            authors: vec![Person { name: "yellhole".into(), ..Default::default() }],
+            title: Text { value: n.note_id.clone(), ..Default::default() },
+            content: Some(Content {
+                content_type: Some("html".into()),
+                value: Some(n.to_html()),
+                ..Default::default()
+            }),
+            updated: FixedDateTime::from_local(n.created_at, FixedOffset::east(0)),
+            ..Default::default()
+        })
+        .collect();
+
+    let feed = Feed {
+        id: "https://cloudslap.club/".into(),
+        base: Some("https://cloudslap.club".into()),
+        title: Text { value: "yellhole".into(), ..Default::default() },
+        entries,
+        links: vec![Link {
+            href: "https://cloudslap.club/".into(),
+            rel: "self".into(),
+            ..Default::default()
+        }],
+        updated: FixedDateTime::from_utc(Utc::now().naive_utc(), FixedOffset::east(0)),
+        ..Default::default()
+    };
+
+    Ok((
+        [(http::header::CONTENT_TYPE, http::HeaderValue::from_static(mime::TEXT_XML.as_ref()))],
+        feed.to_string(),
+    )
+        .into_response())
 }
 
 async fn month(

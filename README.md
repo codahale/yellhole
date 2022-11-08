@@ -44,6 +44,7 @@ configuration or stored in a single directory which can be a FUSE/GCE mount when
   * [x] GIF
   * [x] Animated GIF
 * [ ] Add image uploads via URL
+* [x] Add Atom feed
 * [ ] Add sessions/authentication/credentials
   * <https://github.com/kanidm/webauthn-rs/blob/master/tutorial/server/axum/src/auth.rs>
   * <https://www.imperialviolet.org/2022/09/22/passkeys.html>
