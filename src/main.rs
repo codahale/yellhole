@@ -8,6 +8,8 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use url::Url;
 
+use crate::web::Context;
+
 mod models;
 mod web;
 
@@ -57,17 +59,6 @@ async fn main() -> anyhow::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    // Create the images and uploads directories, if necessary.
-    let mut images_dir = dir.clone();
-    images_dir.push("images");
-    tracing::info!(?images_dir, "creating directory");
-    tokio::fs::create_dir_all(&images_dir).await?;
-
-    let mut uploads_dir = dir.clone();
-    uploads_dir.push("uploads");
-    tracing::info!(?uploads_dir, "creating directory");
-    tokio::fs::create_dir_all(&uploads_dir).await?;
-
     // Connect to the DB.
     let mut db_path = dir.clone();
     tracing::info!(?db_path, "opening database");
@@ -81,8 +72,8 @@ async fn main() -> anyhow::Result<()> {
 
     // Spin up an HTTP server and listen for requests.
     let ctx =
-        web::Context::new(db, config.base_url, config.name, config.author, images_dir, uploads_dir);
-    web::serve(&config.listen_addr, ctx, shutdown_signal()).await
+        Context::new(db, config.base_url, config.name, config.author, &config.data_dir).await?;
+    ctx.serve(&config.listen_addr, shutdown_signal()).await
 }
 
 async fn shutdown_signal() {
