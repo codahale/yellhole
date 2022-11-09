@@ -78,15 +78,21 @@ async fn main() -> anyhow::Result<()> {
 
 async fn shutdown_signal() {
     let ctrl_c = async {
-        signal::ctrl_c().await.expect("failed to install Ctrl+C handler");
+        if let Err(err) = signal::ctrl_c().await {
+            tracing::error!(%err, "unable to install ^C signal handler");
+        }
     };
 
     #[cfg(unix)]
     let terminate = async {
-        signal::unix::signal(signal::unix::SignalKind::terminate())
-            .expect("failed to install signal handler")
-            .recv()
-            .await;
+        match signal::unix::signal(signal::unix::SignalKind::terminate()) {
+            Ok(mut h) => {
+                h.recv().await;
+            }
+            Err(err) => {
+                tracing::error!(%err, "unable to install SIGTERM handler");
+            }
+        };
     };
 
     #[cfg(not(unix))]
@@ -97,5 +103,5 @@ async fn shutdown_signal() {
         _ = terminate => {},
     }
 
-    println!("signal received, starting graceful shutdown");
+    tracing::info!("starting graceful shutdown");
 }
