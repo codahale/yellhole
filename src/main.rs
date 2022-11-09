@@ -26,7 +26,7 @@ struct Config {
     time_zone: Option<String>,
 
     /// The base URL for the web server.
-    #[clap(long, default_value = "http://127.0.0.1/", env("BASE_URL"))]
+    #[clap(long, default_value = "http://127.0.0.1:3000/", env("BASE_URL"))]
     base_url: Url,
 
     /// The name of the Yellhole instance.
