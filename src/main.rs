@@ -56,7 +56,7 @@ async fn main() -> anyhow::Result<()> {
     let mut db_path = dir.clone();
     tracing::info!(?db_path, "opening database");
     db_path.push("yellhole.db");
-    let db_opts = SqliteConnectOptions::new().filename(db_path);
+    let db_opts = SqliteConnectOptions::new().create_if_missing(true).filename(db_path);
     let db = SqlitePoolOptions::new().connect_with(db_opts).await?;
 
     // Run any pending migrations.
