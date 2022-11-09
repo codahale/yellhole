@@ -1,4 +1,3 @@
-use std::net::SocketAddr;
 use std::path::PathBuf;
 
 use clap::Parser;
@@ -6,7 +5,6 @@ use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use tokio::signal;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use url::Url;
 
 use crate::web::Context;
 
@@ -15,9 +13,8 @@ mod web;
 
 #[derive(Debug, Parser)]
 struct Config {
-    /// Listen for requests on the given address.
-    #[clap(long, default_value = "127.0.0.1:3000", env("LISTEN_ADDR"))]
-    listen_addr: SocketAddr,
+    #[clap(long, default_value = "3000", env("PORT"))]
+    port: u16,
 
     /// The directory in which all persistent data is stored.
     #[clap(long, default_value = "./data", env("DATA_DIR"))]
@@ -26,10 +23,6 @@ struct Config {
     /// The time zone to be used for formatting and parsing dates and times.
     #[clap(long)]
     time_zone: Option<String>,
-
-    /// The base URL for the web server.
-    #[clap(long, default_value = "http://127.0.0.1:3000/", env("BASE_URL"))]
-    base_url: Url,
 
     /// The name of the Yellhole instance.
     #[clap(long, default_value = "Yellhole", env("NAME"))]
@@ -71,9 +64,8 @@ async fn main() -> anyhow::Result<()> {
     sqlx::migrate!().run(&db).await?;
 
     // Spin up an HTTP server and listen for requests.
-    let ctx =
-        Context::new(db, config.base_url, config.name, config.author, &config.data_dir).await?;
-    ctx.serve(&config.listen_addr, shutdown_signal()).await
+    let ctx = Context::new(db, config.name, config.author, &config.data_dir).await?;
+    ctx.serve(&([0, 0, 0, 0], config.port).into(), shutdown_signal()).await
 }
 
 async fn shutdown_signal() {

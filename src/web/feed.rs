@@ -1,6 +1,6 @@
 use askama::Template;
 use atom_syndication::{Content, Entry, Feed, FixedDateTime, Link, Person, Text};
-use axum::extract::{Path, Query};
+use axum::extract::{Host, Path, Query};
 use axum::http;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -60,7 +60,7 @@ async fn index(
     Ok(Page(FeedPage { notes, newer: None, older }))
 }
 
-async fn atom(ctx: Extension<Context>) -> Result<Response, StatusCode> {
+async fn atom(ctx: Extension<Context>, Host(host): Host) -> Result<Response, StatusCode> {
     let notes = Note::most_recent(&ctx.db, 20).await.map_err(|err| {
         tracing::warn!(?err, "error querying atom index");
         StatusCode::INTERNAL_SERVER_ERROR
@@ -69,11 +69,7 @@ async fn atom(ctx: Extension<Context>) -> Result<Response, StatusCode> {
     let entries = notes
         .iter()
         .map(|n| Entry {
-            id: ctx
-                .base_url
-                .join(&format!("/note/{}", n.note_id))
-                .expect("invalid URl")
-                .to_string(),
+            id: format!("https://{host}/note/{}", n.note_id),
             title: Text { value: n.note_id.clone(), ..Default::default() },
             content: Some(Content {
                 content_type: Some("html".into()),
@@ -86,13 +82,13 @@ async fn atom(ctx: Extension<Context>) -> Result<Response, StatusCode> {
         .collect();
 
     let feed = Feed {
-        id: ctx.base_url.to_string(),
+        id: format!("https://{host}/"),
         authors: vec![Person { name: ctx.author.clone(), ..Default::default() }],
-        base: Some(ctx.base_url.to_string()),
+        base: Some(format!("https://{host}")),
         title: Text { value: ctx.name.clone(), ..Default::default() },
         entries,
         links: vec![Link {
-            href: ctx.base_url.to_string(),
+            href: format!("https://{host}"),
             rel: "self".into(),
             ..Default::default()
         }],

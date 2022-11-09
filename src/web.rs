@@ -12,7 +12,6 @@ use tower_http::add_extension::AddExtensionLayer;
 use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
 use tower_http::sensitive_headers::SetSensitiveRequestHeadersLayer;
 use tower_http::trace::TraceLayer;
-use url::Url;
 
 mod admin;
 mod asset;
@@ -21,7 +20,6 @@ mod feed;
 #[derive(Debug, Clone)]
 pub struct Context {
     db: SqlitePool,
-    base_url: Url,
     name: String,
     author: String,
     images_dir: PathBuf,
@@ -31,7 +29,6 @@ pub struct Context {
 impl Context {
     pub async fn new(
         db: SqlitePool,
-        base_url: Url,
         name: String,
         author: String,
         data_dir: impl AsRef<Path>,
@@ -47,7 +44,7 @@ impl Context {
         tracing::info!(?uploads_dir, "creating directory");
         tokio::fs::create_dir_all(&uploads_dir).await?;
 
-        Ok(Context { db, base_url, name, author, images_dir, uploads_dir })
+        Ok(Context { db, name, author, images_dir, uploads_dir })
     }
 
     pub async fn serve(
@@ -55,7 +52,7 @@ impl Context {
         addr: &SocketAddr,
         shutdown_hook: impl Future<Output = ()>,
     ) -> anyhow::Result<()> {
-        tracing::info!(%addr, base_url=%self.base_url, "starting server");
+        tracing::info!(%addr, url=format!("http://{addr}"), "starting server");
 
         let app = feed::router()
             .merge(admin::router())
