@@ -8,7 +8,7 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::{Extension, Router};
-use chrono::{FixedOffset, Utc};
+use chrono::{Datelike, FixedOffset, Months, NaiveDate, Utc};
 use serde::Deserialize;
 
 use super::{CacheControl, Context, Html};
@@ -26,6 +26,8 @@ pub fn router() -> Router {
 #[template(path = "feed.html")]
 struct FeedPage {
     notes: Vec<Note>,
+    newer: Option<NaiveDate>,
+    older: Option<NaiveDate>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -43,7 +45,9 @@ async fn index(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    Ok(Html(FeedPage { notes }, DEFAULT_CACHING))
+    let older = notes.last().and_then(|n| n.created_at.date().with_day(1));
+
+    Ok(Html(FeedPage { notes, newer: None, older }, DEFAULT_CACHING))
 }
 
 async fn atom(ctx: Extension<Context>) -> Result<Response, StatusCode> {
@@ -97,14 +101,20 @@ async fn month(
     ctx: Extension<Context>,
     Path((year, month)): Path<(i32, u32)>,
 ) -> Result<Html<FeedPage>, StatusCode> {
-    let notes = Note::month(&ctx.db, year, month)
+    let Some(start) = NaiveDate::from_ymd_opt(year, month, 1) else { return Err(StatusCode::NOT_FOUND)};
+    let end = start + Months::new(1);
+
+    let notes = Note::date_range(&ctx.db, start..end)
         .await
         .map_err(|e| {
             tracing::warn!(err=?e, year, month, "error querying feed for month");
             StatusCode::INTERNAL_SERVER_ERROR
         })?
         .ok_or(StatusCode::NOT_FOUND)?;
-    Ok(Html(FeedPage { notes }, DEFAULT_CACHING))
+    Ok(Html(
+        FeedPage { notes, newer: Some(end), older: Some(start - Months::new(1)) },
+        DEFAULT_CACHING,
+    ))
 }
 
 async fn single(
@@ -118,7 +128,7 @@ async fn single(
             StatusCode::INTERNAL_SERVER_ERROR
         })?
         .ok_or(StatusCode::NOT_FOUND)?;
-    Ok(Html(FeedPage { notes: vec![note] }, CacheControl::Immutable))
+    Ok(Html(FeedPage { notes: vec![note], newer: None, older: None }, CacheControl::Immutable))
 }
 
 const DEFAULT_CACHING: CacheControl = CacheControl::MaxAge(Duration::from_secs(60 * 5));

@@ -1,4 +1,6 @@
-use chrono::{Months, NaiveDate, NaiveDateTime, TimeZone, Utc};
+use std::ops::Range;
+
+use chrono::{NaiveDate, NaiveDateTime};
 use pulldown_cmark::{Event, HeadingLevel, Parser, Tag};
 use sqlx::SqlitePool;
 
@@ -51,16 +53,10 @@ impl Note {
         .await
     }
 
-    pub async fn month(
+    pub async fn date_range(
         db: &SqlitePool,
-        year: i32,
-        month: u32,
+        range: Range<NaiveDate>,
     ) -> Result<Option<Vec<Note>>, sqlx::Error> {
-        let (start, end) = match month_range(year, month) {
-            Some(v) => v,
-            None => return Ok(None),
-        };
-
         sqlx::query_as!(
             Note,
             r"
@@ -69,8 +65,8 @@ impl Note {
             where created_at >= ? and created_at < ?
             order by created_at desc
             ",
-            start,
-            end,
+            range.start,
+            range.end,
         )
         .fetch_all(db)
         .await
@@ -80,15 +76,6 @@ impl Note {
     pub fn to_html(&self) -> String {
         render_markdown(&self.body)
     }
-}
-
-fn month_range(year: i32, month: u32) -> Option<(NaiveDate, NaiveDate)> {
-    let start = NaiveDate::from_ymd_opt(year, month, 1)?;
-    let end = start + Months::new(1);
-    Some((
-        Utc.from_local_date(&start).single()?.naive_local(),
-        Utc.from_local_date(&end).single()?.naive_local(),
-    ))
 }
 
 fn render_markdown(md: &str) -> String {
