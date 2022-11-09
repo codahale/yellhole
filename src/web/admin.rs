@@ -20,7 +20,7 @@ use url::Url;
 
 use crate::models::{Image, Note};
 
-use super::{CacheControl, Context, Html};
+use super::{Context, Page};
 
 pub fn router() -> Router {
     // TODO add authentication
@@ -39,12 +39,12 @@ struct NewPage {
     images: Vec<Image>,
 }
 
-async fn new_page(ctx: Extension<Context>) -> Result<Html<NewPage>, StatusCode> {
+async fn new_page(ctx: Extension<Context>) -> Result<Page<NewPage>, StatusCode> {
     let images = Image::most_recent(&ctx.db, 10).await.map_err(|err| {
         tracing::warn!(%err, "unable to query recent images");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
-    Ok(Html(NewPage { images }, CacheControl::NoCache))
+    Ok(Page(NewPage { images }))
 }
 
 #[derive(Debug, Deserialize)]

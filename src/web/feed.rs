@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use askama::Template;
 use atom_syndication::{Content, Entry, Feed, FixedDateTime, Link, Person, Text};
 use axum::extract::{Path, Query};
@@ -10,16 +8,28 @@ use axum::routing::get;
 use axum::{Extension, Router};
 use chrono::{Datelike, FixedOffset, Months, NaiveDate, Utc};
 use serde::Deserialize;
+use tower_http::set_header::SetResponseHeaderLayer;
 
-use super::{CacheControl, Context, Html};
+use super::{Context, Page};
 use crate::models::Note;
 
 pub fn router() -> Router {
+    let immutable = Router::new().route("/note/:note_id", get(single)).layer(
+        SetResponseHeaderLayer::overriding(
+            http::header::CACHE_CONTROL,
+            http::HeaderValue::from_static("max-age=31536000,immutable"),
+        ),
+    );
+
     Router::new()
         .route("/", get(index))
         .route("/atom.xml", get(atom))
         .route("/notes/:year/:month", get(month))
-        .route("/note/:note_id", get(single))
+        .layer(SetResponseHeaderLayer::overriding(
+            http::header::CACHE_CONTROL,
+            http::HeaderValue::from_static("max-age=300"),
+        ))
+        .merge(immutable)
 }
 
 #[derive(Debug, Template)]
@@ -38,7 +48,7 @@ struct IndexOpts {
 async fn index(
     ctx: Extension<Context>,
     opts: Query<IndexOpts>,
-) -> Result<Html<FeedPage>, StatusCode> {
+) -> Result<Page<FeedPage>, StatusCode> {
     let n = opts.n.unwrap_or(100);
     let notes = Note::most_recent(&ctx.db, n).await.map_err(|err| {
         tracing::warn!(?err, n, "error querying feed index");
@@ -47,7 +57,7 @@ async fn index(
 
     let older = notes.last().and_then(|n| n.created_at.date().with_day(1));
 
-    Ok(Html(FeedPage { notes, newer: None, older }, DEFAULT_CACHING))
+    Ok(Page(FeedPage { notes, newer: None, older }))
 }
 
 async fn atom(ctx: Extension<Context>) -> Result<Response, StatusCode> {
@@ -100,7 +110,7 @@ async fn atom(ctx: Extension<Context>) -> Result<Response, StatusCode> {
 async fn month(
     ctx: Extension<Context>,
     Path((year, month)): Path<(i32, u32)>,
-) -> Result<Html<FeedPage>, StatusCode> {
+) -> Result<Page<FeedPage>, StatusCode> {
     let Some(start) = NaiveDate::from_ymd_opt(year, month, 1) else { return Err(StatusCode::NOT_FOUND)};
     let end = start + Months::new(1);
 
@@ -111,16 +121,13 @@ async fn month(
             StatusCode::INTERNAL_SERVER_ERROR
         })?
         .ok_or(StatusCode::NOT_FOUND)?;
-    Ok(Html(
-        FeedPage { notes, newer: Some(end), older: Some(start - Months::new(1)) },
-        DEFAULT_CACHING,
-    ))
+    Ok(Page(FeedPage { notes, newer: Some(end), older: Some(start - Months::new(1)) }))
 }
 
 async fn single(
     ctx: Extension<Context>,
     Path(note_id): Path<String>,
-) -> Result<Html<FeedPage>, StatusCode> {
+) -> Result<Page<FeedPage>, StatusCode> {
     let note = Note::by_id(&ctx.db, &note_id)
         .await
         .map_err(|err| {
@@ -128,7 +135,5 @@ async fn single(
             StatusCode::INTERNAL_SERVER_ERROR
         })?
         .ok_or(StatusCode::NOT_FOUND)?;
-    Ok(Html(FeedPage { notes: vec![note], newer: None, older: None }, CacheControl::Immutable))
+    Ok(Page(FeedPage { notes: vec![note], newer: None, older: None }))
 }
-
-const DEFAULT_CACHING: CacheControl = CacheControl::MaxAge(Duration::from_secs(60 * 5));

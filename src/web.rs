@@ -1,12 +1,10 @@
-use std::fmt;
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::time::Duration;
 
 use askama::Template;
 use axum::http::{self, StatusCode, Uri};
 use axum::middleware::{self, Next};
-use axum::response::{IntoResponse, Response};
+use axum::response::{Html, IntoResponse, Response};
 use futures::Future;
 use sqlx::SqlitePool;
 use tower_http::add_extension::AddExtensionLayer;
@@ -96,43 +94,12 @@ async fn handle_errors<B>(req: http::Request<B>, next: Next<B>) -> Result<Respon
 }
 
 #[derive(Debug)]
-pub enum CacheControl {
-    Immutable,
-    MaxAge(Duration),
-    NoCache,
-}
+pub struct Page<T: Template>(T);
 
-impl fmt::Display for CacheControl {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            CacheControl::Immutable => write!(f, "max-age=31536000,immutable"),
-            CacheControl::MaxAge(d) => write!(f, "max-age={},must-revalidate", d.as_secs()),
-            CacheControl::NoCache => write!(f, "no-cache"),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct Html<T: Template>(T, CacheControl);
-
-impl<T: Template> IntoResponse for Html<T> {
+impl<T: Template> IntoResponse for Page<T> {
     fn into_response(self) -> Response {
         match self.0.render() {
-            Ok(body) => (
-                [
-                    (
-                        http::header::CONTENT_TYPE,
-                        http::HeaderValue::from_static(mime::TEXT_HTML_UTF_8.as_ref()),
-                    ),
-                    (
-                        http::header::CACHE_CONTROL,
-                        http::HeaderValue::from_str(&self.1.to_string())
-                            .expect("invalid Cache-Control value"),
-                    ),
-                ],
-                body,
-            )
-                .into_response(),
+            Ok(body) => Html(body).into_response(),
             Err(_) => http::StatusCode::INTERNAL_SERVER_ERROR.into_response(),
         }
     }
