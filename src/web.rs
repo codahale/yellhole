@@ -27,12 +27,12 @@ pub async fn serve(
         .merge(admin::router())
         .merge(asset::router(&ctx.images_dir))
         .layer(AddExtensionLayer::new(ctx))
-        .route_layer(middleware::from_fn(handle_errors))
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
         .layer(SetSensitiveRequestHeadersLayer::new(std::iter::once(http::header::COOKIE)))
         .layer(TraceLayer::new_for_http())
         .layer(SetSensitiveRequestHeadersLayer::new(std::iter::once(http::header::SET_COOKIE)))
-        .layer(PropagateRequestIdLayer::x_request_id());
+        .layer(PropagateRequestIdLayer::x_request_id())
+        .layer(middleware::from_fn(handle_errors));
 
     tracing::info!(%addr, %base_url, "starting server");
     axum::Server::bind(addr)
@@ -77,18 +77,7 @@ async fn handle_errors<B>(req: http::Request<B>, next: Next<B>) -> Result<Respon
     let uri = req.uri().clone();
     let resp = next.run(req).await;
     if resp.status().is_client_error() || resp.status().is_server_error() {
-        let page = ErrorPage { uri, status: resp.status() };
-        if let Ok(body) = page.render() {
-            return Ok((
-                [(
-                    http::header::CONTENT_TYPE,
-                    http::HeaderValue::from_static(mime::TEXT_HTML_UTF_8.as_ref()),
-                )],
-                body,
-            )
-                .into_response());
-        }
-        dbg!(&resp.status());
+        return Ok(Page(ErrorPage { uri, status: resp.status() }).into_response());
     }
     Ok(resp)
 }
