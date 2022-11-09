@@ -40,8 +40,8 @@ async fn index(
     opts: Query<IndexOpts>,
 ) -> Result<Html<FeedPage>, StatusCode> {
     let n = opts.n.unwrap_or(100);
-    let notes = Note::most_recent(&ctx.db, n).await.map_err(|e| {
-        tracing::warn!(err=?e, n, "error querying feed index");
+    let notes = Note::most_recent(&ctx.db, n).await.map_err(|err| {
+        tracing::warn!(?err, n, "error querying feed index");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
@@ -51,8 +51,8 @@ async fn index(
 }
 
 async fn atom(ctx: Extension<Context>) -> Result<Response, StatusCode> {
-    let notes = Note::most_recent(&ctx.db, 20).await.map_err(|e| {
-        tracing::warn!(err=?e, "error querying atom index");
+    let notes = Note::most_recent(&ctx.db, 20).await.map_err(|err| {
+        tracing::warn!(?err, "error querying atom index");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
@@ -106,8 +106,8 @@ async fn month(
 
     let notes = Note::date_range(&ctx.db, start..end)
         .await
-        .map_err(|e| {
-            tracing::warn!(err=?e, year, month, "error querying feed for month");
+        .map_err(|err| {
+            tracing::warn!(?err, year, month, "error querying feed for month");
             StatusCode::INTERNAL_SERVER_ERROR
         })?
         .ok_or(StatusCode::NOT_FOUND)?;
@@ -123,8 +123,8 @@ async fn single(
 ) -> Result<Html<FeedPage>, StatusCode> {
     let note = Note::by_id(&ctx.db, &note_id)
         .await
-        .map_err(|e| {
-            tracing::warn!(err=?e, note_id, "error querying feed by id");
+        .map_err(|err| {
+            tracing::warn!(?err, note_id, "error querying feed by id");
             StatusCode::INTERNAL_SERVER_ERROR
         })?
         .ok_or(StatusCode::NOT_FOUND)?;
