@@ -3,7 +3,7 @@ use std::process::ExitStatus;
 
 use askama::Template;
 use axum::body::{BoxBody, Bytes};
-use axum::extract::Multipart;
+use axum::extract::{DefaultBodyLimit, Multipart};
 use axum::http::{self, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
@@ -15,6 +15,7 @@ use tokio::fs::File;
 use tokio::io::{self, BufWriter};
 use tokio::process::Command;
 use tokio_util::io::StreamReader;
+use tower_http::limit::RequestBodyLimitLayer;
 use url::Url;
 
 use crate::models::{Image, Note};
@@ -28,6 +29,8 @@ pub fn router() -> Router {
         .route("/admin/new-note", post(create_note))
         .route("/admin/upload-images", post(upload_images))
         .route("/admin/download-image", post(download_image))
+        .layer(DefaultBodyLimit::disable())
+        .layer(RequestBodyLimitLayer::new(32 * 1024 * 1024))
 }
 
 #[derive(Debug, Template)]
