@@ -100,7 +100,10 @@ impl<T: Template> IntoResponse for Page<T> {
     fn into_response(self) -> Response {
         match self.0.render() {
             Ok(body) => Html(body).into_response(),
-            Err(_) => http::StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+            Err(err) => {
+                tracing::error!(?err, "unable to render template");
+                http::StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            }
         }
     }
 }
