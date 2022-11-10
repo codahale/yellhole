@@ -15,6 +15,7 @@ use tokio::fs::File;
 use tokio::io::{self, BufWriter};
 use tokio::process::Command;
 use tokio_util::io::StreamReader;
+use tower_http::auth::RequireAuthorizationLayer;
 use tower_http::limit::RequestBodyLimitLayer;
 use url::Url;
 
@@ -22,13 +23,13 @@ use crate::models::{Image, Note};
 
 use super::{Context, Page};
 
-pub fn router() -> Router {
-    // TODO add authentication
+pub fn router(password: &str) -> Router {
     Router::new()
         .route("/admin/new", get(new_page))
         .route("/admin/new-note", post(create_note))
         .route("/admin/upload-images", post(upload_images))
         .route("/admin/download-image", post(download_image))
+        .layer(RequireAuthorizationLayer::basic("admin", password))
         .layer(DefaultBodyLimit::disable())
         .layer(RequestBodyLimitLayer::new(32 * 1024 * 1024))
 }

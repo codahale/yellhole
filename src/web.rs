@@ -22,6 +22,7 @@ pub struct Context {
     db: SqlitePool,
     name: String,
     author: String,
+    password: String,
     images_dir: PathBuf,
     uploads_dir: PathBuf,
 }
@@ -32,6 +33,7 @@ impl Context {
         name: String,
         author: String,
         data_dir: impl AsRef<Path>,
+        password: String,
     ) -> Result<Context, io::Error> {
         // Create the images and uploads directories, if necessary.
         let mut images_dir = data_dir.as_ref().to_path_buf();
@@ -44,7 +46,7 @@ impl Context {
         tracing::info!(?uploads_dir, "creating directory");
         tokio::fs::create_dir_all(&uploads_dir).await?;
 
-        Ok(Context { db, name, author, images_dir, uploads_dir })
+        Ok(Context { db, name, author, password, images_dir, uploads_dir })
     }
 
     pub async fn serve(
@@ -55,7 +57,7 @@ impl Context {
         tracing::info!(%addr, url=format!("http://{addr}"), "starting server");
 
         let app = feed::router()
-            .merge(admin::router())
+            .merge(admin::router(&self.password))
             .merge(asset::router(&self.images_dir))
             .layer(AddExtensionLayer::new(self))
             .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
@@ -84,7 +86,9 @@ struct ErrorPage {
 async fn handle_errors<B>(req: http::Request<B>, next: Next<B>) -> Result<Response, StatusCode> {
     let uri = req.uri().clone();
     let resp = next.run(req).await;
-    if resp.status().is_client_error() || resp.status().is_server_error() {
+    if (resp.status().is_client_error() || resp.status().is_server_error())
+        && resp.status() != StatusCode::UNAUTHORIZED
+    {
         return Ok(Page(ErrorPage { uri, status: resp.status() }).into_response());
     }
     Ok(resp)
