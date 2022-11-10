@@ -1,9 +1,8 @@
-use axum::body::{Empty, Full};
 use axum::extract::Path;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, get_service};
-use axum::{body, http, Router};
+use axum::{http, Router};
 use include_dir::{include_dir, Dir};
 use tokio::io;
 use tower::ServiceBuilder;
@@ -24,24 +23,12 @@ pub fn router(images_dir: &std::path::Path) -> Router {
         ))
 }
 
-async fn static_path(Path(path): Path<String>) -> impl IntoResponse {
+async fn static_path(Path(path): Path<String>) -> Result<Response, StatusCode> {
     let path = path.trim_start_matches('/');
-    let mime_type = mime_guess::from_path(path).first_or_text_plain();
-
-    match STATIC_DIR.get_file(path) {
-        None => Response::builder()
-            .status(StatusCode::NOT_FOUND)
-            .body(body::boxed(Empty::new()))
-            .unwrap(),
-        Some(file) => Response::builder()
-            .status(StatusCode::OK)
-            .header(
-                http::header::CONTENT_TYPE,
-                http::HeaderValue::from_str(mime_type.as_ref()).unwrap(),
-            )
-            .body(body::boxed(Full::from(file.contents())))
-            .unwrap(),
-    }
+    let mime_type = mime_guess::from_path(path).first_or_octet_stream();
+    let content_type = http::HeaderValue::from_str(mime_type.as_ref()).expect("invalid header");
+    let file = STATIC_DIR.get_file(path).ok_or(StatusCode::NOT_FOUND)?;
+    Ok(([(http::header::CONTENT_TYPE, content_type)], file.contents()).into_response())
 }
 
 async fn io_error(err: io::Error) -> StatusCode {
