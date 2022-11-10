@@ -36,6 +36,7 @@ pub fn router() -> Router {
 #[template(path = "feed.html")]
 struct FeedPage {
     notes: Vec<Note>,
+    host: String,
     newer: Option<NaiveDate>,
     older: Option<NaiveDate>,
 }
@@ -56,6 +57,7 @@ struct IndexOpts {
 async fn index(
     ctx: Extension<Context>,
     opts: Query<IndexOpts>,
+    Host(host): Host,
 ) -> Result<Page<FeedPage>, StatusCode> {
     let n = opts.n.unwrap_or(100);
     let notes = Note::most_recent(&ctx.db, n).await.map_err(|err| {
@@ -65,7 +67,7 @@ async fn index(
 
     let older = notes.last().and_then(|n| n.created_at.date().with_day(1));
 
-    Ok(Page(FeedPage { notes, newer: None, older }))
+    Ok(Page(FeedPage { notes, host, newer: None, older }))
 }
 
 async fn atom(ctx: Extension<Context>, Host(host): Host) -> Result<Response, StatusCode> {
@@ -114,6 +116,7 @@ async fn atom(ctx: Extension<Context>, Host(host): Host) -> Result<Response, Sta
 async fn month(
     ctx: Extension<Context>,
     Path((year, month)): Path<(i32, u32)>,
+    Host(host): Host,
 ) -> Result<Page<FeedPage>, StatusCode> {
     let Some(start) = NaiveDate::from_ymd_opt(year, month, 1) else { return Err(StatusCode::NOT_FOUND)};
     let end = start + Months::new(1);
@@ -125,12 +128,13 @@ async fn month(
             StatusCode::INTERNAL_SERVER_ERROR
         })?
         .ok_or(StatusCode::NOT_FOUND)?;
-    Ok(Page(FeedPage { notes, newer: Some(end), older: Some(start - Months::new(1)) }))
+    Ok(Page(FeedPage { notes, host, newer: Some(end), older: Some(start - Months::new(1)) }))
 }
 
 async fn single(
     ctx: Extension<Context>,
     Path(note_id): Path<String>,
+    Host(host): Host,
 ) -> Result<Page<FeedPage>, StatusCode> {
     let note = Note::by_id(&ctx.db, &note_id)
         .await
@@ -139,5 +143,5 @@ async fn single(
             StatusCode::INTERNAL_SERVER_ERROR
         })?
         .ok_or(StatusCode::NOT_FOUND)?;
-    Ok(Page(FeedPage { notes: vec![note], newer: None, older: None }))
+    Ok(Page(FeedPage { notes: vec![note], host, newer: None, older: None }))
 }
