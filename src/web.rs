@@ -36,13 +36,11 @@ impl Context {
         password: String,
     ) -> Result<Context, io::Error> {
         // Create the images and uploads directories, if necessary.
-        let mut images_dir = data_dir.as_ref().to_path_buf();
-        images_dir.push("images");
+        let images_dir = data_dir.as_ref().join("images");
         tracing::info!(?images_dir, "creating directory");
         tokio::fs::create_dir_all(&images_dir).await?;
 
-        let mut uploads_dir = data_dir.as_ref().to_path_buf();
-        uploads_dir.push("uploads");
+        let uploads_dir = data_dir.as_ref().join("uploads");
         tracing::info!(?uploads_dir, "creating directory");
         tokio::fs::create_dir_all(&uploads_dir).await?;
 

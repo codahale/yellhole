@@ -27,21 +27,15 @@ impl Image {
     }
 
     pub fn original_path(uploads_dir: &Path, image_id: &str, content_type: &mime::Mime) -> PathBuf {
-        let mut path = uploads_dir.to_path_buf();
-        path.push(format!("{image_id}.orig.{}", content_type.subtype()));
-        path
+        uploads_dir.join(format!("{image_id}.orig.{}", content_type.subtype()))
     }
 
     pub fn main_path(images_dir: &Path, image_id: &str) -> PathBuf {
-        let mut path = images_dir.to_path_buf();
-        path.push(format!("{image_id}.main.webp"));
-        path
+        images_dir.join(format!("{image_id}.main.webp"))
     }
 
     pub fn thumbnail_path(images_dir: &Path, image_id: &str) -> PathBuf {
-        let mut path = images_dir.to_path_buf();
-        path.push(format!("{image_id}.thumb.webp"));
-        path
+        images_dir.join(format!("{image_id}.thumb.webp"))
     }
 
     pub async fn create(
