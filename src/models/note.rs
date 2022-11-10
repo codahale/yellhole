@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use chrono::{NaiveDate, NaiveDateTime};
+use chrono::{DateTime, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
 use pulldown_cmark::{Event, HeadingLevel, Parser, Tag};
 use sqlx::SqlitePool;
 
@@ -57,6 +57,8 @@ impl Note {
         db: &SqlitePool,
         range: Range<NaiveDate>,
     ) -> Result<Option<Vec<Note>>, sqlx::Error> {
+        let start = local_date_to_utc(&range.start);
+        let end = local_date_to_utc(&range.end);
         sqlx::query_as!(
             Note,
             r"
@@ -65,8 +67,8 @@ impl Note {
             where created_at >= ? and created_at < ?
             order by created_at desc
             ",
-            range.start,
-            range.end,
+            start,
+            end,
         )
         .fetch_all(db)
         .await
@@ -76,6 +78,10 @@ impl Note {
     pub fn to_html(&self) -> String {
         render_markdown(&self.body)
     }
+}
+
+fn local_date_to_utc(d: &NaiveDate) -> DateTime<Utc> {
+    Local.from_local_date(d).and_time(NaiveTime::default()).unwrap().with_timezone(&Utc)
 }
 
 fn render_markdown(md: &str) -> String {
