@@ -7,6 +7,8 @@ processes = []
 PORT = "8080"
 DATA_DIR = "/data"
 AUTHOR = "Coda"
+RUST_LOG = "info,sqlx=warn"
+TZ = "America/Denver"
 
 [mounts]
 source = "yellhole_data"
