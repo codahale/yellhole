@@ -10,7 +10,7 @@
 <section>
     <aside>
         {{ n.to_html() | safe }}
-        <p><small><a href="/note/{{n.note_id}}">{{n.created_at}}</a></small></p>
+        <p><small><a href="/note/{{n.note_id}}">{{n.created_at|to_local_tz}}</a></small></p>
     </aside>
 </section>
 {% endfor %}

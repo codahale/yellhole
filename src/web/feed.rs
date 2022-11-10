@@ -40,6 +40,14 @@ struct FeedPage {
     older: Option<NaiveDate>,
 }
 
+mod filters {
+    use chrono::{DateTime, Local, NaiveDateTime, TimeZone};
+
+    pub fn to_local_tz(t: &NaiveDateTime) -> askama::Result<DateTime<Local>> {
+        Ok(Local.from_utc_datetime(t))
+    }
+}
+
 #[derive(Debug, Deserialize)]
 struct IndexOpts {
     n: Option<u16>,
