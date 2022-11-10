@@ -7,6 +7,6 @@ ENV RUSTFLAGS="-C target-feature=-crt-static"
 RUN source "$HOME/.cargo/env" && cargo build --release
 
 FROM alpine:edge
-RUN apk --no-cache add imagemagick openssl
+RUN apk --no-cache add imagemagick openssl sqlite
 COPY --from=0 /app/target/release/yellhole .
 ENTRYPOINT ["/yellhole"]
