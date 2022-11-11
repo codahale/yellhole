@@ -6,6 +6,11 @@
 {% endblock %}
 
 {% block content %}
+{% if notes.is_empty() %}
+<section>
+    <aside>Nothing here yet.</aside>
+</section>
+{% endif %}
 {% for n in notes %}
 <section>
     <aside>
