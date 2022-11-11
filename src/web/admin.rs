@@ -18,6 +18,7 @@ use tokio_util::io::StreamReader;
 use tower_http::auth::RequireAuthorizationLayer;
 use tower_http::limit::RequestBodyLimitLayer;
 use url::Url;
+use uuid::Uuid;
 
 use crate::models::{Image, Note};
 
@@ -57,13 +58,14 @@ async fn create_note(
     ctx: Extension<Context>,
     Form(new_note): Form<NewNote>,
 ) -> Result<Response, StatusCode> {
-    let id = Note::create(&ctx.db, &new_note.body).await.map_err(|err| {
+    let note_id = Uuid::new_v4();
+    Note::create(&ctx.db, &note_id.to_string(), &new_note.body).await.map_err(|err| {
         tracing::warn!(%err, "error inserting note");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
     Ok(Response::builder()
         .status(StatusCode::SEE_OTHER)
-        .header("location", format!("/note/{id}"))
+        .header("location", format!("/note/{note_id}"))
         .body(BoxBody::default())
         .unwrap())
 }
@@ -142,12 +144,8 @@ where
     S: Stream<Item = Result<Bytes, E>>,
     E: Into<BoxError>,
 {
-    // 1. create unprocessed image in DB, get image ID
-    let image_id =
-        Image::create(&ctx.db, original_filename, content_type).await.map_err(|err| {
-            tracing::warn!(%err, "error inserting image");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+    // 1. create an image ID
+    let image_id = Uuid::new_v4().to_string();
 
     // 2. write image to dir/uploads/{image_id}.orig.{ext}
     let original_path = Image::original_path(&ctx.uploads_dir, &image_id, content_type);
@@ -172,9 +170,9 @@ where
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    // 4. mark image as processed
-    Image::mark_processed(&ctx.db, &image_id).await.map_err(|err| {
-        tracing::warn!(%err, image_id, "error updating image");
+    // 4. Insert image into DB.
+    Image::create(&ctx.db, &image_id, original_filename, content_type).await.map_err(|err| {
+        tracing::warn!(%err, image_id, "error creating image");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 

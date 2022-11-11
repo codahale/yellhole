@@ -1,5 +1,15 @@
 {
   "db": "SQLite",
+  "019f7bd3c9cac5f334a33c2435d932d3d597b8d622edc3fd4745a28f03b3de28": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "\n            insert into note (note_id, body) values (?, ?)\n            "
+  },
   "2f2785495263630d46588f5d6000fbf7931539d7ed9cf111a1e87a5b1ec6f7d9": {
     "describe": {
       "columns": [
@@ -29,24 +39,6 @@
       }
     },
     "query": "\n            select note_id, body, created_at\n            from note\n            where note_id = ?\n            "
-  },
-  "56e7592e6c66922445b9f2cdb8dd040578d7ff303968441c5ef6fd9fee0cc991": {
-    "describe": {
-      "columns": [
-        {
-          "name": "note_id",
-          "ordinal": 0,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Right": 1
-      }
-    },
-    "query": "\n            insert into note (body) values (?) returning note_id\n            "
   },
   "6c2c5e5d0a385d6ed32ef9531a34c487d0bf688974a8b75e62d67fded289f976": {
     "describe": {
@@ -78,33 +70,29 @@
     },
     "query": "\n            select note_id, body, created_at\n            from note\n            where created_at >= ? and created_at < ?\n            order by created_at desc\n            "
   },
-  "7b6b5fa4791fb502acf1264cca95ac8eda959f60eafb691a7c3a5f7df1364ddb": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Right": 1
-      }
-    },
-    "query": "\n            update image set processed = true where image_id = ? \n            "
-  },
-  "b0ad54bca8701ddae56e069464b02d9249d770268ef789d78074de676b6849a7": {
+  "c39ba26348b953a49a271e1bad752fd041644cf8e9f23a7e4b8e8f2eb1c7cbd3": {
     "describe": {
       "columns": [
         {
           "name": "image_id",
           "ordinal": 0,
           "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 1,
+          "type_info": "Datetime"
         }
       ],
       "nullable": [
+        false,
         false
       ],
       "parameters": {
-        "Right": 2
+        "Right": 1
       }
     },
-    "query": "\n            insert into image (original_filename, content_type) values (?, ?) returning image_id\n            "
+    "query": "\n            select image_id, created_at\n            from image\n            order by created_at desc\n            limit ?\n            "
   },
   "d91e1e404723b448c9eff6ca46bd88da1748fd024b12c935ac6aa52d05020db1": {
     "describe": {
@@ -136,28 +124,14 @@
     },
     "query": "\n            select note_id, body, created_at\n            from note\n            order by created_at desc\n            limit ?\n            "
   },
-  "f78d9ce7cf5f616396d6c4e83dd7442c428a2d9e96bfd5bfad6f72ab7ea1a5fa": {
+  "ea4f3d41509b4ec469dccfbba099c8f4f59d4f61321e91d16b4a0402a313c56e": {
     "describe": {
-      "columns": [
-        {
-          "name": "image_id",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "created_at",
-          "ordinal": 1,
-          "type_info": "Datetime"
-        }
-      ],
-      "nullable": [
-        false,
-        false
-      ],
+      "columns": [],
+      "nullable": [],
       "parameters": {
-        "Right": 1
+        "Right": 3
       }
     },
-    "query": "\n            select image_id, created_at\n            from image\n            where processed\n            order by created_at desc\n            limit ?\n            "
+    "query": "\n            insert into image (image_id, original_filename, content_type) values (?, ?, ?)\n            "
   }
 }

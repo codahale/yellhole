@@ -12,16 +12,17 @@ pub struct Note {
 }
 
 impl Note {
-    pub async fn create(db: &SqlitePool, body: &str) -> Result<String, sqlx::Error> {
+    pub async fn create(db: &SqlitePool, note_id: &str, body: &str) -> Result<(), sqlx::Error> {
         sqlx::query!(
             r"
-            insert into note (body) values (?) returning note_id
+            insert into note (note_id, body) values (?, ?)
             ",
+            note_id,
             body
         )
-        .fetch_one(db)
-        .await
-        .map(|r| r.note_id)
+        .execute(db)
+        .await?;
+        Ok(())
     }
 
     pub async fn by_id(db: &SqlitePool, note_id: &str) -> Result<Option<Note>, sqlx::Error> {

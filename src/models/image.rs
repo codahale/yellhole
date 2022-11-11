@@ -16,7 +16,6 @@ impl Image {
             r"
             select image_id, created_at
             from image
-            where processed
             order by created_at desc
             limit ?
             ",
@@ -40,34 +39,21 @@ impl Image {
 
     pub async fn create(
         db: &SqlitePool,
+        note_id: &str,
         original_filename: &str,
         content_type: &mime::Mime,
-    ) -> Result<String, sqlx::Error> {
+    ) -> Result<(), sqlx::Error> {
         let content_type = content_type.to_string();
         sqlx::query!(
             r"
-            insert into image (original_filename, content_type) values (?, ?) returning image_id
+            insert into image (image_id, original_filename, content_type) values (?, ?, ?)
             ",
+            note_id,
             original_filename,
             content_type
         )
-        .fetch_one(db)
-        .await
-        .map(|r| r.image_id)
-    }
-
-    pub async fn mark_processed(db: &SqlitePool, image_id: &str) -> Result<(), sqlx::Error> {
-        (sqlx::query!(
-            r"
-            update image set processed = true where image_id = ? 
-            ",
-            image_id
-        )
         .execute(db)
-        .await?
-        .rows_affected()
-            == 1)
-            .then_some(())
-            .ok_or(sqlx::Error::RowNotFound)
+        .await?;
+        Ok(())
     }
 }
