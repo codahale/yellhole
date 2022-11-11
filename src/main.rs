@@ -5,6 +5,7 @@ use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use tokio::signal;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
+use url::Url;
 
 use crate::web::Context;
 
@@ -13,8 +14,13 @@ mod web;
 
 #[derive(Debug, Parser)]
 struct Config {
+    /// The port on which to listen. Binds to 0.0.0.0.
     #[clap(long, default_value = "3000", env("PORT"))]
     port: u16,
+
+    /// The base URL of the server.
+    #[clap(long, default_value = "http://localhost:3000", env("BASE_URL"))]
+    base_url: Url,
 
     /// The directory in which all persistent data is stored.
     #[clap(long, default_value = "./data", env("DATA_DIR"))]
@@ -41,6 +47,8 @@ struct Config {
 async fn main() -> anyhow::Result<()> {
     // Parse the command line args.
     let config = Config::parse();
+    anyhow::ensure!(config.base_url.path() == "/", "base URL must not have a path");
+
     let dir = config.data_dir.canonicalize()?;
 
     // Override the TZ env var with any command line option for time zone.
@@ -67,8 +75,15 @@ async fn main() -> anyhow::Result<()> {
     sqlx::migrate!().run(&db).await?;
 
     // Spin up an HTTP server and listen for requests.
-    let ctx =
-        Context::new(db, config.name, config.author, config.data_dir, config.password).await?;
+    let ctx = Context::new(
+        db,
+        config.base_url,
+        config.name,
+        config.author,
+        config.data_dir,
+        config.password,
+    )
+    .await?;
     ctx.serve(&([0, 0, 0, 0], config.port).into(), shutdown_signal()).await
 }
 

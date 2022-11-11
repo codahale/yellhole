@@ -1,6 +1,6 @@
 use askama::Template;
 use atom_syndication::{Content, Entry, Feed, FixedDateTime, Link, Person, Text};
-use axum::extract::{Host, Path, Query};
+use axum::extract::{Path, Query};
 use axum::http;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -9,6 +9,7 @@ use axum::{Extension, Router};
 use chrono::{Datelike, FixedOffset, Months, NaiveDate, Utc};
 use serde::Deserialize;
 use tower_http::set_header::SetResponseHeaderLayer;
+use url::Url;
 
 use super::{Context, Page};
 use crate::models::Note;
@@ -36,7 +37,7 @@ pub fn router() -> Router {
 #[template(path = "feed.html")]
 struct FeedPage {
     notes: Vec<Note>,
-    host: String,
+    base_url: Url,
     newer: Option<NaiveDate>,
     older: Option<NaiveDate>,
 }
@@ -57,7 +58,6 @@ struct IndexOpts {
 async fn index(
     ctx: Extension<Context>,
     opts: Query<IndexOpts>,
-    Host(host): Host,
 ) -> Result<Page<FeedPage>, StatusCode> {
     let n = opts.n.unwrap_or(100);
     let notes = Note::most_recent(&ctx.db, n).await.map_err(|err| {
@@ -67,10 +67,10 @@ async fn index(
 
     let older = notes.last().and_then(|n| n.created_at.date().with_day(1));
 
-    Ok(Page(FeedPage { notes, host, newer: None, older }))
+    Ok(Page(FeedPage { notes, base_url: ctx.base_url.clone(), newer: None, older }))
 }
 
-async fn atom(ctx: Extension<Context>, Host(host): Host) -> Result<Response, StatusCode> {
+async fn atom(ctx: Extension<Context>) -> Result<Response, StatusCode> {
     let notes = Note::most_recent(&ctx.db, 20).await.map_err(|err| {
         tracing::warn!(?err, "error querying atom index");
         StatusCode::INTERNAL_SERVER_ERROR
@@ -79,7 +79,7 @@ async fn atom(ctx: Extension<Context>, Host(host): Host) -> Result<Response, Sta
     let entries = notes
         .iter()
         .map(|n| Entry {
-            id: format!("https://{host}/note/{}", n.note_id),
+            id: ctx.base_url.join(&format!("note/{}", n.note_id)).unwrap().to_string(),
             title: Text { value: n.note_id.clone(), ..Default::default() },
             content: Some(Content {
                 content_type: Some("html".into()),
@@ -92,13 +92,13 @@ async fn atom(ctx: Extension<Context>, Host(host): Host) -> Result<Response, Sta
         .collect();
 
     let feed = Feed {
-        id: format!("https://{host}/"),
+        id: ctx.base_url.to_string(),
         authors: vec![Person { name: ctx.author.clone(), ..Default::default() }],
-        base: Some(format!("https://{host}")),
+        base: Some(ctx.base_url.to_string()),
         title: Text { value: ctx.name.clone(), ..Default::default() },
         entries,
         links: vec![Link {
-            href: format!("https://{host}"),
+            href: ctx.base_url.to_string(),
             rel: "self".into(),
             ..Default::default()
         }],
@@ -116,7 +116,6 @@ async fn atom(ctx: Extension<Context>, Host(host): Host) -> Result<Response, Sta
 async fn month(
     ctx: Extension<Context>,
     Path((year, month)): Path<(i32, u32)>,
-    Host(host): Host,
 ) -> Result<Page<FeedPage>, StatusCode> {
     let Some(start) = NaiveDate::from_ymd_opt(year, month, 1) else { return Err(StatusCode::NOT_FOUND)};
     let end = start + Months::new(1);
@@ -128,13 +127,17 @@ async fn month(
             StatusCode::INTERNAL_SERVER_ERROR
         })?
         .ok_or(StatusCode::NOT_FOUND)?;
-    Ok(Page(FeedPage { notes, host, newer: Some(end), older: Some(start - Months::new(1)) }))
+    Ok(Page(FeedPage {
+        notes,
+        base_url: ctx.base_url.clone(),
+        newer: Some(end),
+        older: Some(start - Months::new(1)),
+    }))
 }
 
 async fn single(
     ctx: Extension<Context>,
     Path(note_id): Path<String>,
-    Host(host): Host,
 ) -> Result<Page<FeedPage>, StatusCode> {
     let note = Note::by_id(&ctx.db, &note_id)
         .await
@@ -143,5 +146,10 @@ async fn single(
             StatusCode::INTERNAL_SERVER_ERROR
         })?
         .ok_or(StatusCode::NOT_FOUND)?;
-    Ok(Page(FeedPage { notes: vec![note], host, newer: None, older: None }))
+    Ok(Page(FeedPage {
+        notes: vec![note],
+        base_url: ctx.base_url.clone(),
+        newer: None,
+        older: None,
+    }))
 }
