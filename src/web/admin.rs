@@ -15,6 +15,7 @@ use tokio::fs::File;
 use tokio::io::{self, BufWriter};
 use tokio::process::Command;
 use tokio_util::io::StreamReader;
+use tower::ServiceBuilder;
 use tower_http::auth::RequireAuthorizationLayer;
 use tower_http::limit::RequestBodyLimitLayer;
 use url::Url;
@@ -30,8 +31,11 @@ pub fn router(password: &str) -> Router {
         .route("/admin/new-note", post(create_note))
         .route("/admin/upload-images", post(upload_images))
         .route("/admin/download-image", post(download_image))
-        .layer(RequireAuthorizationLayer::basic("admin", password))
-        .layer(DefaultBodyLimit::disable())
+        .layer(
+            ServiceBuilder::new()
+                .layer(RequireAuthorizationLayer::basic("admin", password))
+                .layer(DefaultBodyLimit::disable()),
+        )
         .layer(RequestBodyLimitLayer::new(32 * 1024 * 1024))
 }
 

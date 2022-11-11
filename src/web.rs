@@ -8,6 +8,7 @@ use axum::response::{Html, IntoResponse, Response};
 use futures::Future;
 use sqlx::SqlitePool;
 use tokio::io;
+use tower::ServiceBuilder;
 use tower_http::add_extension::AddExtensionLayer;
 use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
 use tower_http::sensitive_headers::SetSensitiveRequestHeadersLayer;
@@ -60,13 +61,20 @@ impl Context {
         let app = feed::router()
             .merge(admin::router(&self.password))
             .merge(asset::router(&self.images_dir))
-            .layer(AddExtensionLayer::new(self))
-            .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
-            .layer(SetSensitiveRequestHeadersLayer::new(std::iter::once(http::header::COOKIE)))
-            .layer(TraceLayer::new_for_http())
-            .layer(SetSensitiveRequestHeadersLayer::new(std::iter::once(http::header::SET_COOKIE)))
-            .layer(PropagateRequestIdLayer::x_request_id())
-            .layer(middleware::from_fn(handle_errors));
+            .layer(
+                ServiceBuilder::new()
+                    .layer(AddExtensionLayer::new(self))
+                    .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
+                    .layer(SetSensitiveRequestHeadersLayer::new(std::iter::once(
+                        http::header::COOKIE,
+                    )))
+                    .layer(TraceLayer::new_for_http())
+                    .layer(SetSensitiveRequestHeadersLayer::new(std::iter::once(
+                        http::header::SET_COOKIE,
+                    )))
+                    .layer(PropagateRequestIdLayer::x_request_id())
+                    .layer(middleware::from_fn(handle_errors)),
+            );
 
         axum::Server::bind(addr)
             .serve(app.into_make_service())
