@@ -22,6 +22,7 @@ use url::Url;
 
 mod admin;
 mod asset;
+mod auth;
 mod feed;
 
 #[derive(Debug, Clone)]
@@ -72,6 +73,7 @@ impl Context {
             .with_secure(self.base_url.scheme() == "https");
 
         let app = admin::router(&self.password)
+            .merge(auth::router())
             .layer(session_layer) // only enable sessions for auth and admin
             .merge(feed::router())
             .merge(asset::router(&self.images_dir))
