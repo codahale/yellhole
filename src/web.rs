@@ -69,7 +69,7 @@ impl Context {
         let secret = rand::thread_rng().gen::<[u8; 128]>();
         let session_layer = SessionLayer::new(store, &secret)
             .with_cookie_name("yellhole")
-            .with_same_site_policy(SameSite::Lax)
+            .with_same_site_policy(SameSite::Strict)
             .with_secure(self.base_url.scheme() == "https");
 
         let app = admin::router(&self.password)
