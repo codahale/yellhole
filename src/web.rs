@@ -14,7 +14,9 @@ use tokio::io;
 use tower::ServiceBuilder;
 use tower_http::add_extension::AddExtensionLayer;
 use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
-use tower_http::sensitive_headers::SetSensitiveRequestHeadersLayer;
+use tower_http::sensitive_headers::{
+    SetSensitiveRequestHeadersLayer, SetSensitiveResponseHeadersLayer,
+};
 use tower_http::trace::TraceLayer;
 use url::Url;
 
@@ -81,7 +83,7 @@ impl Context {
                         http::header::COOKIE,
                     )))
                     .layer(TraceLayer::new_for_http())
-                    .layer(SetSensitiveRequestHeadersLayer::new(std::iter::once(
+                    .layer(SetSensitiveResponseHeadersLayer::new(std::iter::once(
                         http::header::SET_COOKIE,
                     )))
                     .layer(PropagateRequestIdLayer::x_request_id())
