@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 
 use askama::Template;
-use axum::http::{self, StatusCode, Uri};
+use axum::http::{self, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::{Html, IntoResponse, Response};
 use futures::Future;
@@ -88,17 +88,23 @@ impl Context {
 #[derive(Debug, Template)]
 #[template(path = "error.html")]
 struct ErrorPage {
-    uri: Uri,
     status: StatusCode,
 }
 
+impl ErrorPage {
+    fn for_status(status: StatusCode) -> Response {
+        let mut resp = Page(ErrorPage { status }).into_response();
+        *resp.status_mut() = status;
+        resp
+    }
+}
+
 async fn handle_errors<B>(req: http::Request<B>, next: Next<B>) -> Result<Response, StatusCode> {
-    let uri = req.uri().clone();
     let resp = next.run(req).await;
     if (resp.status().is_client_error() || resp.status().is_server_error())
         && resp.status() != StatusCode::UNAUTHORIZED
     {
-        return Ok(Page(ErrorPage { uri, status: resp.status() }).into_response());
+        return Ok(ErrorPage::for_status(resp.status()));
     }
     Ok(resp)
 }

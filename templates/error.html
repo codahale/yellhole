@@ -3,7 +3,7 @@
 <article>
     <h2>Uh Oh</h2>
     {% if status == StatusCode::NOT_FOUND %}
-    <p>Ain't no such thing as <code>{{uri}}</code>, bud.</p>
+    <p>Page not found. Dunno what to tell you.</p>
     {% else if status == StatusCode::BAD_REQUEST %}
     <p>That request was bad. Don't retry it.</p>
     {% else %}
