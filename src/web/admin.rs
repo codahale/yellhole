@@ -2,10 +2,10 @@ use std::path::{Path, PathBuf};
 use std::process::ExitStatus;
 
 use askama::Template;
-use axum::body::{BoxBody, Bytes};
+use axum::body::Bytes;
 use axum::extract::{DefaultBodyLimit, Multipart};
 use axum::http::{self, StatusCode};
-use axum::response::{IntoResponse, Response};
+use axum::response::Redirect;
 use axum::routing::{get, post};
 use axum::{BoxError, Extension, Form, Router};
 use futures::{Stream, TryStreamExt};
@@ -61,23 +61,19 @@ struct NewNote {
 async fn create_note(
     ctx: Extension<Context>,
     Form(new_note): Form<NewNote>,
-) -> Result<Response, StatusCode> {
+) -> Result<Redirect, StatusCode> {
     let note_id = Uuid::new_v4();
     Note::create(&ctx.db, &note_id.to_string(), &new_note.body).await.map_err(|err| {
         tracing::warn!(%err, "error inserting note");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
-    Ok(Response::builder()
-        .status(StatusCode::SEE_OTHER)
-        .header("location", format!("/note/{note_id}"))
-        .body(BoxBody::default())
-        .unwrap())
+    Ok(Redirect::to(&format!("/note/{note_id}")))
 }
 
 pub async fn upload_images(
     ctx: Extension<Context>,
     mut multipart: Multipart,
-) -> Result<impl IntoResponse, StatusCode> {
+) -> Result<Redirect, StatusCode> {
     while let Some(field) = multipart.next_field().await.map_err(|_| StatusCode::BAD_REQUEST)? {
         if let Some(content_type) =
             field.content_type().and_then(|ct| ct.parse::<mime::Mime>().ok())
@@ -88,12 +84,7 @@ pub async fn upload_images(
             }
         }
     }
-
-    Ok(Response::builder()
-        .status(StatusCode::SEE_OTHER)
-        .header(http::header::LOCATION, "/admin/new")
-        .body(BoxBody::default())
-        .unwrap())
+    Ok(Redirect::to("/admin/new"))
 }
 
 #[derive(Debug, Deserialize)]
@@ -104,7 +95,7 @@ struct DownloadImage {
 async fn download_image(
     ctx: Extension<Context>,
     Form(image): Form<DownloadImage>,
-) -> Result<Response, StatusCode> {
+) -> Result<Redirect, StatusCode> {
     // Parse the URL to see if it's valid.
     let url = image.url.parse::<Url>().map_err(|err| {
         tracing::warn!(%err, "invalid URL");
@@ -131,11 +122,7 @@ async fn download_image(
     let stream = image.bytes_stream();
     add_image(&ctx, &original_filename, &content_type, stream).await?;
 
-    Ok(Response::builder()
-        .status(StatusCode::SEE_OTHER)
-        .header(http::header::LOCATION, "/admin/new")
-        .body(BoxBody::default())
-        .unwrap())
+    Ok(Redirect::to("/admin/new"))
 }
 
 async fn add_image<S, E>(
