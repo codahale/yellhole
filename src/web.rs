@@ -5,7 +5,10 @@ use askama::Template;
 use axum::http::{self, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::{Html, IntoResponse, Response};
+use axum_sessions::async_session::MemoryStore;
+use axum_sessions::{SameSite, SessionLayer};
 use futures::Future;
+use rand::Rng;
 use sqlx::SqlitePool;
 use tokio::io;
 use tower::ServiceBuilder;
@@ -58,8 +61,17 @@ impl Context {
     ) -> anyhow::Result<()> {
         tracing::info!(%addr, base_url=%self.base_url, "starting server");
 
-        let app = feed::router()
-            .merge(admin::router(&self.password))
+        // Create an in-memory session store.
+        let store = MemoryStore::new();
+        let secret = rand::thread_rng().gen::<[u8; 128]>();
+        let session_layer = SessionLayer::new(store, &secret)
+            .with_cookie_name("yellhole")
+            .with_same_site_policy(SameSite::Lax)
+            .with_secure(self.base_url.scheme() == "https");
+
+        let app = admin::router(&self.password)
+            .layer(session_layer) // only enable sessions for auth and admin
+            .merge(feed::router())
             .merge(asset::router(&self.images_dir))
             .layer(
                 ServiceBuilder::new()
