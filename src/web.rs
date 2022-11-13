@@ -6,10 +6,8 @@ use askama::Template;
 use axum::http::{self, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::{Html, IntoResponse, Response};
-use axum_sessions::async_session::MemoryStore;
 use axum_sessions::{SameSite, SessionLayer};
 use futures::Future;
-use rand::Rng;
 use sqlx::SqlitePool;
 use tower::ServiceBuilder;
 use tower_http::add_extension::AddExtensionLayer;
@@ -20,6 +18,8 @@ use tower_http::sensitive_headers::{
 use tower_http::trace::TraceLayer;
 use url::Url;
 use webauthn_rs::{Webauthn, WebauthnBuilder};
+
+use crate::models::DbSessionStore;
 
 mod admin;
 mod asset;
@@ -82,10 +82,10 @@ impl Context {
     ) -> anyhow::Result<()> {
         tracing::info!(%addr, base_url=%self.base_url, "starting server");
 
-        // Create an in-memory session store.
-        let store = MemoryStore::new();
-        let secret = rand::thread_rng().gen::<[u8; 128]>();
-        let session_layer = SessionLayer::new(store, &secret)
+        // Store sessions in the database. Use a constant key here because the cookie value is just
+        // a random ID.
+        let store = DbSessionStore::new(&self.db);
+        let session_layer = SessionLayer::new(store, &[69; 64])
             .with_cookie_name("yellhole")
             .with_same_site_policy(SameSite::Strict)
             .with_secure(self.base_url.scheme() == "https");

@@ -10,6 +10,16 @@
     },
     "query": "\n            insert into note (note_id, body) values (?, ?)\n            "
   },
+  "0de84e612ee46439e49eeef08c1078c1932451f8c962eec19631e2baab6c3a0e": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 0
+      }
+    },
+    "query": "\n            delete from session\n            "
+  },
   "0f7d0cc3be0db7cfe9f7b2104d0669191e39f94aa638244a576611ac0adac26c": {
     "describe": {
       "columns": [
@@ -76,6 +86,16 @@
     },
     "query": "\n            select note_id, body, created_at\n            from note\n            where note_id = ?\n            "
   },
+  "37a817c270013a2c817876692bb5f8d6fb7667db99e3a96c6dcf5aaa15d5187e": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 3
+      }
+    },
+    "query": "\n            insert into session (session_id, as_json)\n            values (?, ?)\n            on conflict (session_id) do\n            update set as_json = ?, updated_at = current_timestamp\n            "
+  },
   "3889fe3b53eecba251719b68440cdc66fe39899c4d93037d335f6fbcd5e3fe6a": {
     "describe": {
       "columns": [],
@@ -85,6 +105,16 @@
       }
     },
     "query": "insert into credential (credential_id, as_json) values (?, ?)"
+  },
+  "4f79fe07ee9c6acd84ad45eef654a875978ef02364e1938a8a58141b42215037": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "\n            delete from session\n            where session_id = ?\n            "
   },
   "6c2c5e5d0a385d6ed32ef9531a34c487d0bf688974a8b75e62d67fded289f976": {
     "describe": {
@@ -151,6 +181,24 @@
       }
     },
     "query": "\n            select credential_id, as_json, created_at, updated_at\n            from credential\n            where credential_id = ?\n            "
+  },
+  "ac76fc853cf4fb8d4853e8f9351655392fbb8cd17f9a779c77fe60cbae0c727c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "as_json",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "\n            select as_json\n            from session\n            where session_id = ?\n            "
   },
   "c39ba26348b953a49a271e1bad752fd041644cf8e9f23a7e4b8e8f2eb1c7cbd3": {
     "describe": {
