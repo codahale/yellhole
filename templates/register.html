@@ -58,7 +58,7 @@
         const extensions = credential.getClientExtensionResults();
         const reg = {
             'id': credential.id,
-            'rawId': btoa(credential.id),
+            'rawId': credential.id,
             'response': {
                 'attestationObject': btoa(String.fromCharCode(...new Uint8Array(credential.response.attestationObject))),
                 'clientDataJSON': btoa(new TextDecoder().decode(credential.response.clientDataJSON)),

@@ -10,6 +10,42 @@
     },
     "query": "\n            insert into note (note_id, body) values (?, ?)\n            "
   },
+  "0f7d0cc3be0db7cfe9f7b2104d0669191e39f94aa638244a576611ac0adac26c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "credential_id",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "as_json",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 2,
+          "type_info": "Datetime"
+        },
+        {
+          "name": "updated_at",
+          "ordinal": 3,
+          "type_info": "Datetime"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        true
+      ],
+      "parameters": {
+        "Right": 0
+      }
+    },
+    "query": "\n            select credential_id, as_json, created_at, updated_at\n            from credential\n            "
+  },
   "2f2785495263630d46588f5d6000fbf7931539d7ed9cf111a1e87a5b1ec6f7d9": {
     "describe": {
       "columns": [
@@ -169,24 +205,6 @@
       }
     },
     "query": "\n            select note_id, body, created_at\n            from note\n            order by created_at desc\n            limit ?\n            "
-  },
-  "e7860ab8a194e3b0c65ae6a32cf51b98924771354454b5717d1a047e8b9f25d3": {
-    "describe": {
-      "columns": [
-        {
-          "name": "credential_id",
-          "ordinal": 0,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Right": 0
-      }
-    },
-    "query": "\n            select credential_id\n            from credential\n            "
   },
   "ea4f3d41509b4ec469dccfbba099c8f4f59d4f61321e91d16b4a0402a313c56e": {
     "describe": {

@@ -1,4 +1,3 @@
-#![allow(unused)]
 use chrono::NaiveDateTime;
 use sqlx::SqlitePool;
 use webauthn_rs::prelude::{AuthenticationResult, CredentialID, Passkey};
@@ -12,42 +11,19 @@ pub struct Credential {
 }
 
 impl Credential {
-    pub async fn by_id(
-        db: &SqlitePool,
-        id: &CredentialID,
-    ) -> Result<Option<Credential>, sqlx::Error> {
-        let credential_id = id.to_string();
-        sqlx::query_as!(
+    pub async fn passkeys(db: &SqlitePool) -> Result<Vec<Passkey>, sqlx::Error> {
+        Ok(sqlx::query_as!(
             Credential,
             r"
             select credential_id, as_json, created_at, updated_at
             from credential
-            where credential_id = ?
             ",
-            credential_id,
-        )
-        .fetch_optional(db)
-        .await
-    }
-
-    pub async fn credential_ids(db: &SqlitePool) -> Result<Vec<CredentialID>, sqlx::Error> {
-        Ok(sqlx::query!(
-            r"
-            select credential_id
-            from credential
-            "
         )
         .fetch_all(db)
         .await?
         .into_iter()
-        .flat_map(|r| match CredentialID::try_from(r.credential_id.as_str()) {
-            Ok(id) => Some(id),
-            Err(_) => {
-                tracing::error!(credential_id=?r.credential_id, "bad credential ID");
-                None
-            }
-        })
-        .collect::<Vec<CredentialID>>())
+        .flat_map(|c| c.to_passkey())
+        .collect())
     }
 
     pub async fn create(db: &SqlitePool, passkey: Passkey) -> Result<(), sqlx::Error> {
@@ -69,10 +45,9 @@ impl Credential {
         }
 
         if let Some(credential) = Self::by_id(db, auth.cred_id()).await? {
-            let mut passkey = credential.to_passkey();
+            let mut passkey = credential.to_passkey().expect("invalid passkey");
             if passkey.update_credential(auth).unwrap_or(false) {
-                let credential_id =
-                    serde_json::to_string(auth.cred_id()).expect("invalid credential ID");
+                let credential_id = passkey.cred_id().to_string();
                 let as_json = serde_json::to_string(&passkey).expect("invalid passkey");
                 sqlx::query!(
                     r"
@@ -91,7 +66,22 @@ impl Credential {
         Ok(())
     }
 
-    pub fn to_passkey(&self) -> Passkey {
-        serde_json::from_str(&self.as_json).expect("invalid passkey")
+    pub fn to_passkey(&self) -> Option<Passkey> {
+        serde_json::from_str(&self.as_json).ok()
+    }
+
+    async fn by_id(db: &SqlitePool, id: &CredentialID) -> Result<Option<Credential>, sqlx::Error> {
+        let credential_id = id.to_string();
+        sqlx::query_as!(
+            Credential,
+            r"
+            select credential_id, as_json, created_at, updated_at
+            from credential
+            where credential_id = ?
+            ",
+            credential_id,
+        )
+        .fetch_optional(db)
+        .await
     }
 }

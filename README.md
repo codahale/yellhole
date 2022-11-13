@@ -65,25 +65,23 @@ configuration or stored in a single directory which can be a FUSE/GCE mount when
     * [x] Verify the registration response
     * [x] Insert the passkey into the DB
     * [x] Return empty `CREATED` response
-  * [ ] Add `GET /login` page
+  * [x] Add `GET /login` page
     * [ ] Count all passkeys from DB
     * [ ] If none exist, redirect to `/register`
-    * [ ] Check for WebAuthn support
-    * [ ] `fetch` a challenge object from `POST /login/start`
-    * [ ] Prompt for passkey authentication
-    * [ ] `POST /login/finish` the registration response via `fetch`
-    * [ ] Redirect to `/admin/new` on `CREATED`
-  * [ ] Add `POST /login/start` handler
-    * [ ] Select all passkeys from DB
-    * [ ] Create challenge response
-    * [ ] Store the authentication state in the session
-    * [ ] Return the challenge as JSON
-  * [ ] Add `POST /login/finish` handler
-    * [ ] Decode the authentication response from JSON
-    * [ ] Read and remove the authentication state from the session
-    * [ ] Verify the authentication response
-    * [ ] Mark the session as authentication
-    * [ ] Return empty `CREATED` response
+    * [x] Check for WebAuthn support
+    * [x] `fetch` a challenge object from `POST /login/start`
+    * [x] Prompt for passkey authentication
+    * [x] `POST /login/finish` the registration response via `fetch`
+    * [x] Redirect to `/admin/new` on `CREATED`
+  * [x] Add `POST /login/start` handler
+    * [x] Select all passkeys from DB
+    * [x] Create challenge response
+    * [x] Store the authentication state in the session
+    * [x] Return the challenge as JSON
+  * [x] Add `POST /login/finish` handler
+    * [x] Decode the authentication response from JSON
+    * [x] Read and remove the authentication state from the session
+    * [x] Verify the authentication response
+    * [x] Mark the session as authentication
+    * [x] Return empty `CREATED` response
 * [ ] Add middleware checking for authentication sessions to `/admin/*`
-* <https://github.com/kanidm/webauthn-rs/blob/master/tutorial/server/axum/src/auth.rs>
-* <https://www.imperialviolet.org/2022/09/22/passkeys.html>
