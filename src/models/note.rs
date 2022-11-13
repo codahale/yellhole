@@ -82,7 +82,7 @@ impl Note {
 }
 
 fn local_date_to_utc(d: &NaiveDate) -> DateTime<Utc> {
-    Local.from_local_date(d).and_time(NaiveTime::default()).unwrap().with_timezone(&Utc)
+    Local.from_local_datetime(&d.and_time(NaiveTime::default())).unwrap().with_timezone(&Utc)
 }
 
 fn render_markdown(md: &str) -> String {

@@ -86,7 +86,7 @@ async fn atom(ctx: Extension<Context>) -> Result<Response, StatusCode> {
                 value: Some(n.to_html()),
                 ..Default::default()
             }),
-            updated: FixedDateTime::from_local(n.created_at, FixedOffset::east(0)),
+            updated: FixedDateTime::from_local(n.created_at, FixedOffset::east_opt(0).unwrap()),
             ..Default::default()
         })
         .collect();
@@ -102,7 +102,7 @@ async fn atom(ctx: Extension<Context>) -> Result<Response, StatusCode> {
             rel: "self".into(),
             ..Default::default()
         }],
-        updated: FixedDateTime::from_utc(Utc::now().naive_utc(), FixedOffset::east(0)),
+        updated: FixedDateTime::from_utc(Utc::now().naive_utc(), FixedOffset::east_opt(0).unwrap()),
         ..Default::default()
     };
 
