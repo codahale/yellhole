@@ -84,4 +84,4 @@ configuration or stored in a single directory which can be a FUSE/GCE mount when
     * [x] Verify the authentication response
     * [x] Mark the session as authentication
     * [x] Return empty `CREATED` response
-* [ ] Add middleware checking for authentication sessions to `/admin/*`
+* [x] Add middleware checking for authentication sessions to `/admin/*`

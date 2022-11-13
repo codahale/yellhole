@@ -3,11 +3,13 @@ use std::process::ExitStatus;
 
 use askama::Template;
 use axum::body::Bytes;
-use axum::extract::{DefaultBodyLimit, Multipart};
+use axum::extract::{DefaultBodyLimit, FromRequest, Multipart, RequestParts};
 use axum::http::{self, StatusCode};
+use axum::middleware::{self};
 use axum::response::Redirect;
 use axum::routing::{get, post};
-use axum::{BoxError, Extension, Form, Router};
+use axum::{async_trait, BoxError, Extension, Form, Router};
+use axum_sessions::extractors::ReadableSession;
 use futures::{Stream, TryStreamExt};
 use mime::Mime;
 use serde::Deserialize;
@@ -16,7 +18,6 @@ use tokio::io::{self, BufWriter};
 use tokio::process::Command;
 use tokio_util::io::StreamReader;
 use tower::ServiceBuilder;
-use tower_http::auth::RequireAuthorizationLayer;
 use tower_http::limit::RequestBodyLimitLayer;
 use url::Url;
 use uuid::Uuid;
@@ -25,7 +26,7 @@ use crate::models::{Image, Note};
 
 use super::{Context, Page};
 
-pub fn router(password: &str) -> Router {
+pub fn router() -> Router {
     Router::new()
         .route("/admin/new", get(new_page))
         .route("/admin/new-note", post(create_note))
@@ -33,10 +34,11 @@ pub fn router(password: &str) -> Router {
         .route("/admin/download-image", post(download_image))
         .layer(
             ServiceBuilder::new()
-                .layer(RequireAuthorizationLayer::basic("admin", password))
+                // .layer(RequireAuthorizationLayer::basic("admin", password))
                 .layer(DefaultBodyLimit::disable()),
         )
         .layer(RequestBodyLimitLayer::new(32 * 1024 * 1024))
+        .route_layer(middleware::from_extractor::<RequireAuth>())
 }
 
 #[derive(Debug, Template)]
@@ -203,4 +205,23 @@ async fn process_image(
         .arg(output)
         .spawn()?;
     proc.wait().await
+}
+
+struct RequireAuth;
+
+#[async_trait]
+impl<B> FromRequest<B> for RequireAuth
+where
+    B: Send,
+{
+    type Rejection = Redirect;
+
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        let session = ReadableSession::from_request(req).await.expect("infallible");
+        session
+            .get::<bool>("authenticated")
+            .unwrap_or(false)
+            .then_some(Self)
+            .ok_or_else(|| Redirect::to("/login"))
+    }
 }

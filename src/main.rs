@@ -37,10 +37,6 @@ struct Config {
     /// The name of the person posting this crap.
     #[clap(long, default_value = "Luther Blissett", env("AUTHOR"))]
     author: String,
-
-    /// The basic auth password for admin access.
-    #[clap(long, default_value = "", env("PASSWORD"))]
-    password: String,
 }
 
 #[tokio::main]
@@ -75,15 +71,8 @@ async fn main() -> anyhow::Result<()> {
     sqlx::migrate!().run(&db).await?;
 
     // Spin up an HTTP server and listen for requests.
-    let ctx = Context::new(
-        db,
-        config.base_url,
-        config.name,
-        config.author,
-        config.data_dir,
-        config.password,
-    )
-    .await?;
+    let ctx =
+        Context::new(db, config.base_url, config.name, config.author, config.data_dir).await?;
     ctx.serve(&([0, 0, 0, 0], config.port).into(), shutdown_signal()).await
 }
 

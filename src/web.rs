@@ -32,7 +32,6 @@ pub struct Context {
     base_url: Url,
     name: String,
     author: String,
-    password: String,
     images_dir: PathBuf,
     uploads_dir: PathBuf,
     webauthn: Arc<Webauthn>,
@@ -45,7 +44,6 @@ impl Context {
         name: String,
         author: String,
         data_dir: impl AsRef<Path>,
-        password: String,
     ) -> Result<Context, anyhow::Error> {
         // Create the images and uploads directories, if necessary.
         let images_dir = data_dir.as_ref().join("images");
@@ -71,7 +69,6 @@ impl Context {
             base_url,
             name,
             author,
-            password,
             images_dir,
             uploads_dir,
             webauthn: Arc::new(webauthn),
@@ -93,7 +90,7 @@ impl Context {
             .with_same_site_policy(SameSite::Strict)
             .with_secure(self.base_url.scheme() == "https");
 
-        let app = admin::router(&self.password)
+        let app = admin::router()
             .merge(auth::router())
             .layer(session_layer) // only enable sessions for auth and admin
             .merge(feed::router())
