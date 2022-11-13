@@ -23,10 +23,6 @@
             });
     });
 
-    // function b64_url(s) {
-    //     return s.replace(/\//g, '_').replace(/\+/g, '-');
-    // }
-
     function url_b64(s) {
         return s.replace(/_/g, '/').replace(/-/g, '+');
     }
@@ -34,10 +30,6 @@
     function atob_url(a) {
         return atob(url_b64(a));
     }
-
-    // function btoa_url(b) {
-    //     return b64_url(btoa(b));
-    // }
 
     async function register() {
         const startResp = await fetch('/register/start', {
