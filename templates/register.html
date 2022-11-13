@@ -2,6 +2,93 @@
 {% block content %}
 <article>
     <h2>Register</h2>
-    <p>TODO</p>
+    <button id="register" disabled onclick="register()">Register Passkey</button>
 </article>
+{% endblock %}
+
+{% block tail %}
+<script type="text/javascript">
+    document.addEventListener('DOMContentLoaded', (event) => {
+        if (!window.PublicKeyCredential || !PublicKeyCredential.isConditionalMediationAvailable) {
+            return;
+        }
+
+        Promise.all([
+            PublicKeyCredential.isConditionalMediationAvailable(),
+            PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()])
+            .then((values) => {
+                if (values.every(x => x === true)) {
+                    document.getElementById('register').disabled = false;
+                }
+            });
+    });
+
+    // function b64_url(s) {
+    //     return s.replace(/\//g, '_').replace(/\+/g, '-');
+    // }
+
+    function url_b64(s) {
+        return s.replace(/_/g, '/').replace(/-/g, '+');
+    }
+
+    function atob_url(a) {
+        return atob(url_b64(a));
+    }
+
+    // function btoa_url(b) {
+    //     return b64_url(btoa(b));
+    // }
+
+    async function register() {
+        const startResp = await fetch('/register/start', {
+            method: 'POST'
+        }).catch((error) => { console.error(error) });
+
+        if (!startResp.ok) {
+            window.alert('Error starting passkey registration.');
+            return;
+        }
+
+        var challenge = await startResp.json()
+            .catch((error) => { console.error(error) });
+        challenge.publicKey.user.id = Uint8Array.from(atob_url(challenge.publicKey.user.id), c => c.charCodeAt(0));
+        challenge.publicKey.challenge = Uint8Array.from(atob_url(challenge.publicKey.challenge), c => c.charCodeAt(0));
+        challenge.publicKey.excludeCredentials.forEach(obj => {
+            obj.id = Uint8Array.from(atob_url(obj.id), c => c.charCodeAt(0));
+        });
+
+        const credential = await navigator.credentials.create(challenge)
+            .catch((error) => { window.alert(error); });
+        if (!credential) {
+            return;
+        }
+
+        const extensions = credential.getClientExtensionResults();
+        const reg = {
+            'id': credential.id,
+            'rawId': btoa(credential.id),
+            'response': {
+                'attestationObject': btoa(String.fromCharCode(...new Uint8Array(credential.response.attestationObject))),
+                'clientDataJSON': btoa(new TextDecoder().decode(credential.response.clientDataJSON)),
+            },
+            'type': 'public-key',
+            'extensions': {
+                'cred_props': extensions.credProps,
+            },
+        };
+
+        const finishResp = await fetch('/register/finish', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(reg),
+        });
+
+        if (finishResp.ok) {
+            window.alert('Successfully registered a passkey.');
+            window.location.href = '/login';
+        } else {
+            window.alert('Error finishing passkey registration.');
+        }
+    }
+</script>
 {% endblock %}

@@ -2959,6 +2959,7 @@ dependencies = [
  "atom_syndication",
  "axum",
  "axum-sessions",
+ "base64",
  "chrono",
  "clap",
  "futures",

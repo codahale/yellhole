@@ -1,5 +1,6 @@
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use askama::Template;
 use axum::http::{self, StatusCode};
@@ -10,7 +11,6 @@ use axum_sessions::{SameSite, SessionLayer};
 use futures::Future;
 use rand::Rng;
 use sqlx::SqlitePool;
-use tokio::io;
 use tower::ServiceBuilder;
 use tower_http::add_extension::AddExtensionLayer;
 use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
@@ -19,6 +19,7 @@ use tower_http::sensitive_headers::{
 };
 use tower_http::trace::TraceLayer;
 use url::Url;
+use webauthn_rs::{Webauthn, WebauthnBuilder};
 
 mod admin;
 mod asset;
@@ -34,6 +35,7 @@ pub struct Context {
     password: String,
     images_dir: PathBuf,
     uploads_dir: PathBuf,
+    webauthn: Arc<Webauthn>,
 }
 
 impl Context {
@@ -44,7 +46,7 @@ impl Context {
         author: String,
         data_dir: impl AsRef<Path>,
         password: String,
-    ) -> Result<Context, io::Error> {
+    ) -> Result<Context, anyhow::Error> {
         // Create the images and uploads directories, if necessary.
         let images_dir = data_dir.as_ref().join("images");
         tracing::info!(?images_dir, "creating directory");
@@ -54,7 +56,26 @@ impl Context {
         tracing::info!(?uploads_dir, "creating directory");
         tokio::fs::create_dir_all(&uploads_dir).await?;
 
-        Ok(Context { db, base_url, name, author, password, images_dir, uploads_dir })
+        // Create a WebAuthn context.
+        let webauthn = WebauthnBuilder::new(
+            &base_url
+                .host()
+                .ok_or_else(|| anyhow::anyhow!("base URL must include a host"))?
+                .to_string(),
+            &base_url,
+        )?
+        .build()?;
+
+        Ok(Context {
+            db,
+            base_url,
+            name,
+            author,
+            password,
+            images_dir,
+            uploads_dir,
+            webauthn: Arc::new(webauthn),
+        })
     }
 
     pub async fn serve(

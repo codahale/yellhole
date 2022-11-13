@@ -1,5 +1,4 @@
-#![allow(unused)] // TODO remove this
-
+#![allow(unused)]
 use chrono::NaiveDateTime;
 use sqlx::SqlitePool;
 use webauthn_rs::prelude::{AuthenticationResult, CredentialID, Passkey};
@@ -17,7 +16,7 @@ impl Credential {
         db: &SqlitePool,
         id: &CredentialID,
     ) -> Result<Option<Credential>, sqlx::Error> {
-        let credential_id = serde_json::to_string(id).expect("invalid credential ID");
+        let credential_id = id.to_string();
         sqlx::query_as!(
             Credential,
             r"
@@ -41,13 +40,18 @@ impl Credential {
         .fetch_all(db)
         .await?
         .into_iter()
-        .flat_map(|r| serde_json::from_str::<CredentialID>(&r.credential_id).ok())
+        .flat_map(|r| match CredentialID::try_from(r.credential_id.as_str()) {
+            Ok(id) => Some(id),
+            Err(_) => {
+                tracing::error!(credential_id=?r.credential_id, "bad credential ID");
+                None
+            }
+        })
         .collect::<Vec<CredentialID>>())
     }
 
     pub async fn create(db: &SqlitePool, passkey: Passkey) -> Result<(), sqlx::Error> {
-        let credential_id =
-            serde_json::to_string(&passkey.cred_id()).expect("invalid credential ID");
+        let credential_id = passkey.cred_id().to_string();
         let as_json = serde_json::to_string(&passkey).expect("invalid passkey");
         sqlx::query!(
             r"insert into credential (credential_id, as_json) values (?, ?)",

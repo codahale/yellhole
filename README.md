@@ -46,37 +46,44 @@ configuration or stored in a single directory which can be a FUSE/GCE mount when
 * [x] Add image uploads via URL
 * [x] Add Atom feed
 * [ ] Add sessions/authentication/credentials
-  * [ ] Add `GET /register` handler
-    * [ ] Select all passkeys from DB
+  * [ ] Add `GET /register` page
+    * [ ] Count all passkeys from DB
     * [ ] If any exist and the session isn't authenticated, redirect to `/login`
-    * [ ] Store the registration state in the session
-    * [ ] Embed registration challenge and passkeys in HTML
-  * [ ] Add register template
+    * [x] Check for WebAuthn support
+    * [x] `fetch` a challenge object from `POST /register/start`
+    * [x] Prompt for passkey creation
+    * [x] `POST /register/finish` the registration response via `fetch`
+    * [x] Redirect to `/login` on `CREATED`
+  * [x] Add `POST /register/start` handler
+    * [x] Select all passkeys from DB
+    * [x] Create challenge response
+    * [x] Store the registration state in the session
+    * [x] Return the challenge as JSON
+  * [x] Add `POST /register/finish` handler
+    * [x] Decode the registration response from JSON
+    * [x] Read and remove the registration state from the session
+    * [x] Verify the registration response
+    * [x] Insert the passkey into the DB
+    * [x] Return empty `CREATED` response
+  * [ ] Add `GET /login` page
+    * [ ] Count all passkeys from DB
+    * [ ] If none exist, redirect to `/register`
     * [ ] Check for WebAuthn support
-    * [ ] Prompt for passkey creation
-    * [ ] `POST /register` the registration response via `fetch`
-    * [ ] Redirect to `/login` on `CREATED`
-  * [ ] Add `POST /register` handler
-    * [ ] Decode the registration response from JSON
-    * [ ] Read and remove the registration state from the session
-    * [ ] Verify the registration response
-    * [ ] Insert the passkey into the DB
-    * [ ] Return empty `CREATED` response
-  * [ ] Add `GET /login` handler
+    * [ ] `fetch` a challenge object from `POST /login/start`
+    * [ ] Prompt for passkey authentication
+    * [ ] `POST /login/finish` the registration response via `fetch`
+    * [ ] Redirect to `/admin/new` on `CREATED`
+  * [ ] Add `POST /login/start` handler
     * [ ] Select all passkeys from DB
+    * [ ] Create challenge response
     * [ ] Store the authentication state in the session
-    * [ ] Embed authentication challenge and passkeys in HTML
-  * [ ] Add login template
-    * [ ] Check for WebAuthn support
-    * [ ] Prompt for passkey auth
-    * [ ] `POST /login` the authentication response via `fetch`
-    * [ ] Redirect to `/admin/new` on `OK`
-  * [ ] Add `POST /login` handler
+    * [ ] Return the challenge as JSON
+  * [ ] Add `POST /login/finish` handler
     * [ ] Decode the authentication response from JSON
     * [ ] Read and remove the authentication state from the session
     * [ ] Verify the authentication response
     * [ ] Mark the session as authentication
-    * [ ] Return empty `OK` response
-  * [ ] Add middleware checking for authentication sessions to `/admin/*`
-  * <https://github.com/kanidm/webauthn-rs/blob/master/tutorial/server/axum/src/auth.rs>
-  * <https://www.imperialviolet.org/2022/09/22/passkeys.html>
+    * [ ] Return empty `CREATED` response
+* [ ] Add middleware checking for authentication sessions to `/admin/*`
+* <https://github.com/kanidm/webauthn-rs/blob/master/tutorial/server/axum/src/auth.rs>
+* <https://www.imperialviolet.org/2022/09/22/passkeys.html>
