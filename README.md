@@ -47,8 +47,8 @@ configuration or stored in a single directory which can be a FUSE/GCE mount when
 * [x] Add Atom feed
 * [ ] Add sessions/authentication/credentials
   * [ ] Add `GET /register` page
-    * [ ] Count all passkeys from DB
-    * [ ] If any exist and the session isn't authenticated, redirect to `/login`
+    * [x] Count all passkeys from DB
+    * [x] If any exist and the session isn't authenticated, redirect to `/login`
     * [x] Check for WebAuthn support
     * [x] `fetch` a challenge object from `POST /register/start`
     * [x] Prompt for passkey creation
@@ -66,8 +66,8 @@ configuration or stored in a single directory which can be a FUSE/GCE mount when
     * [x] Insert the passkey into the DB
     * [x] Return empty `CREATED` response
   * [x] Add `GET /login` page
-    * [ ] Count all passkeys from DB
-    * [ ] If none exist, redirect to `/register`
+    * [x] Count all passkeys from DB
+    * [x] If none exist, redirect to `/register`
     * [x] Check for WebAuthn support
     * [x] `fetch` a challenge object from `POST /login/start`
     * [x] Prompt for passkey authentication

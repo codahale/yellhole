@@ -1,9 +1,9 @@
 use askama::Template;
 use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
+use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
 use axum::{Extension, Json, Router};
-use axum_sessions::extractors::WritableSession;
+use axum_sessions::extractors::{ReadableSession, WritableSession};
 use uuid::Uuid;
 use webauthn_rs::prelude::{
     CreationChallengeResponse, PasskeyAuthentication, PasskeyRegistration, PublicKeyCredential,
@@ -28,8 +28,19 @@ pub fn router() -> Router {
 #[template(path = "register.html")]
 struct RegisterPage {}
 
-async fn register() -> Result<Page<RegisterPage>, StatusCode> {
-    Ok(Page(RegisterPage {}))
+async fn register(
+    ctx: Extension<Context>,
+    session: ReadableSession,
+) -> Result<Response, StatusCode> {
+    let passkeys = Credential::passkeys(&ctx.db).await.map_err(|err| {
+        tracing::warn!(%err, "unable to select passkeys");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    if !passkeys.is_empty() && !session.get::<bool>("authenticated").unwrap_or(false) {
+        return Ok(Redirect::to("/login").into_response());
+    }
+
+    Ok(Page(RegisterPage {}).into_response())
 }
 
 async fn register_start(
@@ -100,8 +111,20 @@ async fn register_finish(
 #[template(path = "login.html")]
 struct LoginPage {}
 
-async fn login() -> Result<Page<LoginPage>, StatusCode> {
-    Ok(Page(LoginPage {}))
+async fn login(ctx: Extension<Context>, session: ReadableSession) -> Result<Response, StatusCode> {
+    if session.get::<bool>("authenticated").unwrap_or(false) {
+        return Ok(Redirect::to("/admin/new").into_response());
+    }
+
+    let passkeys = Credential::passkeys(&ctx.db).await.map_err(|err| {
+        tracing::warn!(%err, "unable to select passkeys");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    if passkeys.is_empty() {
+        return Ok(Redirect::to("/register").into_response());
+    }
+
+    Ok(Page(LoginPage {}).into_response())
 }
 
 async fn login_start(
