@@ -33,9 +33,9 @@ impl SessionStore for DbSessionStore {
     }
 
     async fn store_session(&self, session: Session) -> Result<Option<String>> {
-        tracing::warn!(?session);
         let json = serde_json::to_string(&session)?;
         let session_id = session.id();
+        tracing::trace!(session_id, "storing session");
         sqlx::query!(
             r"
             insert into session (session_id, as_json)
@@ -57,6 +57,7 @@ impl SessionStore for DbSessionStore {
     /// Remove a session from the session store
     async fn destroy_session(&self, session: Session) -> Result {
         let session_id = session.id();
+        tracing::trace!(session_id, "destroying session");
         sqlx::query!(
             r"
             delete from session
@@ -70,6 +71,7 @@ impl SessionStore for DbSessionStore {
     }
 
     async fn clear_store(&self) -> Result {
+        tracing::trace!("destroying all sessions");
         sqlx::query!(
             r"
             delete from session
