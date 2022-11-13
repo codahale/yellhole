@@ -9,7 +9,7 @@ DATA_DIR = "/data"
 AUTHOR = "Coda"
 RUST_LOG = "info,sqlx=warn"
 TZ = "America/Denver"
-BASE_URL = "https://yellhole.fly.dev"
+BASE_URL = "https://www.yellhole.com"
 
 [mounts]
 source = "yellhole_data"
