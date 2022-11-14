@@ -2,7 +2,7 @@ use chrono::NaiveDateTime;
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Image {
     pub image_id: String,
     pub created_at: NaiveDateTime,
@@ -42,6 +42,33 @@ impl Image {
         )
         .execute(db)
         .await?;
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[sqlx::test(fixtures("images"))]
+    async fn most_recent(db: SqlitePool) -> Result<(), sqlx::Error> {
+        let top_2 = Image::most_recent(&db, 2).await?;
+        assert_eq!(2, top_2.len());
+        assert_eq!("4c89cfef-9031-49c0-8b91-2578c0e227f3", &top_2[0].image_id);
+        assert_eq!("7963d8bc-9cf8-4459-a593-b6d49b94b541", &top_2[1].image_id);
+
+        Ok(())
+    }
+
+    #[sqlx::test]
+    async fn round_trip(db: SqlitePool) -> Result<(), sqlx::Error> {
+        let image_id = Uuid::new_v4();
+        Image::create(&db, &image_id, "garfield-levitate.gif", &mime::IMAGE_GIF).await?;
+
+        let top = Image::most_recent(&db, 3).await?;
+        assert_eq!(1, top.len());
+        assert_eq!(image_id.to_string(), top[0].image_id);
+
         Ok(())
     }
 }
