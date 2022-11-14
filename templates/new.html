@@ -1,45 +1,47 @@
 {% extends "layout.html" %}
 
 {% block content %}
-<div>
-    <details open>
-        <summary>New Note</summary>
-        <div>
-            <form action="/admin/new-note" method="post">
-                <textarea cols="40" rows="5" id="body" name="body" placeholder="It'sa me, _Mario_."></textarea>
-                <button type="submit">Post</button>
-                <details open>
-                    <summary>Recent Images</summary>
-                    <div>
-                        {% for image in images %}
-                        <img src="/images/{{ image.image_id }}.thumb.webp" onclick="insertImage('{{image.image_id}}')">
-                        {% endfor %}
-                    </div>
-                </details>
-            </form>
-        </div>
-    </details>
-    <details>
-        <summary>Upload Images</summary>
-        <div>
-            <form action="/admin/upload-images" enctype="multipart/form-data" method="post">
-                <label for="image">Images:</label>
-                <input type="file" id="image" name="image" accept="image/*" multiple>
-                <button type="submit">Upload</button>
-            </form>
-        </div>
-    </details>
-    <details>
-        <summary>Download Image</summary>
-        <div>
-            <form action="/admin/download-image" method="post">
-                <label for="url">URL:</label>
-                <input type="input" id="url" name="url" placeholder="https://trashbat.co.uk/gonkbot.gif">
-                <button type="submit">Download</button>
-            </form>
-        </div>
-    </details>
-</div>
+<article>
+    <section>
+        <form action="/admin/new-note" method="post">
+            <header>
+                <h2>New Note</h2>
+            </header>
+            <textarea cols="40" rows="5" id="body" name="body" placeholder="It'sa me, _Mario_."></textarea>
+            <button type="submit">Post</button>
+            <details open>
+                <summary>Recent Images</summary>
+                <div>
+                    {% for image in images %}
+                    <img src="/images/{{ image.image_id }}.thumb.webp" onclick="insertImage('{{image.image_id}}')">
+                    {% endfor %}
+                </div>
+            </details>
+        </form>
+    </section>
+    <hr>
+    <section>
+        <form action="/admin/upload-images" enctype="multipart/form-data" method="post">
+            <header>
+                <h2>Upload Images</h2>
+            </header>
+            <label for="image">Images:</label>
+            <input type="file" id="image" name="image" accept="image/*" multiple>
+            <button type="submit">Upload</button>
+        </form>
+    </section>
+    <hr>
+    <section>
+        <form action="/admin/download-image" method="post">
+            <header>
+                <h2>Download Image</h2>
+            </header>
+            <label for="url">URL:</label>
+            <input type="input" id="url" name="url" placeholder="https://trashbat.co.uk/gonkbot.gif" size="40">
+            <button type="submit">Download</button>
+        </form>
+    </section>
+</article>
 {% endblock %}
 
 {% block tail %}
