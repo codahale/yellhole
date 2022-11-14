@@ -1,5 +1,4 @@
 use std::net::SocketAddr;
-use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use askama::Template;
@@ -18,8 +17,9 @@ use tower_http::sensitive_headers::{
 };
 use tower_http::trace::TraceLayer;
 use url::Url;
-use webauthn_rs::{Webauthn, WebauthnBuilder};
+use webauthn_rs::WebauthnBuilder;
 
+use crate::config::{Author, DataDir, Title};
 use crate::models::DbSessionStore;
 
 mod admin;
@@ -27,53 +27,24 @@ mod asset;
 mod auth;
 mod feed;
 
-#[derive(Debug, Clone)]
-pub struct Context {
+#[derive(Debug)]
+pub struct App {
     db: SqlitePool,
+    data_dir: DataDir,
     base_url: Url,
-    name: String,
-    author: String,
-    images_dir: PathBuf,
-    uploads_dir: PathBuf,
-    webauthn: Arc<Webauthn>,
+    title: Title,
+    author: Author,
 }
 
-impl Context {
-    pub async fn new(
+impl App {
+    pub fn new(
         db: SqlitePool,
+        data_dir: DataDir,
         base_url: Url,
-        name: String,
-        author: String,
-        data_dir: impl AsRef<Path>,
-    ) -> Result<Context, anyhow::Error> {
-        // Create the images and uploads directories, if necessary.
-        let images_dir = data_dir.as_ref().join("images");
-        tracing::info!(?images_dir, "creating directory");
-        tokio::fs::create_dir_all(&images_dir).await?;
-
-        let uploads_dir = data_dir.as_ref().join("uploads");
-        tracing::info!(?uploads_dir, "creating directory");
-        tokio::fs::create_dir_all(&uploads_dir).await?;
-
-        // Create a WebAuthn context.
-        let webauthn = WebauthnBuilder::new(
-            &base_url
-                .host()
-                .ok_or_else(|| anyhow::anyhow!("base URL must include a host"))?
-                .to_string(),
-            &base_url,
-        )?
-        .build()?;
-
-        Ok(Context {
-            db,
-            base_url,
-            name,
-            author,
-            images_dir,
-            uploads_dir,
-            webauthn: Arc::new(webauthn),
-        })
+        title: Title,
+        author: Author,
+    ) -> App {
+        App { db, data_dir, base_url, title, author }
     }
 
     pub async fn serve(
@@ -82,6 +53,17 @@ impl Context {
         shutdown_hook: impl Future<Output = ()>,
     ) -> anyhow::Result<()> {
         tracing::info!(%addr, base_url=%self.base_url, "starting server");
+
+        // Create a WebAuthn context.
+        let webauthn = WebauthnBuilder::new(
+            &self
+                .base_url
+                .host()
+                .ok_or_else(|| anyhow::anyhow!("base URL must include a host"))?
+                .to_string(),
+            &self.base_url,
+        )?
+        .build()?;
 
         // Store sessions in the database. Use a constant key here because the cookie value is just
         // a random ID.
@@ -96,10 +78,15 @@ impl Context {
             .merge(auth::router())
             .layer(session_layer) // only enable sessions for auth and admin
             .merge(feed::router())
-            .merge(asset::router(&self.images_dir))
+            .merge(asset::router(self.data_dir.images_dir()))
             .layer(
                 ServiceBuilder::new()
-                    .layer(AddExtensionLayer::new(self))
+                    .layer(AddExtensionLayer::new(self.base_url))
+                    .layer(AddExtensionLayer::new(self.db))
+                    .layer(AddExtensionLayer::new(Arc::new(webauthn)))
+                    .layer(AddExtensionLayer::new(self.author))
+                    .layer(AddExtensionLayer::new(self.title))
+                    .layer(AddExtensionLayer::new(self.data_dir))
                     .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
                     .layer(SetSensitiveRequestHeadersLayer::new(std::iter::once(
                         http::header::COOKIE,

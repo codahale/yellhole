@@ -13,6 +13,7 @@ use axum_sessions::extractors::ReadableSession;
 use futures::{Stream, TryStreamExt};
 use mime::Mime;
 use serde::Deserialize;
+use sqlx::SqlitePool;
 use tokio::fs::File;
 use tokio::io::{self, BufWriter};
 use tokio::process::Command;
@@ -22,9 +23,10 @@ use tower_http::limit::RequestBodyLimitLayer;
 use url::Url;
 use uuid::Uuid;
 
+use crate::config::DataDir;
 use crate::models::{Image, Note};
 
-use super::{Context, Page};
+use super::Page;
 
 pub fn router() -> Router {
     Router::new()
@@ -47,8 +49,8 @@ struct NewPage {
     images: Vec<Image>,
 }
 
-async fn new_page(ctx: Extension<Context>) -> Result<Page<NewPage>, StatusCode> {
-    let images = Image::most_recent(&ctx.db, 10).await.map_err(|err| {
+async fn new_page(db: Extension<SqlitePool>) -> Result<Page<NewPage>, StatusCode> {
+    let images = Image::most_recent(&db, 10).await.map_err(|err| {
         tracing::warn!(%err, "unable to query recent images");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
@@ -61,11 +63,11 @@ struct NewNote {
 }
 
 async fn create_note(
-    ctx: Extension<Context>,
+    db: Extension<SqlitePool>,
     Form(new_note): Form<NewNote>,
 ) -> Result<Redirect, StatusCode> {
     let note_id = Uuid::new_v4();
-    Note::create(&ctx.db, &note_id.to_string(), &new_note.body).await.map_err(|err| {
+    Note::create(&db, &note_id.to_string(), &new_note.body).await.map_err(|err| {
         tracing::warn!(%err, "error inserting note");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
@@ -73,7 +75,8 @@ async fn create_note(
 }
 
 pub async fn upload_images(
-    ctx: Extension<Context>,
+    db: Extension<SqlitePool>,
+    data_dir: Extension<DataDir>,
     mut multipart: Multipart,
 ) -> Result<Redirect, StatusCode> {
     while let Some(field) = multipart.next_field().await.map_err(|_| StatusCode::BAD_REQUEST)? {
@@ -82,7 +85,7 @@ pub async fn upload_images(
         {
             if content_type.type_() == mime::IMAGE {
                 let original_filename = field.file_name().unwrap_or("none").to_string();
-                add_image(&ctx, &original_filename, &content_type, field).await?;
+                add_image(&db, &data_dir, &original_filename, &content_type, field).await?;
             }
         }
     }
@@ -95,7 +98,8 @@ struct DownloadImage {
 }
 
 async fn download_image(
-    ctx: Extension<Context>,
+    db: Extension<SqlitePool>,
+    data_dir: Extension<DataDir>,
     Form(image): Form<DownloadImage>,
 ) -> Result<Redirect, StatusCode> {
     // Parse the URL to see if it's valid.
@@ -122,13 +126,14 @@ async fn download_image(
         };
 
     let stream = image.bytes_stream();
-    add_image(&ctx, &original_filename, &content_type, stream).await?;
+    add_image(&db, &data_dir, &original_filename, &content_type, stream).await?;
 
     Ok(Redirect::to("/admin/new"))
 }
 
 async fn add_image<S, E>(
-    ctx: &Extension<Context>,
+    db: &SqlitePool,
+    data_dir: &DataDir,
     original_filename: &str,
     content_type: &Mime,
     stream: S,
@@ -141,17 +146,17 @@ where
     let image_id = Uuid::new_v4().to_string();
 
     // 2. write image to dir/uploads/{image_id}.orig.{ext}
-    let original_path = original_path(&ctx.uploads_dir, &image_id, content_type);
+    let original_path = data_dir.original_path(&image_id, content_type);
     stream_to_file(&original_path, stream).await.map_err(|err| {
         tracing::warn!(%err, image_id, "error downloading image");
         StatusCode::GATEWAY_TIMEOUT
     })?;
 
     // 3. process image, generating thumbnail etc. in parallel
-    let main_path = main_path(&ctx.images_dir, &image_id);
+    let main_path = data_dir.main_path(&image_id);
     let main = process_image(original_path.clone(), main_path, "600");
 
-    let thumbnail_path = thumbnail_path(&ctx.images_dir, &image_id);
+    let thumbnail_path = data_dir.thumbnail_path(&image_id);
     let thumbnail = process_image(original_path.clone(), thumbnail_path, "100");
 
     main.await.map_err(|err| {
@@ -164,7 +169,7 @@ where
     })?;
 
     // 4. Insert image into DB.
-    Image::create(&ctx.db, &image_id, original_filename, content_type).await.map_err(|err| {
+    Image::create(db, &image_id, original_filename, content_type).await.map_err(|err| {
         tracing::warn!(%err, image_id, "error creating image");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
@@ -205,18 +210,6 @@ async fn process_image(
         .arg(output)
         .spawn()?;
     proc.wait().await
-}
-
-fn original_path(uploads_dir: &Path, image_id: &str, content_type: &mime::Mime) -> PathBuf {
-    uploads_dir.join(format!("{image_id}.orig.{}", content_type.subtype()))
-}
-
-fn main_path(images_dir: &Path, image_id: &str) -> PathBuf {
-    images_dir.join(format!("{image_id}.main.webp"))
-}
-
-fn thumbnail_path(images_dir: &Path, image_id: &str) -> PathBuf {
-    images_dir.join(format!("{image_id}.thumb.webp"))
 }
 
 struct RequireAuth;
