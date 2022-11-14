@@ -1,7 +1,6 @@
 {% extends "layout.html" %}
 
 {% block head %}
-<link rel="stylesheet" href="/assets/css/prism-1.29.css">
 <link href="{{base_url}}atom.xml" rel="alternate" title="Atom" type="application/atom+xml" />
 {% endblock %}
 
@@ -27,9 +26,4 @@
     <a href="/notes/{{d.year()}}/{{d.month()}}">older</a>
     {% endfor %}
 </section>
-{% endblock %}
-
-{% block tail %}
-<script src="/assets/js/prism-core-1.29.min.js"></script>
-<script src="/assets/js/prism-autoloader-1.29.min.js"></script>
 {% endblock %}
