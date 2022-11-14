@@ -119,9 +119,7 @@ impl ErrorPage {
 
 async fn handle_errors<B>(req: http::Request<B>, next: Next<B>) -> Result<Response, StatusCode> {
     let resp = next.run(req).await;
-    if (resp.status().is_client_error() || resp.status().is_server_error())
-        && resp.status() != StatusCode::UNAUTHORIZED
-    {
+    if resp.status().is_server_error() || resp.status() == StatusCode::NOT_FOUND {
         return Ok(ErrorPage::for_status(resp.status()));
     }
     Ok(resp)
