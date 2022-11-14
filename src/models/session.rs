@@ -16,7 +16,7 @@ impl DbSessionStore {
     }
 
     pub async fn continuously_delete_expired(self) -> Result<()> {
-        let mut interval = time::interval(Duration::from_secs(10));
+        let mut interval = time::interval(Duration::from_secs(10 * 60));
         interval.tick().await; // skip immediate tick
         loop {
             interval.tick().await;
