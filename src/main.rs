@@ -29,10 +29,6 @@ struct Config {
     #[clap(long, default_value = "./data", env("DATA_DIR"))]
     data_dir: PathBuf,
 
-    /// The time zone to be used for formatting and parsing dates and times.
-    #[clap(long)]
-    time_zone: Option<String>,
-
     /// The title of the Yellhole instance.
     #[clap(long, default_value = "Yellhole", env("TITLE"))]
     title: Title,
@@ -51,11 +47,6 @@ async fn main() -> anyhow::Result<()> {
 
     // Initialize the data directory.
     let data_dir = DataDir::new(&config.data_dir)?;
-
-    // Override the TZ env var with any command line option for time zone.
-    if let Some(tz) = config.time_zone {
-        std::env::set_var("TZ", tz);
-    }
 
     // Configure tracing, defaulting to debug levels.
     tracing_subscriber::registry()
