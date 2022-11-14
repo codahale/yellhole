@@ -33,7 +33,7 @@ struct Config {
     #[clap(long)]
     time_zone: Option<String>,
 
-    /// The name of the Yellhole instance.
+    /// The title of the Yellhole instance.
     #[clap(long, default_value = "Yellhole", env("TITLE"))]
     title: Title,
 
