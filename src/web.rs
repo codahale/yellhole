@@ -55,15 +55,8 @@ impl App {
         tracing::info!(%addr, base_url=%self.base_url, "starting server");
 
         // Create a WebAuthn context.
-        let webauthn = WebauthnBuilder::new(
-            &self
-                .base_url
-                .host()
-                .ok_or_else(|| anyhow::anyhow!("base URL must include a host"))?
-                .to_string(),
-            &self.base_url,
-        )?
-        .build()?;
+        let webauthn =
+            WebauthnBuilder::new(self.base_url.host_str().unwrap(), &self.base_url)?.build()?;
 
         // Store sessions in the database. Use a constant key here because the cookie value is just
         // a random ID.
