@@ -1,6 +1,9 @@
+use std::time::Duration;
+
 use axum::async_trait;
 use axum_sessions::async_session::{Result, Session, SessionStore};
 use sqlx::SqlitePool;
+use tokio::time;
 
 #[derive(Debug, Clone)]
 pub struct DbSessionStore {
@@ -10,6 +13,28 @@ pub struct DbSessionStore {
 impl DbSessionStore {
     pub fn new(db: &SqlitePool) -> DbSessionStore {
         DbSessionStore { db: db.clone() }
+    }
+
+    pub async fn continuously_delete_expired(self) -> Result<()> {
+        let mut interval = time::interval(Duration::from_secs(10));
+        interval.tick().await; // skip immediate tick
+        loop {
+            interval.tick().await;
+            self.delete_expired().await?;
+        }
+    }
+
+    async fn delete_expired(&self) -> Result<()> {
+        tracing::trace!("destroying expired sessions");
+        sqlx::query!(
+            r"
+            delete from session
+            where updated_at < date('now', '-1 day');
+            ",
+        )
+        .execute(&self.db)
+        .await?;
+        Ok(())
     }
 }
 

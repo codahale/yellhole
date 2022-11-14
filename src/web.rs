@@ -9,6 +9,7 @@ use axum::response::{Html, IntoResponse, Response};
 use axum_sessions::{SameSite, SessionLayer};
 use futures::Future;
 use sqlx::SqlitePool;
+use tokio::task;
 use tower::ServiceBuilder;
 use tower_http::add_extension::AddExtensionLayer;
 use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
@@ -85,6 +86,7 @@ impl Context {
         // Store sessions in the database. Use a constant key here because the cookie value is just
         // a random ID.
         let store = DbSessionStore::new(&self.db);
+        let session_expiry = task::spawn(store.clone().continuously_delete_expired());
         let session_layer = SessionLayer::new(store, &[69; 64])
             .with_cookie_name("yellhole")
             .with_same_site_policy(SameSite::Strict)
@@ -114,6 +116,8 @@ impl Context {
             .serve(app.into_make_service())
             .with_graceful_shutdown(shutdown_hook)
             .await?;
+
+        session_expiry.await??;
 
         Ok(())
     }

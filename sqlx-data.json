@@ -56,6 +56,16 @@
     },
     "query": "\n            select credential_id, as_json, created_at, updated_at\n            from credential\n            "
   },
+  "1b4e89b8f180cef5606345c4558140cbf27b4f4ad8cdaa03e80b44ce9d58d473": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 0
+      }
+    },
+    "query": "\n            delete from session\n            where updated_at < date('now', '-1 day');\n            "
+  },
   "2f2785495263630d46588f5d6000fbf7931539d7ed9cf111a1e87a5b1ec6f7d9": {
     "describe": {
       "columns": [
