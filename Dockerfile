@@ -8,6 +8,7 @@ RUN source "$HOME/.cargo/env" && cargo build --release
 
 FROM alpine:edge
 RUN apk --no-cache add imagemagick openssl sqlite tzdata
+RUN cp /usr/share/zoneinfo/America/Denver /etc/localtime
 RUN echo "America/Denver" > /etc/timezone
 RUN apk del tzdata
 COPY --from=0 /app/target/release/yellhole .
