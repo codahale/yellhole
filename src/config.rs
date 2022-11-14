@@ -3,6 +3,8 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::{fs, io};
 
+use uuid::Uuid;
+
 #[derive(Debug, Clone)]
 pub struct Author(pub String);
 
@@ -55,15 +57,15 @@ impl DataDir {
         self.images_dir.as_path()
     }
 
-    pub fn original_path(&self, image_id: &str, content_type: &mime::Mime) -> PathBuf {
+    pub fn original_path(&self, image_id: &Uuid, content_type: &mime::Mime) -> PathBuf {
         self.uploads_dir.join(format!("{image_id}.orig.{}", content_type.subtype()))
     }
 
-    pub fn main_path(&self, image_id: &str) -> PathBuf {
+    pub fn main_path(&self, image_id: &Uuid) -> PathBuf {
         self.images_dir.join(format!("{image_id}.main.webp"))
     }
 
-    pub fn thumbnail_path(&self, image_id: &str) -> PathBuf {
+    pub fn thumbnail_path(&self, image_id: &Uuid) -> PathBuf {
         self.images_dir.join(format!("{image_id}.thumb.webp"))
     }
 }

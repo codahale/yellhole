@@ -67,7 +67,7 @@ async fn create_note(
     Form(new_note): Form<NewNote>,
 ) -> Result<Redirect, StatusCode> {
     let note_id = Uuid::new_v4();
-    Note::create(&db, &note_id.to_string(), &new_note.body).await.map_err(|err| {
+    Note::create(&db, &note_id, &new_note.body).await.map_err(|err| {
         tracing::warn!(%err, "error inserting note");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
@@ -137,18 +137,18 @@ async fn add_image<S, E>(
     original_filename: &str,
     content_type: &Mime,
     stream: S,
-) -> Result<String, StatusCode>
+) -> Result<Uuid, StatusCode>
 where
     S: Stream<Item = Result<Bytes, E>>,
     E: Into<BoxError>,
 {
     // 1. create an image ID
-    let image_id = Uuid::new_v4().to_string();
+    let image_id = Uuid::new_v4();
 
     // 2. write image to dir/uploads/{image_id}.orig.{ext}
     let original_path = data_dir.original_path(&image_id, content_type);
     stream_to_file(&original_path, stream).await.map_err(|err| {
-        tracing::warn!(%err, image_id, "error downloading image");
+        tracing::warn!(%err, %image_id, "error downloading image");
         StatusCode::GATEWAY_TIMEOUT
     })?;
 
@@ -160,17 +160,17 @@ where
     let thumbnail = process_image(original_path.clone(), thumbnail_path, "100");
 
     main.await.map_err(|err| {
-        tracing::warn!(%err, image_id, "error generating image");
+        tracing::warn!(%err, %image_id, "error generating image");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
     thumbnail.await.map_err(|err| {
-        tracing::warn!(%err, image_id, "error generating thumbnail");
+        tracing::warn!(%err, %image_id, "error generating thumbnail");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
     // 4. Insert image into DB.
     Image::create(db, &image_id, original_filename, content_type).await.map_err(|err| {
-        tracing::warn!(%err, image_id, "error creating image");
+        tracing::warn!(%err, %image_id, "error creating image");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 

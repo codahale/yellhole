@@ -1,5 +1,6 @@
 use chrono::NaiveDateTime;
 use sqlx::SqlitePool;
+use uuid::Uuid;
 
 #[derive(Debug)]
 pub struct Image {
@@ -25,16 +26,17 @@ impl Image {
 
     pub async fn create(
         db: &SqlitePool,
-        note_id: &str,
+        image_id: &Uuid,
         original_filename: &str,
         content_type: &mime::Mime,
     ) -> Result<(), sqlx::Error> {
+        let image_id = image_id.to_string();
         let content_type = content_type.to_string();
         sqlx::query!(
             r"
             insert into image (image_id, original_filename, content_type) values (?, ?, ?)
             ",
-            note_id,
+            image_id,
             original_filename,
             content_type
         )

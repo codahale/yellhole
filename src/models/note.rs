@@ -3,6 +3,7 @@ use std::ops::Range;
 use chrono::{DateTime, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
 use pulldown_cmark::{Event, HeadingLevel, Parser, Tag};
 use sqlx::SqlitePool;
+use uuid::Uuid;
 
 #[derive(Debug)]
 pub struct Note {
@@ -12,7 +13,8 @@ pub struct Note {
 }
 
 impl Note {
-    pub async fn create(db: &SqlitePool, note_id: &str, body: &str) -> Result<(), sqlx::Error> {
+    pub async fn create(db: &SqlitePool, note_id: &Uuid, body: &str) -> Result<(), sqlx::Error> {
+        let note_id = note_id.to_string();
         sqlx::query!(
             r"
             insert into note (note_id, body) values (?, ?)
@@ -25,7 +27,8 @@ impl Note {
         Ok(())
     }
 
-    pub async fn by_id(db: &SqlitePool, note_id: &str) -> Result<Option<Note>, sqlx::Error> {
+    pub async fn by_id(db: &SqlitePool, note_id: &Uuid) -> Result<Option<Note>, sqlx::Error> {
+        let note_id = note_id.to_string();
         sqlx::query_as!(
             Note,
             r"

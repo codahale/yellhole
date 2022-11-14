@@ -11,6 +11,7 @@ use serde::Deserialize;
 use sqlx::SqlitePool;
 use tower_http::set_header::SetResponseHeaderLayer;
 use url::Url;
+use uuid::Uuid;
 
 use super::Page;
 use crate::config::{Author, Title};
@@ -138,12 +139,13 @@ async fn month(
 async fn single(
     db: Extension<SqlitePool>,
     Extension(base_url): Extension<Url>,
-    Path(note_id): Path<String>,
+    Path(note_id): Path<Option<Uuid>>,
 ) -> Result<Page<FeedPage>, StatusCode> {
+    let note_id = note_id.ok_or(StatusCode::NOT_FOUND)?;
     let note = Note::by_id(&db, &note_id)
         .await
         .map_err(|err| {
-            tracing::warn!(?err, note_id, "error querying feed by id");
+            tracing::warn!(?err, %note_id, "error querying feed by id");
             StatusCode::INTERNAL_SERVER_ERROR
         })?
         .ok_or(StatusCode::NOT_FOUND)?;
