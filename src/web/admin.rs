@@ -141,17 +141,17 @@ where
     let image_id = Uuid::new_v4().to_string();
 
     // 2. write image to dir/uploads/{image_id}.orig.{ext}
-    let original_path = Image::original_path(&ctx.uploads_dir, &image_id, content_type);
+    let original_path = original_path(&ctx.uploads_dir, &image_id, content_type);
     stream_to_file(&original_path, stream).await.map_err(|err| {
         tracing::warn!(%err, image_id, "error downloading image");
         StatusCode::GATEWAY_TIMEOUT
     })?;
 
     // 3. process image, generating thumbnail etc. in parallel
-    let main_path = Image::main_path(&ctx.images_dir, &image_id);
+    let main_path = main_path(&ctx.images_dir, &image_id);
     let main = process_image(original_path.clone(), main_path, "600");
 
-    let thumbnail_path = Image::thumbnail_path(&ctx.images_dir, &image_id);
+    let thumbnail_path = thumbnail_path(&ctx.images_dir, &image_id);
     let thumbnail = process_image(original_path.clone(), thumbnail_path, "100");
 
     main.await.map_err(|err| {
@@ -205,6 +205,18 @@ async fn process_image(
         .arg(output)
         .spawn()?;
     proc.wait().await
+}
+
+fn original_path(uploads_dir: &Path, image_id: &str, content_type: &mime::Mime) -> PathBuf {
+    uploads_dir.join(format!("{image_id}.orig.{}", content_type.subtype()))
+}
+
+fn main_path(images_dir: &Path, image_id: &str) -> PathBuf {
+    images_dir.join(format!("{image_id}.main.webp"))
+}
+
+fn thumbnail_path(images_dir: &Path, image_id: &str) -> PathBuf {
+    images_dir.join(format!("{image_id}.thumb.webp"))
 }
 
 struct RequireAuth;

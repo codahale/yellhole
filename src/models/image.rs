@@ -1,5 +1,3 @@
-use std::path::{Path, PathBuf};
-
 use chrono::NaiveDateTime;
 use sqlx::SqlitePool;
 
@@ -23,18 +21,6 @@ impl Image {
         )
         .fetch_all(db)
         .await
-    }
-
-    pub fn original_path(uploads_dir: &Path, image_id: &str, content_type: &mime::Mime) -> PathBuf {
-        uploads_dir.join(format!("{image_id}.orig.{}", content_type.subtype()))
-    }
-
-    pub fn main_path(images_dir: &Path, image_id: &str) -> PathBuf {
-        images_dir.join(format!("{image_id}.main.webp"))
-    }
-
-    pub fn thumbnail_path(images_dir: &Path, image_id: &str) -> PathBuf {
-        images_dir.join(format!("{image_id}.thumb.webp"))
     }
 
     pub async fn create(
