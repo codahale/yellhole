@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use askama::Template;
+use axum::extract::{FromRequest, RequestParts};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
@@ -26,6 +27,25 @@ pub fn router() -> Router {
         .route("/login", get(login))
         .route("/login/start", post(login_start))
         .route("/login/finish", post(login_finish))
+}
+
+pub struct RequireAuth;
+
+#[axum::async_trait]
+impl<B> FromRequest<B> for RequireAuth
+where
+    B: Send,
+{
+    type Rejection = Redirect;
+
+    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+        let session = ReadableSession::from_request(req).await.expect("infallible");
+        session
+            .get::<bool>("authenticated")
+            .unwrap_or(false)
+            .then_some(Self)
+            .ok_or_else(|| Redirect::to("/login"))
+    }
 }
 
 #[derive(Debug, Template)]

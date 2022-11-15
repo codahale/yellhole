@@ -3,13 +3,12 @@ use std::process::ExitStatus;
 
 use askama::Template;
 use axum::body::Bytes;
-use axum::extract::{DefaultBodyLimit, FromRequest, Multipart, RequestParts};
+use axum::extract::{DefaultBodyLimit, Multipart};
 use axum::http::{self, StatusCode};
 use axum::middleware;
 use axum::response::Redirect;
 use axum::routing::{get, post};
-use axum::{async_trait, BoxError, Extension, Form, Router};
-use axum_sessions::extractors::ReadableSession;
+use axum::{BoxError, Extension, Form, Router};
 use futures::{Stream, TryStreamExt};
 use mime::Mime;
 use serde::Deserialize;
@@ -26,7 +25,7 @@ use uuid::Uuid;
 use crate::config::DataDir;
 use crate::models::{Image, Note};
 
-use super::Page;
+use super::{auth, Page};
 
 pub fn router() -> Router {
     Router::new()
@@ -39,7 +38,7 @@ pub fn router() -> Router {
                 .layer(DefaultBodyLimit::disable())
                 .layer(RequestBodyLimitLayer::new(32 * 1024 * 1024)),
         )
-        .route_layer(middleware::from_extractor::<RequireAuth>())
+        .route_layer(middleware::from_extractor::<auth::RequireAuth>())
 }
 
 #[derive(Debug, Template)]
@@ -211,23 +210,4 @@ async fn process_image(
         .arg(output)
         .spawn()?;
     proc.wait().await
-}
-
-struct RequireAuth;
-
-#[async_trait]
-impl<B> FromRequest<B> for RequireAuth
-where
-    B: Send,
-{
-    type Rejection = Redirect;
-
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let session = ReadableSession::from_request(req).await.expect("infallible");
-        session
-            .get::<bool>("authenticated")
-            .unwrap_or(false)
-            .then_some(Self)
-            .ok_or_else(|| Redirect::to("/login"))
-    }
 }
