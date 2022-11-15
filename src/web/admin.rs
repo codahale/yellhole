@@ -169,10 +169,12 @@ where
     })?;
 
     // 4. Insert image into DB.
-    Image::create(db, &image_id, original_filename, content_type).await.map_err(|err| {
-        tracing::warn!(%err, %image_id, "error creating image");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+    Image::create(db, image_id.as_hyphenated(), original_filename, content_type).await.map_err(
+        |err| {
+            tracing::warn!(%err, %image_id, "error creating image");
+            StatusCode::INTERNAL_SERVER_ERROR
+        },
+    )?;
 
     Ok(image_id)
 }

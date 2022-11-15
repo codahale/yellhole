@@ -2120,6 +2120,7 @@ dependencies = [
  "thiserror",
  "tokio-stream",
  "url",
+ "uuid",
 ]
 
 [[package]]

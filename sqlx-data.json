@@ -156,6 +156,30 @@
     },
     "query": "\n            select note_id, body, created_at\n            from note\n            where created_at >= ? and created_at < ?\n            order by created_at desc\n            "
   },
+  "6e083a849db6f2146ac4f10e80669559f0ff438eb4a8ea71a4f5b94466bba493": {
+    "describe": {
+      "columns": [
+        {
+          "name": "image_id: Hyphenated",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 1,
+          "type_info": "Datetime"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "\n            select image_id AS \"image_id: Hyphenated\", created_at\n            from image\n            order by created_at desc\n            limit ?\n            "
+  },
   "8ee2a1b0378701a88352f7e346cee7f6b6acda536c17684f48398e4b422bd37f": {
     "describe": {
       "columns": [
@@ -209,30 +233,6 @@
       }
     },
     "query": "\n            select as_json\n            from session\n            where session_id = ?\n            "
-  },
-  "c39ba26348b953a49a271e1bad752fd041644cf8e9f23a7e4b8e8f2eb1c7cbd3": {
-    "describe": {
-      "columns": [
-        {
-          "name": "image_id",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "created_at",
-          "ordinal": 1,
-          "type_info": "Datetime"
-        }
-      ],
-      "nullable": [
-        false,
-        false
-      ],
-      "parameters": {
-        "Right": 1
-      }
-    },
-    "query": "\n            select image_id, created_at\n            from image\n            order by created_at desc\n            limit ?\n            "
   },
   "d91e1e404723b448c9eff6ca46bd88da1748fd024b12c935ac6aa52d05020db1": {
     "describe": {
