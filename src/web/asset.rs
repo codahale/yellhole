@@ -9,7 +9,7 @@ use tower::ServiceBuilder;
 use tower_http::services::ServeDir;
 use tower_http::set_header::SetResponseHeaderLayer;
 
-pub fn router(images_dir: &std::path::Path) -> Router {
+pub fn router(images_dir: impl AsRef<std::path::Path>) -> Router {
     Router::new()
         .route("/assets/*path", get(static_path))
         .nest(
@@ -37,3 +37,37 @@ async fn io_error(err: io::Error) -> StatusCode {
 }
 
 static STATIC_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/assets");
+
+#[cfg(test)]
+mod tests {
+    use axum::body::Body;
+    use axum::http::Request;
+    use tower::ServiceExt;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn static_asset() -> Result<(), anyhow::Error> {
+        let app = router(".");
+
+        let response = app
+            .oneshot(Request::builder().uri("/assets/css/mvp-1.12.css").body(Body::empty())?)
+            .await?;
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn image() -> Result<(), anyhow::Error> {
+        let app = router(".");
+
+        let response =
+            app.oneshot(Request::builder().uri("/images/LICENSE").body(Body::empty())?).await?;
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        Ok(())
+    }
+}
