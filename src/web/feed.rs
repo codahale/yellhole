@@ -89,7 +89,7 @@ async fn atom(
         .iter()
         .map(|n| Entry {
             id: base_url.join(&format!("note/{}", n.note_id)).unwrap().to_string(),
-            title: Text { value: n.note_id.clone(), ..Default::default() },
+            title: Text { value: n.note_id.to_string(), ..Default::default() },
             content: Some(Content {
                 content_type: Some("html".into()),
                 value: Some(n.to_html()),
@@ -142,7 +142,7 @@ async fn single(
     Path(note_id): Path<Option<Uuid>>,
 ) -> Result<Page<FeedPage>, StatusCode> {
     let note_id = note_id.ok_or(StatusCode::NOT_FOUND)?;
-    let note = Note::by_id(&db, &note_id)
+    let note = Note::by_id(&db, note_id.as_hyphenated())
         .await
         .map_err(|err| {
             tracing::warn!(?err, %note_id, "error querying feed by id");

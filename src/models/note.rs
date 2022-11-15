@@ -3,17 +3,21 @@ use std::ops::Range;
 use chrono::{DateTime, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
 use pulldown_cmark::{Event, HeadingLevel, Parser, Tag};
 use sqlx::SqlitePool;
-use uuid::Uuid;
+use uuid::fmt::Hyphenated;
 
 #[derive(Debug)]
 pub struct Note {
-    pub note_id: String,
+    pub note_id: Hyphenated,
     pub body: String,
     pub created_at: NaiveDateTime,
 }
 
 impl Note {
-    pub async fn create(db: &SqlitePool, note_id: &Uuid, body: &str) -> Result<(), sqlx::Error> {
+    pub async fn create(
+        db: &SqlitePool,
+        note_id: &Hyphenated,
+        body: &str,
+    ) -> Result<(), sqlx::Error> {
         let note_id = note_id.to_string();
         sqlx::query!(
             r"
@@ -27,15 +31,14 @@ impl Note {
         Ok(())
     }
 
-    pub async fn by_id(db: &SqlitePool, note_id: &Uuid) -> Result<Option<Note>, sqlx::Error> {
-        let note_id = note_id.to_string();
+    pub async fn by_id(db: &SqlitePool, note_id: &Hyphenated) -> Result<Option<Note>, sqlx::Error> {
         sqlx::query_as!(
             Note,
-            r"
-            select note_id, body, created_at
+            r#"
+            select note_id as "note_id: Hyphenated", body, created_at
             from note
             where note_id = ?
-            ",
+            "#,
             note_id
         )
         .fetch_optional(db)
@@ -45,12 +48,12 @@ impl Note {
     pub async fn most_recent(db: &SqlitePool, n: u16) -> Result<Vec<Note>, sqlx::Error> {
         sqlx::query_as!(
             Note,
-            r"
-            select note_id, body, created_at
+            r#"
+            select note_id as "note_id: Hyphenated", body, created_at
             from note
             order by created_at desc
             limit ?
-            ",
+            "#,
             n
         )
         .fetch_all(db)
@@ -65,12 +68,12 @@ impl Note {
         let end = local_date_to_utc(&range.end);
         sqlx::query_as!(
             Note,
-            r"
-            select note_id, body, created_at
+            r#"
+            select note_id as "note_id: Hyphenated", body, created_at
             from note
             where created_at >= ? and created_at < ?
             order by created_at desc
-            ",
+            "#,
             start,
             end,
         )
@@ -118,4 +121,95 @@ fn render_markdown(md: &str) -> String {
     let mut out = String::new();
     pulldown_cmark::html::push_html(&mut out, parser);
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use uuid::Uuid;
+
+    use super::*;
+
+    #[sqlx::test(fixtures("notes"))]
+    async fn fetch_by_id(db: SqlitePool) -> Result<(), sqlx::Error> {
+        let note_id = Uuid::from_str("b0a2170c-5e91-42ad-aa1b-dabc3c6ea5b9").unwrap();
+        let note = Note::by_id(&db, note_id.as_hyphenated()).await?;
+        assert!(note.is_some());
+
+        let note = note.unwrap();
+        assert_eq!(note_id.as_hyphenated(), &note.note_id);
+        assert_eq!("Ok, I *guess* this is fine.", &note.body);
+
+        let note_id = Uuid::from_str("95d13d30-8ea9-4e4c-983f-53f9560a3b9c").unwrap();
+        assert!(Note::by_id(&db, note_id.as_hyphenated()).await?.is_none());
+
+        Ok(())
+    }
+
+    #[sqlx::test]
+    async fn round_trip(db: SqlitePool) -> Result<(), sqlx::Error> {
+        let note_id = Uuid::new_v4();
+        Note::create(&db, note_id.as_hyphenated(), "A small note.").await?;
+
+        let note = Note::by_id(&db, note_id.as_hyphenated()).await?;
+        assert!(note.is_some());
+
+        Ok(())
+    }
+
+    #[sqlx::test(fixtures("notes"))]
+    async fn most_recent(db: SqlitePool) -> Result<(), sqlx::Error> {
+        let notes = Note::most_recent(&db, 2).await?;
+
+        assert_eq!(2, notes.len());
+        assert_eq!("69b124f0-a4fa-40d0-83f4-06bc4213f3ca", notes[0].note_id.to_string());
+        assert_eq!("c1449d6c-6b5b-4ce4-a4d7-98853562fbf1", notes[1].note_id.to_string());
+
+        Ok(())
+    }
+
+    #[sqlx::test(fixtures("notes"))]
+    async fn date_range(db: SqlitePool) -> Result<(), sqlx::Error> {
+        let start = NaiveDate::from_ymd_opt(2022, 10, 1).unwrap();
+        let end = NaiveDate::from_ymd_opt(2022, 11, 1).unwrap();
+        let notes = Note::date_range(&db, start..end).await?;
+
+        assert!(notes.is_some());
+        let notes = notes.unwrap();
+        assert_eq!(1, notes.len());
+        assert_eq!("c1449d6c-6b5b-4ce4-a4d7-98853562fbf1", notes[0].note_id.to_string());
+
+        Ok(())
+    }
+
+    #[test]
+    fn render_markdown() {
+        let note = Note {
+            note_id: Uuid::new_v4().hyphenated(),
+            body: r#"
+# This is a heading.
+## This is a subheading.
+### This is a sub-sub-heading.
+#### This is a section heading?
+##### This is a nitpick.
+###### Unclear.
+            "#
+            .trim()
+            .into(),
+            created_at: Local::now().naive_local(),
+        };
+
+        assert_eq!(
+            r#"
+<h2>This is a heading.</h2>
+<h3>This is a subheading.</h3>
+<h4>This is a sub-sub-heading.</h4>
+<h5>This is a section heading?</h5>
+<h6>This is a nitpick.</h6>
+<strong>Unclear.</strong>"#
+                .trim(),
+            note.to_html()
+        );
+    }
 }

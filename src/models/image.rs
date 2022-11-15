@@ -13,7 +13,7 @@ impl Image {
         sqlx::query_as!(
             Image,
             r#"
-            select image_id AS "image_id: Hyphenated", created_at
+            select image_id as "image_id: Hyphenated", created_at
             from image
             order by created_at desc
             limit ?

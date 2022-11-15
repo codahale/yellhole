@@ -67,7 +67,7 @@ async fn create_note(
     Form(new_note): Form<NewNote>,
 ) -> Result<Redirect, StatusCode> {
     let note_id = Uuid::new_v4();
-    Note::create(&db, &note_id, &new_note.body).await.map_err(|err| {
+    Note::create(&db, note_id.as_hyphenated(), &new_note.body).await.map_err(|err| {
         tracing::warn!(%err, "error inserting note");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
