@@ -5,7 +5,7 @@ use askama::Template;
 use axum::body::Bytes;
 use axum::extract::{DefaultBodyLimit, FromRequest, Multipart, RequestParts};
 use axum::http::{self, StatusCode};
-use axum::middleware::{self};
+use axum::middleware;
 use axum::response::Redirect;
 use axum::routing::{get, post};
 use axum::{async_trait, BoxError, Extension, Form, Router};

@@ -1,8 +1,7 @@
 use askama::Template;
 use atom_syndication::{Content, Entry, Feed, FixedDateTime, Link, Person, Text};
 use axum::extract::{Path, Query};
-use axum::http;
-use axum::http::StatusCode;
+use axum::http::{self, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::{Extension, Router};
