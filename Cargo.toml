@@ -46,6 +46,7 @@ webauthn-rs = { version = "0.4.8", features = ["danger-allow-state-serialisation
 
 [dev-dependencies]
 hyper = "0.14.23"
+tempdir = "0.3.7"
 
 [workspace]
 members = ["xtask"]

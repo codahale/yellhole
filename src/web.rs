@@ -68,6 +68,7 @@ impl App {
             .with_secure(self.base_url.scheme() == "https");
 
         let app = admin::router()
+            .route_layer(middleware::from_extractor::<auth::RequireAuth>())
             .merge(auth::router())
             .layer(session_layer) // only enable sessions for auth and admin
             .merge(feed::router())

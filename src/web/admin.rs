@@ -5,7 +5,6 @@ use askama::Template;
 use axum::body::Bytes;
 use axum::extract::{DefaultBodyLimit, Multipart};
 use axum::http::{self, StatusCode};
-use axum::middleware;
 use axum::response::Redirect;
 use axum::routing::{get, post};
 use axum::{BoxError, Extension, Form, Router};
@@ -25,7 +24,7 @@ use uuid::Uuid;
 use crate::config::DataDir;
 use crate::models::{Image, Note};
 
-use super::{auth, Page};
+use super::Page;
 
 pub fn router() -> Router {
     Router::new()
@@ -38,7 +37,6 @@ pub fn router() -> Router {
                 .layer(DefaultBodyLimit::disable())
                 .layer(RequestBodyLimitLayer::new(32 * 1024 * 1024)),
         )
-        .route_layer(middleware::from_extractor::<auth::RequireAuth>())
 }
 
 #[derive(Debug, Template)]
@@ -210,4 +208,46 @@ async fn process_image(
         .arg(output)
         .spawn()?;
     proc.wait().await
+}
+
+#[cfg(test)]
+mod tests {
+    use axum_sessions::async_session::MemoryStore;
+    use axum_sessions::SessionLayer;
+    use hyper::{Body, Request};
+    use tempdir::TempDir;
+    use tower::ServiceExt;
+    use tower_http::add_extension::AddExtensionLayer;
+
+    use crate::config::{Author, Title};
+
+    use super::*;
+
+    #[sqlx::test(fixtures("notes", "images"))]
+    async fn new_note_ui(db: SqlitePool) -> Result<(), anyhow::Error> {
+        let temp_dir = TempDir::new("yellhole-test")?;
+
+        let app = app(&db, &temp_dir)?;
+        let response =
+            app.oneshot(Request::builder().uri("/admin/new").body(Body::empty())?).await?;
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = String::from_utf8(hyper::body::to_bytes(response.into_body()).await?.to_vec())?;
+        assert!(body.contains("/images/cbdc5a69-abba-4d75-9679-44259c48b272.thumb.webp"));
+
+        Ok(())
+    }
+
+    fn app(db: &SqlitePool, temp_dir: &TempDir) -> Result<Router, anyhow::Error> {
+        let data_dir = DataDir::new(temp_dir.path())?;
+        let store = MemoryStore::new();
+        let session_layer = SessionLayer::new(store, &[69; 64]);
+        Ok(router()
+            .layer(AddExtensionLayer::new(db.clone()))
+            .layer(AddExtensionLayer::new("http://example.com".parse::<Url>().unwrap()))
+            .layer(AddExtensionLayer::new(Author("Mr Magoo".into())))
+            .layer(AddExtensionLayer::new(Title("Yellhole".into())))
+            .layer(AddExtensionLayer::new(data_dir))
+            .layer(session_layer))
+    }
 }
