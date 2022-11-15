@@ -36,10 +36,9 @@ pub fn router() -> Router {
         .route("/admin/download-image", post(download_image))
         .layer(
             ServiceBuilder::new()
-                // .layer(RequireAuthorizationLayer::basic("admin", password))
-                .layer(DefaultBodyLimit::disable()),
+                .layer(DefaultBodyLimit::disable())
+                .layer(RequestBodyLimitLayer::new(32 * 1024 * 1024)),
         )
-        .layer(RequestBodyLimitLayer::new(32 * 1024 * 1024))
         .route_layer(middleware::from_extractor::<RequireAuth>())
 }
 
