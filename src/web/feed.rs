@@ -139,9 +139,9 @@ async fn month(
 async fn single(
     db: Extension<SqlitePool>,
     Extension(base_url): Extension<Url>,
-    Path(note_id): Path<Option<Uuid>>,
+    Path(note_id): Path<String>,
 ) -> Result<Page<FeedPage>, StatusCode> {
-    let note_id = note_id.ok_or(StatusCode::NOT_FOUND)?;
+    let note_id = note_id.parse::<Uuid>().map_err(|_| StatusCode::NOT_FOUND)?;
     let note = Note::by_id(&db, note_id.as_hyphenated())
         .await
         .map_err(|err| {
@@ -150,4 +150,114 @@ async fn single(
         })?
         .ok_or(StatusCode::NOT_FOUND)?;
     Ok(Page(FeedPage { notes: vec![note], base_url, newer: None, older: None }))
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    use axum::body::Body;
+    use axum::http::Request;
+    use tower::ServiceExt;
+    use tower_http::add_extension::AddExtensionLayer;
+
+    #[sqlx::test(fixtures("notes"))]
+    async fn main(db: SqlitePool) -> Result<(), anyhow::Error> {
+        let app = app(&db);
+        let response = app.oneshot(Request::builder().uri("/").body(Body::empty())?).await?;
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = String::from_utf8(hyper::body::to_bytes(response.into_body()).await?.to_vec())?;
+        assert!(body.contains("Hello, it is a header"));
+
+        Ok(())
+    }
+
+    #[sqlx::test(fixtures("notes"))]
+    async fn atom_feed(db: SqlitePool) -> Result<(), anyhow::Error> {
+        let app = app(&db);
+        let response =
+            app.oneshot(Request::builder().uri("/atom.xml").body(Body::empty())?).await?;
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response.headers().get(http::header::CONTENT_TYPE),
+            Some(&http::HeaderValue::from_static(mime::TEXT_XML.as_ref()))
+        );
+
+        let body = String::from_utf8(hyper::body::to_bytes(response.into_body()).await?.to_vec())?;
+        assert!(body.contains("Hello, it is a header"));
+
+        Ok(())
+    }
+
+    #[sqlx::test(fixtures("notes"))]
+    async fn monthly_view(db: SqlitePool) -> Result<(), anyhow::Error> {
+        let app = app(&db);
+        let response =
+            app.oneshot(Request::builder().uri("/notes/2022/10").body(Body::empty())?).await?;
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = String::from_utf8(hyper::body::to_bytes(response.into_body()).await?.to_vec())?;
+        assert!(body.contains("Hello, it is a header"));
+
+        Ok(())
+    }
+
+    #[sqlx::test(fixtures("notes"))]
+    async fn single_note(db: SqlitePool) -> Result<(), anyhow::Error> {
+        let app = app(&db);
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/note/c1449d6c-6b5b-4ce4-a4d7-98853562fbf1")
+                    .body(Body::empty())?,
+            )
+            .await?;
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = String::from_utf8(hyper::body::to_bytes(response.into_body()).await?.to_vec())?;
+        assert!(body.contains("Hello, it is a header"));
+
+        Ok(())
+    }
+
+    #[sqlx::test(fixtures("notes"))]
+    async fn bad_note_id(db: SqlitePool) -> Result<(), anyhow::Error> {
+        let app = app(&db);
+        let response =
+            app.oneshot(Request::builder().uri("/note/missing").body(Body::empty())?).await?;
+
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+
+        Ok(())
+    }
+
+    #[sqlx::test(fixtures("notes"))]
+    async fn missing_note_id(db: SqlitePool) -> Result<(), anyhow::Error> {
+        let app = app(&db);
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/note/37c615b0-bb55-424d-a813-69e14ca5c20c")
+                    .body(Body::empty())?,
+            )
+            .await?;
+
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+
+        Ok(())
+    }
+
+    fn app(db: &SqlitePool) -> Router {
+        router()
+            .layer(AddExtensionLayer::new(db.clone()))
+            .layer(AddExtensionLayer::new("http://example.com".parse::<Url>().unwrap()))
+            .layer(AddExtensionLayer::new(Author("Mr Magoo".into())))
+            .layer(AddExtensionLayer::new(Title("Yellhole".into())))
+    }
 }

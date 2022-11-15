@@ -2965,6 +2965,7 @@ dependencies = [
  "clap",
  "futures",
  "hex",
+ "hyper",
  "include_dir",
  "mime",
  "mime_guess",
