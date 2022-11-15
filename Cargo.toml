@@ -29,7 +29,15 @@ thiserror = "1.0.37"
 tokio = { version = "1.21.2", features = ["full"] }
 tokio-util = "0.7.4"
 tower = "0.4.13"
-tower-http = { version = "0.3.4", features = ["full"] }
+tower-http = { version = "0.3.4", features = [
+    "add-extension",
+    "sensitive-headers",
+    "trace",
+    "set-header",
+    "fs",
+    "request-id",
+    "limit",
+] }
 tracing = { version = "0.1.37", features = ["log"] }
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 url = "2.3.1"
