@@ -217,7 +217,6 @@ mod tests {
     use hyper::{Body, Request};
     use tempdir::TempDir;
     use tower::ServiceExt;
-    use tower_http::add_extension::AddExtensionLayer;
 
     use crate::config::{Author, Title};
 
@@ -243,11 +242,11 @@ mod tests {
         let store = MemoryStore::new();
         let session_layer = SessionLayer::new(store, &[69; 64]);
         Ok(router()
-            .layer(AddExtensionLayer::new(db.clone()))
-            .layer(AddExtensionLayer::new("http://example.com".parse::<Url>().unwrap()))
-            .layer(AddExtensionLayer::new(Author("Mr Magoo".into())))
-            .layer(AddExtensionLayer::new(Title("Yellhole".into())))
-            .layer(AddExtensionLayer::new(data_dir))
+            .layer(Extension(db.clone()))
+            .layer(Extension("http://example.com".parse::<Url>().unwrap()))
+            .layer(Extension(Author("Mr Magoo".into())))
+            .layer(Extension(Title("Yellhole".into())))
+            .layer(Extension(data_dir))
             .layer(session_layer))
     }
 }

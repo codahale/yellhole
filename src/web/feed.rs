@@ -153,13 +153,11 @@ async fn single(
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
 
     use axum::body::Body;
     use axum::http::Request;
     use tower::ServiceExt;
-    use tower_http::add_extension::AddExtensionLayer;
 
     #[sqlx::test(fixtures("notes"))]
     async fn main(db: SqlitePool) -> Result<(), anyhow::Error> {
@@ -254,9 +252,9 @@ mod tests {
 
     fn app(db: &SqlitePool) -> Router {
         router()
-            .layer(AddExtensionLayer::new(db.clone()))
-            .layer(AddExtensionLayer::new("http://example.com".parse::<Url>().unwrap()))
-            .layer(AddExtensionLayer::new(Author("Mr Magoo".into())))
-            .layer(AddExtensionLayer::new(Title("Yellhole".into())))
+            .layer(Extension(db.clone()))
+            .layer(Extension("http://example.com".parse::<Url>().unwrap()))
+            .layer(Extension(Author("Mr Magoo".into())))
+            .layer(Extension(Title("Yellhole".into())))
     }
 }

@@ -4,12 +4,12 @@ use askama::Template;
 use axum::http::{self, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::{Html, IntoResponse, Response};
+use axum::Extension;
 use axum_sessions::{SameSite, SessionLayer};
 use futures::Future;
 use sqlx::SqlitePool;
 use tokio::task;
 use tower::ServiceBuilder;
-use tower_http::add_extension::AddExtensionLayer;
 use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
 use tower_http::sensitive_headers::{
     SetSensitiveRequestHeadersLayer, SetSensitiveResponseHeadersLayer,
@@ -70,15 +70,12 @@ impl App {
             .merge(asset::router(self.data_dir.images_dir()))
             .layer(
                 ServiceBuilder::new()
-                    .layer(AddExtensionLayer::new(PasskeyService::new(
-                        self.db.clone(),
-                        &self.base_url,
-                    )))
-                    .layer(AddExtensionLayer::new(self.base_url))
-                    .layer(AddExtensionLayer::new(self.db))
-                    .layer(AddExtensionLayer::new(self.author))
-                    .layer(AddExtensionLayer::new(self.title))
-                    .layer(AddExtensionLayer::new(self.data_dir))
+                    .layer(Extension(PasskeyService::new(self.db.clone(), &self.base_url)))
+                    .layer(Extension(self.base_url))
+                    .layer(Extension(self.db))
+                    .layer(Extension(self.author))
+                    .layer(Extension(self.title))
+                    .layer(Extension(self.data_dir))
                     .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
                     .layer(SetSensitiveRequestHeadersLayer::new(std::iter::once(
                         http::header::COOKIE,

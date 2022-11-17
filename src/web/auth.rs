@@ -165,7 +165,6 @@ mod tests {
     use hyper::{Body, Request};
     use sqlx::SqlitePool;
     use tower::ServiceExt;
-    use tower_http::add_extension::AddExtensionLayer;
     use url::Url;
 
     use crate::config::{Author, Title};
@@ -226,12 +225,12 @@ mod tests {
         let store = MemoryStore::new();
         let session_layer = SessionLayer::new(store, &[69; 64]);
         router()
-            .layer(AddExtensionLayer::new(PasskeyService::new(
+            .layer(Extension(PasskeyService::new(
                 db,
                 &"http://example.com".parse::<Url>().unwrap(),
             )))
-            .layer(AddExtensionLayer::new(Author("Mr Magoo".into())))
-            .layer(AddExtensionLayer::new(Title("Yellhole".into())))
+            .layer(Extension(Author("Mr Magoo".into())))
+            .layer(Extension(Title("Yellhole".into())))
             .layer(session_layer)
     }
 }
