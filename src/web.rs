@@ -19,6 +19,7 @@ use url::Url;
 
 use crate::config::{Author, DataDir, Title};
 use crate::models::DbSessionStore;
+use crate::services::passkeys::PasskeyService;
 
 mod admin;
 mod asset;
@@ -69,6 +70,10 @@ impl App {
             .merge(asset::router(self.data_dir.images_dir()))
             .layer(
                 ServiceBuilder::new()
+                    .layer(AddExtensionLayer::new(PasskeyService::new(
+                        self.db.clone(),
+                        &self.base_url,
+                    )))
                     .layer(AddExtensionLayer::new(self.base_url))
                     .layer(AddExtensionLayer::new(self.db))
                     .layer(AddExtensionLayer::new(self.author))

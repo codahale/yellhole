@@ -13,6 +13,7 @@ use crate::web::App;
 
 mod config;
 mod models;
+mod services;
 mod web;
 
 #[derive(Debug, Parser)]

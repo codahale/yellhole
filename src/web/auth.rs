@@ -5,14 +5,12 @@ use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
 use axum::{Extension, Json, Router};
 use axum_sessions::extractors::{ReadableSession, WritableSession};
-use sqlx::SqlitePool;
-use url::Url;
 use uuid::Uuid;
 
 use super::Page;
 use crate::config::Author;
-use crate::models::passkey::{
-    self, AuthenticationChallenge, AuthenticationResponse, RegistrationChallenge,
+use crate::services::passkeys::{
+    AuthenticationChallenge, AuthenticationResponse, PasskeyService, RegistrationChallenge,
     RegistrationResponse,
 };
 
@@ -50,10 +48,10 @@ where
 struct RegisterPage {}
 
 async fn register(
-    db: Extension<SqlitePool>,
+    passkeys: Extension<PasskeyService>,
     session: ReadableSession,
 ) -> Result<Response, StatusCode> {
-    let registered = passkey::any_registered(&db).await.map_err(|err| {
+    let registered = passkeys.any_registered().await.map_err(|err| {
         tracing::warn!(%err, "unable to query DB");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
@@ -65,30 +63,24 @@ async fn register(
 }
 
 async fn register_start(
-    db: Extension<SqlitePool>,
-    base_url: Extension<Url>,
+    passkeys: Extension<PasskeyService>,
     Extension(Author(author)): Extension<Author>,
 ) -> Result<Json<RegistrationChallenge>, StatusCode> {
-    passkey::start_registration(
-        &db,
-        &base_url,
-        &author,
-        Uuid::default().as_hyphenated().to_string().as_bytes(),
-    )
-    .await
-    .map(Json)
-    .map_err(|err| {
-        tracing::warn!(%err, "unable to start passkey registration");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })
+    passkeys
+        .start_registration(&author, Uuid::default().as_hyphenated().to_string().as_bytes())
+        .await
+        .map(Json)
+        .map_err(|err| {
+            tracing::warn!(%err, "unable to start passkey registration");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })
 }
 
 async fn register_finish(
-    db: Extension<SqlitePool>,
-    base_url: Extension<Url>,
+    passkeys: Extension<PasskeyService>,
     Json(resp): Json<RegistrationResponse>,
 ) -> Result<Response, StatusCode> {
-    passkey::finish_registration(&db, &base_url, resp).await.map_err(|err| {
+    passkeys.finish_registration(resp).await.map_err(|err| {
         tracing::warn!(%err, "unable to finish passkey registration");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
@@ -101,14 +93,14 @@ async fn register_finish(
 struct LoginPage {}
 
 async fn login(
-    db: Extension<SqlitePool>,
+    passkeys: Extension<PasskeyService>,
     session: ReadableSession,
 ) -> Result<Response, StatusCode> {
     if session.get::<bool>("authenticated").unwrap_or(false) {
         return Ok(Redirect::to("/admin/new").into_response());
     }
 
-    let registered = passkey::any_registered(&db).await.map_err(|err| {
+    let registered = passkeys.any_registered().await.map_err(|err| {
         tracing::warn!(%err, "unable to query DB");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
@@ -120,11 +112,10 @@ async fn login(
 }
 
 async fn login_start(
-    db: Extension<SqlitePool>,
-    base_url: Extension<Url>,
+    passkeys: Extension<PasskeyService>,
     mut session: WritableSession,
 ) -> Result<Json<AuthenticationChallenge>, StatusCode> {
-    let resp = passkey::start_authentication(&db, &base_url).await.map_err(|err| {
+    let resp = passkeys.start_authentication().await.map_err(|err| {
         tracing::warn!(%err, "unable to start passkey authentication");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
@@ -140,23 +131,20 @@ async fn login_start(
 }
 
 async fn login_finish(
-    db: Extension<SqlitePool>,
-    base_url: Extension<Url>,
+    passkeys: Extension<PasskeyService>,
     mut session: WritableSession,
     Json(auth): Json<AuthenticationResponse>,
 ) -> Result<Response, StatusCode> {
-    // webauthn_rs::prelude::Webauthn::finish_passkey_authentication(&self, reg, state);
     let challenge = session.get::<[u8; 32]>("challenge").ok_or_else(|| {
         tracing::warn!("no stored authentication state");
         StatusCode::BAD_REQUEST
     })?;
     session.remove("challenge");
 
-    let authenticated =
-        passkey::finish_authentication(&db, &base_url, auth, challenge).await.map_err(|err| {
-            tracing::warn!(%err, "unable to finish passkey authentication");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+    let authenticated = passkeys.finish_authentication(auth, challenge).await.map_err(|err| {
+        tracing::warn!(%err, "unable to finish passkey authentication");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
     if authenticated {
         session.insert("authenticated", true).map_err(|err| {
@@ -175,8 +163,10 @@ mod tests {
     use axum_sessions::async_session::MemoryStore;
     use axum_sessions::SessionLayer;
     use hyper::{Body, Request};
+    use sqlx::SqlitePool;
     use tower::ServiceExt;
     use tower_http::add_extension::AddExtensionLayer;
+    use url::Url;
 
     use crate::config::{Author, Title};
 
@@ -184,7 +174,7 @@ mod tests {
 
     #[sqlx::test]
     async fn fresh_login_page(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let app = app(&db);
+        let app = app(db);
         let response = app.oneshot(Request::builder().uri("/login").body(Body::empty())?).await?;
 
         assert_eq!(response.status(), StatusCode::SEE_OTHER);
@@ -198,7 +188,7 @@ mod tests {
 
     #[sqlx::test]
     async fn fresh_register_page(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let app = app(&db);
+        let app = app(db);
         let response =
             app.oneshot(Request::builder().uri("/register").body(Body::empty())?).await?;
 
@@ -209,7 +199,7 @@ mod tests {
 
     #[sqlx::test(fixtures("fake_passkey"))]
     async fn registered_register_page(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let app = app(&db);
+        let app = app(db);
         let response =
             app.oneshot(Request::builder().uri("/register").body(Body::empty())?).await?;
 
@@ -224,7 +214,7 @@ mod tests {
 
     #[sqlx::test(fixtures("fake_passkey"))]
     async fn registered_login_page(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let app = app(&db);
+        let app = app(db);
         let response = app.oneshot(Request::builder().uri("/login").body(Body::empty())?).await?;
 
         assert_eq!(response.status(), StatusCode::OK);
@@ -232,12 +222,14 @@ mod tests {
         Ok(())
     }
 
-    fn app(db: &SqlitePool) -> Router {
+    fn app(db: SqlitePool) -> Router {
         let store = MemoryStore::new();
         let session_layer = SessionLayer::new(store, &[69; 64]);
         router()
-            .layer(AddExtensionLayer::new(db.clone()))
-            .layer(AddExtensionLayer::new("http://example.com".parse::<Url>().unwrap()))
+            .layer(AddExtensionLayer::new(PasskeyService::new(
+                db,
+                &"http://example.com".parse::<Url>().unwrap(),
+            )))
             .layer(AddExtensionLayer::new(Author("Mr Magoo".into())))
             .layer(AddExtensionLayer::new(Title("Yellhole".into())))
             .layer(session_layer)
