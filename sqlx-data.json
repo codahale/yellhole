@@ -24,24 +24,6 @@
     },
     "query": "\n            select image_id as \"image_id: Hyphenated\", created_at\n            from image\n            order by created_at desc\n            limit ?\n            "
   },
-  "11b5c6cd16d6f147d410c7c46d9e70dea5dba25fc56f7da892ba802384508bff": {
-    "describe": {
-      "columns": [
-        {
-          "name": "public_key_sec1",
-          "ordinal": 0,
-          "type_info": "Blob"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Right": 1
-      }
-    },
-    "query": "select public_key_sec1 from passkey where passkey_id = ?"
-  },
   "37a817c270013a2c817876692bb5f8d6fb7667db99e3a96c6dcf5aaa15d5187e": {
     "describe": {
       "columns": [],
@@ -79,6 +61,16 @@
       }
     },
     "query": "select count(passkey_id) as n from passkey"
+  },
+  "706f1a8390b2f373444a1ec0fbd1df78ebe5321c5d43f005c58223dcf641ee97": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "insert into passkey (passkey_id, public_key_spki) values (?, ?)"
   },
   "714982ad35c720d316be9b24a7114455306cdc50e8462fa4d7e9d2f67678dfae": {
     "describe": {
@@ -130,6 +122,24 @@
     },
     "query": "delete from session where session_id = ?"
   },
+  "ada3985d164523ba34f03976cb0d15e46fa0fc66c10ac4114440e2e7a097a08d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "public_key_spki",
+          "ordinal": 0,
+          "type_info": "Blob"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "select public_key_spki from passkey where passkey_id = ?"
+  },
   "aea2b8ecf7dd2be81b1a75e89676af0472836f2f8f137f77ffb66fc2e82866df": {
     "describe": {
       "columns": [
@@ -165,16 +175,6 @@
       }
     },
     "query": "select as_json from session where session_id = ?"
-  },
-  "de47af0a65b78bc96682f907331366a8015813feabbd8e84344a04758181c08d": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Right": 2
-      }
-    },
-    "query": "insert into passkey (passkey_id, public_key_sec1) values (?, ?)"
   },
   "e4b86950bf54dec10c242141ca1f7e2e83cc5d19691f4dd63f27c42005ae84e6": {
     "describe": {

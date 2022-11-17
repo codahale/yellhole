@@ -38,15 +38,12 @@ pub async fn start_registration(
     base_url: &Url,
     username: &str,
 ) -> Result<RegistrationChallenge, sqlx::Error> {
-    // Find all passkey IDs.
-    let passkey_ids = passkey_ids(db).await?;
-
     // Return a registration challenge with an all-zero UUID as the user ID.
     Ok(RegistrationChallenge {
         rp_id: base_url.host_str().unwrap().into(),
         username: username.into(),
         user_id: Uuid::default().as_hyphenated().to_string().into_bytes(),
-        passkey_ids,
+        passkey_ids: passkey_ids(db).await?,
     })
 }
 
@@ -72,8 +69,7 @@ pub async fn finish_registration(
     resp: RegistrationResponse,
 ) -> Result<(), anyhow::Error> {
     // Try decoding the P-256 public key from its DER encoding.
-    let public_key = VerifyingKey::from_public_key_der(&resp.public_key)?;
-    let public_key_sec1 = public_key.to_encoded_point(true).as_bytes().to_vec();
+    VerifyingKey::from_public_key_der(&resp.public_key)?;
 
     // Decode and validate the client data.
     if !serde_json::from_slice::<CollectedClientData>(&resp.client_data_json)
@@ -96,11 +92,11 @@ pub async fn finish_registration(
     anyhow::ensure!(resp.authenticator_data.len() > 55 + cred_id_len, "bad credential ID size");
     let passkey_id = resp.authenticator_data[55..55 + cred_id_len].to_vec();
 
-    // Insert the passkey ID and SEC1-encoded public key into the database.
+    // Insert the passkey ID and DER-encoded public key into the database.
     sqlx::query!(
-        r"insert into passkey (passkey_id, public_key_sec1) values (?, ?)",
+        r"insert into passkey (passkey_id, public_key_spki) values (?, ?)",
         passkey_id,
-        public_key_sec1
+        resp.public_key,
     )
     .execute(db)
     .await?;
@@ -114,8 +110,10 @@ struct CollectedClientData {
     #[serde_as(as = "PickFirst<(Base64, Base64<UrlSafe, Unpadded>)>")]
     challenge: Option<Vec<u8>>,
     origin: Url,
+
     #[serde(rename = "type")]
     type_: String,
+
     #[serde(rename = "crossOrigin")]
     cross_origin: Option<bool>,
 }
@@ -208,19 +206,19 @@ pub async fn finish_authentication(
     }
 
     // Find the passkey by ID.
-    let Some(public_key_sec1) = sqlx::query!(
-        r"select public_key_sec1 from passkey where passkey_id = ?",
+    let Some(public_key_spki) = sqlx::query!(
+        r"select public_key_spki from passkey where passkey_id = ?",
         resp.raw_id,
     )
     .fetch_optional(db)
     .await?
-    .map(|r| r.public_key_sec1) else {
+    .map(|r| r.public_key_spki) else {
         tracing::warn!(passkey_id=?resp.raw_id, "unable to find passkey");
         return Ok(false);
     };
 
     // Decode the public key.
-    let Ok(public_key) = VerifyingKey::from_sec1_bytes(&public_key_sec1) else {
+    let Ok(public_key) = VerifyingKey::from_public_key_der(&public_key_spki) else {
         tracing::warn!(passkey_id=?resp.raw_id, "unable to decode public key");
         return Ok(false);
     };
