@@ -90,6 +90,24 @@
     },
     "query": "\n            delete from session\n            where updated_at < date('now', '-1 day');\n            "
   },
+  "36d54fd65ca4a76e1ff98f6d70b93744f345135d7187fe1beec9dc7d79d57668": {
+    "describe": {
+      "columns": [
+        {
+          "name": "n",
+          "ordinal": 0,
+          "type_info": "Int"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 0
+      }
+    },
+    "query": "\n        select count(passkey_id) as n\n        from passkey\n        "
+  },
   "37a817c270013a2c817876692bb5f8d6fb7667db99e3a96c6dcf5aaa15d5187e": {
     "describe": {
       "columns": [],
@@ -109,6 +127,42 @@
       }
     },
     "query": "insert into credential (credential_id, as_json) values (?, ?)"
+  },
+  "4398ab609591aa4245fd322f566d3bfa02ea825a85394fdd1eda5c6038a2821d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "passkey_id",
+          "ordinal": 0,
+          "type_info": "Blob"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 0
+      }
+    },
+    "query": "\n        select passkey_id\n        from passkey\n        "
+  },
+  "4eaefabfd488324e8b9d041cbf590e4495ec0057709dc154f0ad4784fef7403e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "public_key_sec1",
+          "ordinal": 0,
+          "type_info": "Blob"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "\n        select public_key_sec1\n        from passkey\n        where passkey_id = ?\n        "
   },
   "4f79fe07ee9c6acd84ad45eef654a875978ef02364e1938a8a58141b42215037": {
     "describe": {
@@ -185,6 +239,16 @@
       }
     },
     "query": "\n            select credential_id, as_json, created_at, updated_at\n            from credential\n            where credential_id = ?\n            "
+  },
+  "95c9945e580b8a0ce5b82590b1a157644aedbb2b2e5d6f6a13f7284e3406a77d": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "\n        insert into passkey (passkey_id, public_key_sec1)\n        values (?, ?)\n        "
   },
   "ac76fc853cf4fb8d4853e8f9351655392fbb8cd17f9a779c77fe60cbae0c727c": {
     "describe": {

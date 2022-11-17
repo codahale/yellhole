@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use askama::Template;
 use axum::extract::{FromRequest, RequestParts};
 use axum::http::StatusCode;
@@ -8,16 +6,14 @@ use axum::routing::{get, post};
 use axum::{Extension, Json, Router};
 use axum_sessions::extractors::{ReadableSession, WritableSession};
 use sqlx::SqlitePool;
-use uuid::Uuid;
-use webauthn_rs::prelude::{
-    CreationChallengeResponse, PasskeyAuthentication, PasskeyRegistration, PublicKeyCredential,
-    RegisterPublicKeyCredential, RequestChallengeResponse,
-};
-use webauthn_rs::Webauthn;
+use url::Url;
 
 use super::Page;
 use crate::config::Author;
-use crate::models::Credential;
+use crate::models::passkey::{
+    self, AuthenticationChallenge, AuthenticationResponse, RegistrationChallenge,
+    RegistrationResponse,
+};
 
 pub fn router() -> Router {
     Router::new()
@@ -56,11 +52,11 @@ async fn register(
     db: Extension<SqlitePool>,
     session: ReadableSession,
 ) -> Result<Response, StatusCode> {
-    let passkeys = Credential::passkeys(&db).await.map_err(|err| {
-        tracing::warn!(%err, "unable to select passkeys");
+    let registered = passkey::any_registered(&db).await.map_err(|err| {
+        tracing::warn!(%err, "unable to query DB");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
-    if !passkeys.is_empty() && !session.get::<bool>("authenticated").unwrap_or(false) {
+    if registered && !session.get::<bool>("authenticated").unwrap_or(false) {
         return Ok(Redirect::to("/login").into_response());
     }
 
@@ -69,59 +65,22 @@ async fn register(
 
 async fn register_start(
     db: Extension<SqlitePool>,
+    base_url: Extension<Url>,
     Extension(Author(author)): Extension<Author>,
-    webauthn: Extension<Arc<Webauthn>>,
-    mut session: WritableSession,
-) -> Result<Json<CreationChallengeResponse>, StatusCode> {
-    let existing_credentials = Credential::passkeys(&db)
-        .await
-        .map_err(|err| {
-            tracing::warn!(%err, "unable to select passkeys");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?
-        .into_iter()
-        .map(|p| p.cred_id().clone())
-        .collect();
-
-    // Create a registration challenge.
-    let (challenge, state) = webauthn
-        .start_passkey_registration(Uuid::default(), &author, &author, Some(existing_credentials))
-        .map_err(|err| {
-            tracing::warn!(%err, "unable to start passkey registration");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-
-    // Store the registration state in the session.
-    session.remove("reg_state");
-    session.insert("reg_state", &state).map_err(|err| {
-        tracing::warn!(%err, "unable to store passkey registration state in session");
+) -> Result<Json<RegistrationChallenge>, StatusCode> {
+    passkey::start_registration(&db, &base_url, &author).await.map(Json).map_err(|err| {
+        tracing::warn!(%err, "unable to start passkey registration");
         StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    Ok(Json(challenge))
+    })
 }
 
 async fn register_finish(
     db: Extension<SqlitePool>,
-    webauthn: Extension<Arc<Webauthn>>,
-    mut session: WritableSession,
-    Json(reg): Json<RegisterPublicKeyCredential>,
+    base_url: Extension<Url>,
+    Json(resp): Json<RegistrationResponse>,
 ) -> Result<Response, StatusCode> {
-    let state = session.get::<PasskeyRegistration>("reg_state");
-    session.remove("reg_state");
-
-    let state = state.ok_or_else(|| {
-        tracing::warn!("no stored registration state");
-        StatusCode::BAD_REQUEST
-    })?;
-
-    let passkey = webauthn.finish_passkey_registration(&reg, &state).map_err(|err| {
-        tracing::warn!(?err, "unable to finish passkey registration");
-        StatusCode::BAD_REQUEST
-    })?;
-
-    Credential::create(&db, passkey).await.map_err(|err| {
-        tracing::warn!(%err, "unable to insert passkey");
+    passkey::finish_registration(&db, &base_url, resp).await.map_err(|err| {
+        tracing::warn!(%err, "unable to finish passkey registration");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
@@ -140,11 +99,11 @@ async fn login(
         return Ok(Redirect::to("/admin/new").into_response());
     }
 
-    let passkeys = Credential::passkeys(&db).await.map_err(|err| {
-        tracing::warn!(%err, "unable to select passkeys");
+    let registered = passkey::any_registered(&db).await.map_err(|err| {
+        tracing::warn!(%err, "unable to query DB");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
-    if passkeys.is_empty() {
+    if !registered {
         return Ok(Redirect::to("/register").into_response());
     }
 
@@ -153,57 +112,50 @@ async fn login(
 
 async fn login_start(
     db: Extension<SqlitePool>,
-    webauthn: Extension<Arc<Webauthn>>,
+    base_url: Extension<Url>,
     mut session: WritableSession,
-) -> Result<Json<RequestChallengeResponse>, StatusCode> {
-    let passkeys = Credential::passkeys(&db).await.map_err(|err| {
-        tracing::warn!(%err, "unable to select passkeys");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    // Create a registration challenge.
-    let (challenge, state) = webauthn.start_passkey_authentication(&passkeys).map_err(|err| {
+) -> Result<Json<AuthenticationChallenge>, StatusCode> {
+    let (resp, challenge) = passkey::start_authentication(&db, &base_url).await.map_err(|err| {
         tracing::warn!(%err, "unable to start passkey authentication");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
     // Store the authentication state in the session.
-    session.remove("auth_state");
-    session.insert("auth_state", &state).map_err(|err| {
-        tracing::warn!(%err, "unable to store passkey authentication state in session");
+    session.remove("challenge");
+    session.insert("challenge", challenge).map_err(|err| {
+        tracing::warn!(%err, "unable to store passkey authentication challenge in session");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    Ok(Json(challenge))
+    Ok(Json(resp))
 }
 
 async fn login_finish(
     db: Extension<SqlitePool>,
-    webauthn: Extension<Arc<Webauthn>>,
+    base_url: Extension<Url>,
     mut session: WritableSession,
-    Json(auth): Json<PublicKeyCredential>,
+    Json(auth): Json<AuthenticationResponse>,
 ) -> Result<Response, StatusCode> {
-    let state = session.get::<PasskeyAuthentication>("auth_state");
-    session.remove("auth_state");
-
-    let state = state.ok_or_else(|| {
+    // webauthn_rs::prelude::Webauthn::finish_passkey_authentication(&self, reg, state);
+    let challenge = session.get::<[u8; 32]>("challenge").ok_or_else(|| {
         tracing::warn!("no stored authentication state");
         StatusCode::BAD_REQUEST
     })?;
+    session.remove("challenge");
 
-    let res = webauthn.finish_passkey_authentication(&auth, &state).map_err(|err| {
-        tracing::warn!(?err, "unable to finish passkey authentication");
-        StatusCode::BAD_REQUEST
-    })?;
-    Credential::update(&db, &res).await.map_err(|err| {
-        tracing::warn!(?err, "unable to update passkey");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+    let authenticated =
+        passkey::finish_authentication(&db, &base_url, auth, challenge).await.map_err(|err| {
+            tracing::warn!(%err, "unable to finish passkey authentication");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
-    session.insert("authenticated", true).map_err(|err| {
-        tracing::warn!(%err, "unable to store authentication state in session");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    Ok(StatusCode::ACCEPTED.into_response())
+    if authenticated {
+        session.insert("authenticated", true).map_err(|err| {
+            tracing::warn!(%err, "unable to store authentication state in session");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+        Ok(StatusCode::ACCEPTED.into_response())
+    } else {
+        Ok(StatusCode::BAD_REQUEST.into_response())
+    }
 }

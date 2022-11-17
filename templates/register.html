@@ -22,14 +22,6 @@
             });
     });
 
-    function url_b64(s) {
-        return s.replace(/_/g, '/').replace(/-/g, '+');
-    }
-
-    function atob_url(a) {
-        return atob(url_b64(a));
-    }
-
     async function register() {
         const startResp = await fetch('/register/start', {
             method: 'POST'
@@ -40,38 +32,56 @@
             return;
         }
 
-        var challenge = await startResp.json()
+        const startJson = await startResp.json()
             .catch((error) => { console.error(error) });
-        challenge.publicKey.user.id = Uint8Array.from(atob_url(challenge.publicKey.user.id), c => c.charCodeAt(0));
-        challenge.publicKey.challenge = Uint8Array.from(atob_url(challenge.publicKey.challenge), c => c.charCodeAt(0));
-        challenge.publicKey.excludeCredentials.forEach(obj => {
-            obj.id = Uint8Array.from(atob_url(obj.id), c => c.charCodeAt(0));
-        });
 
-        const credential = await navigator.credentials.create(challenge)
+        const createOptions = {
+            publicKey: {
+                rp: {
+                    id: startJson.rpId,
+                    name: '',
+                },
+
+                user: {
+                    id: Uint8Array.from(atob(startJson.userIdBase64), c => c.charCodeAt(0)),
+                    name: startJson.username,
+                    displayName: '',
+                },
+                excludeCredentials: startJson.passkeyIdsBase64.map(id => {
+                    return {
+                        type: 'public-key',
+                        id: Uint8Array.from(atob(id), c => c.charCodeAt(0)),
+                    };
+                }),
+                pubKeyCredParams: [{
+                    type: 'public-key',
+                    alg: -7 // P-256 ECDSA
+                }],
+                challenge: new Uint8Array([0]),
+                authenticatorSelection: {
+                    authenticatorAttachment: 'platform',
+                    requireResidentKey: true,
+                },
+                timeout: 180000,
+            }
+        };
+
+        const credential = await navigator.credentials.create(createOptions)
             .catch((error) => { window.alert(error); });
         if (!credential) {
             return;
         }
 
-        const extensions = credential.getClientExtensionResults();
-        const reg = {
-            'id': credential.id,
-            'rawId': credential.id,
-            'response': {
-                'attestationObject': btoa(String.fromCharCode(...new Uint8Array(credential.response.attestationObject))),
-                'clientDataJSON': btoa(new TextDecoder().decode(credential.response.clientDataJSON)),
-            },
-            'type': 'public-key',
-            'extensions': {
-                'cred_props': extensions.credProps,
-            },
+        const finishJson = {
+            'clientDataJSONBase64': btoa(new TextDecoder().decode(credential.response.clientDataJSON)),
+            'authenticatorDataBase64': btoa(String.fromCharCode(...new Uint8Array(credential.response.getAuthenticatorData()))),
+            'publicKeyBase64': btoa(String.fromCharCode(...new Uint8Array(credential.response.getPublicKey()))),
         };
 
         const finishResp = await fetch('/register/finish', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(reg),
+            body: JSON.stringify(finishJson),
         });
 
         if (finishResp.ok) {

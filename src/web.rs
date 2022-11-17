@@ -1,5 +1,4 @@
 use std::net::SocketAddr;
-use std::sync::Arc;
 
 use askama::Template;
 use axum::http::{self, StatusCode};
@@ -17,7 +16,6 @@ use tower_http::sensitive_headers::{
 };
 use tower_http::trace::TraceLayer;
 use url::Url;
-use webauthn_rs::WebauthnBuilder;
 
 use crate::config::{Author, DataDir, Title};
 use crate::models::DbSessionStore;
@@ -54,10 +52,6 @@ impl App {
     ) -> anyhow::Result<()> {
         tracing::info!(%addr, base_url=%self.base_url, "starting server");
 
-        // Create a WebAuthn context.
-        let webauthn =
-            WebauthnBuilder::new(self.base_url.host_str().unwrap(), &self.base_url)?.build()?;
-
         // Store sessions in the database. Use a constant key here because the cookie value is just
         // a random ID.
         let store = DbSessionStore::new(&self.db);
@@ -77,7 +71,6 @@ impl App {
                 ServiceBuilder::new()
                     .layer(AddExtensionLayer::new(self.base_url))
                     .layer(AddExtensionLayer::new(self.db))
-                    .layer(AddExtensionLayer::new(Arc::new(webauthn)))
                     .layer(AddExtensionLayer::new(self.author))
                     .layer(AddExtensionLayer::new(self.title))
                     .layer(AddExtensionLayer::new(self.data_dir))

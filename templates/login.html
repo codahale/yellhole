@@ -40,29 +40,34 @@
             return;
         }
 
-        var challenge = await startResp.json()
+        const startJson = await startResp.json()
             .catch((error) => { console.error(error) });
-        challenge.publicKey.challenge = Uint8Array.from(atob_url(challenge.publicKey.challenge), c => c.charCodeAt(0));
-        challenge.publicKey.allowCredentials.forEach(obj => {
-            obj.id = Uint8Array.from(atob_url(obj.id), c => c.charCodeAt(0));
-        });
 
-        const assertion = await navigator.credentials.get(challenge).catch(error => console.log(error));
+
+        const authOptions = {
+            publicKey: {
+                challenge: Uint8Array.from(atob(startJson.challengeBase64), c => c.charCodeAt(0)),
+                rpId: startJson.rpId,
+                allowCredentials: startJson.passkeyIdsBase64.map(id => {
+                    return {
+                        type: 'public-key',
+                        id: Uint8Array.from(atob(id), c => c.charCodeAt(0)),
+                    };
+                }),
+            },
+        };
+
+        const assertion = await navigator.credentials.get(authOptions).catch(error => console.log(error));
         if (!assertion) {
             window.alert('Error authentication with passkey.')
             return;
         }
 
         const auth = {
-            'id': assertion.id,
-            'rawId': assertion.id,
-            'response': {
-                'authenticatorData': btoa(String.fromCharCode(...new Uint8Array(assertion.response.authenticatorData))),
-                'clientDataJSON': btoa(new TextDecoder().decode(assertion.response.clientDataJSON)),
-                'signature': btoa(String.fromCharCode(...new Uint8Array(assertion.response.signature))),
-                'userHandle': btoa(String.fromCharCode(...new Uint8Array(assertion.response.userHandle))),
-            },
-            'type': 'public-key',
+            rawIdBase64: btoa(String.fromCharCode(...new Uint8Array(assertion.rawId))),
+            clientDataJSONBase64: btoa(new TextDecoder().decode(assertion.response.clientDataJSON)),
+            authenticatorDataBase64: btoa(String.fromCharCode(...new Uint8Array(assertion.response.authenticatorData))),
+            signatureBase64: btoa(String.fromCharCode(...new Uint8Array(assertion.response.signature))),
         };
 
         const finishResp = await fetch('/login/finish', {

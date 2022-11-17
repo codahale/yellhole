@@ -1,9 +1,9 @@
-mod credential;
 mod image;
 mod note;
+pub mod passkey;
 mod session;
 
-pub use credential::*;
 pub use image::*;
 pub use note::*;
+pub use passkey::*;
 pub use session::*;
