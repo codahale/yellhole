@@ -1,0 +1,1 @@
+insert into passkey (passkey_id, public_key_spki) values (randomblob(16), randomblob(33));

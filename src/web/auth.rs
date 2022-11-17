@@ -168,3 +168,78 @@ async fn login_finish(
         Ok(StatusCode::BAD_REQUEST.into_response())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use axum::http;
+    use axum_sessions::async_session::MemoryStore;
+    use axum_sessions::SessionLayer;
+    use hyper::{Body, Request};
+    use tower::ServiceExt;
+    use tower_http::add_extension::AddExtensionLayer;
+
+    use crate::config::{Author, Title};
+
+    use super::*;
+
+    #[sqlx::test]
+    async fn fresh_login_page(db: SqlitePool) -> Result<(), anyhow::Error> {
+        let app = app(&db);
+        let response = app.oneshot(Request::builder().uri("/login").body(Body::empty())?).await?;
+
+        assert_eq!(response.status(), StatusCode::SEE_OTHER);
+        assert_eq!(
+            response.headers().get(http::header::LOCATION),
+            Some(&http::HeaderValue::from_static("/register"))
+        );
+
+        Ok(())
+    }
+
+    #[sqlx::test]
+    async fn fresh_register_page(db: SqlitePool) -> Result<(), anyhow::Error> {
+        let app = app(&db);
+        let response =
+            app.oneshot(Request::builder().uri("/register").body(Body::empty())?).await?;
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        Ok(())
+    }
+
+    #[sqlx::test(fixtures("fake_passkey"))]
+    async fn registered_register_page(db: SqlitePool) -> Result<(), anyhow::Error> {
+        let app = app(&db);
+        let response =
+            app.oneshot(Request::builder().uri("/register").body(Body::empty())?).await?;
+
+        assert_eq!(response.status(), StatusCode::SEE_OTHER);
+        assert_eq!(
+            response.headers().get(http::header::LOCATION),
+            Some(&http::HeaderValue::from_static("/login"))
+        );
+
+        Ok(())
+    }
+
+    #[sqlx::test(fixtures("fake_passkey"))]
+    async fn registered_login_page(db: SqlitePool) -> Result<(), anyhow::Error> {
+        let app = app(&db);
+        let response = app.oneshot(Request::builder().uri("/login").body(Body::empty())?).await?;
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        Ok(())
+    }
+
+    fn app(db: &SqlitePool) -> Router {
+        let store = MemoryStore::new();
+        let session_layer = SessionLayer::new(store, &[69; 64]);
+        router()
+            .layer(AddExtensionLayer::new(db.clone()))
+            .layer(AddExtensionLayer::new("http://example.com".parse::<Url>().unwrap()))
+            .layer(AddExtensionLayer::new(Author("Mr Magoo".into())))
+            .layer(AddExtensionLayer::new(Title("Yellhole".into())))
+            .layer(session_layer)
+    }
+}
