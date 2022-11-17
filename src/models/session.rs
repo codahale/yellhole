@@ -26,14 +26,9 @@ impl DbSessionStore {
 
     async fn delete_expired(&self) -> Result<()> {
         tracing::trace!("destroying expired sessions");
-        sqlx::query!(
-            r"
-            delete from session
-            where updated_at < date('now', '-1 day');
-            ",
-        )
-        .execute(&self.db)
-        .await?;
+        sqlx::query!(r"delete from session where updated_at < date('now', '-1 day')")
+            .execute(&self.db)
+            .await?;
         Ok(())
     }
 }
@@ -43,18 +38,11 @@ impl SessionStore for DbSessionStore {
     async fn load_session(&self, cookie_value: String) -> Result<Option<Session>> {
         let session_id = Session::id_from_cookie_value(&cookie_value)?;
         tracing::trace!(session_id, "loading session");
-        Ok(sqlx::query!(
-            r"
-            select as_json
-            from session
-            where session_id = ?
-            ",
-            session_id,
-        )
-        .fetch_optional(&self.db)
-        .await?
-        .map(|r| serde_json::from_str::<Session>(&r.as_json))
-        .transpose()?)
+        Ok(sqlx::query!(r"select as_json from session where session_id = ?", session_id)
+            .fetch_optional(&self.db)
+            .await?
+            .map(|r| serde_json::from_str::<Session>(&r.as_json))
+            .transpose()?)
     }
 
     async fn store_session(&self, session: Session) -> Result<Option<String>> {
@@ -83,27 +71,15 @@ impl SessionStore for DbSessionStore {
     async fn destroy_session(&self, session: Session) -> Result {
         let session_id = session.id();
         tracing::trace!(session_id, "destroying session");
-        sqlx::query!(
-            r"
-            delete from session
-            where session_id = ?
-            ",
-            session_id,
-        )
-        .execute(&self.db)
-        .await?;
+        sqlx::query!(r"delete from session where session_id = ?", session_id)
+            .execute(&self.db)
+            .await?;
         Ok(())
     }
 
     async fn clear_store(&self) -> Result {
         tracing::trace!("destroying all sessions");
-        sqlx::query!(
-            r"
-            delete from session
-            ",
-        )
-        .execute(&self.db)
-        .await?;
+        sqlx::query!(r"delete from session").execute(&self.db).await?;
         Ok(())
     }
 }

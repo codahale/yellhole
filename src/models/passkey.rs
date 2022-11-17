@@ -13,15 +13,7 @@ use url::Url;
 use uuid::Uuid;
 
 pub async fn any_registered(db: &SqlitePool) -> Result<bool, sqlx::Error> {
-    sqlx::query!(
-        r"
-        select count(passkey_id) as n
-        from passkey
-        ",
-    )
-    .fetch_one(db)
-    .await
-    .map(|r| r.n > 0)
+    sqlx::query!(r"select count(passkey_id) as n from passkey").fetch_one(db).await.map(|r| r.n > 0)
 }
 
 #[serde_as]
@@ -106,12 +98,9 @@ pub async fn finish_registration(
 
     // Insert the passkey ID and SEC1-encoded public key into the database.
     sqlx::query!(
-        r"
-        insert into passkey (passkey_id, public_key_sec1)
-        values (?, ?)
-        ",
+        r"insert into passkey (passkey_id, public_key_sec1) values (?, ?)",
         passkey_id,
-        public_key_sec1,
+        public_key_sec1
     )
     .execute(db)
     .await?;
@@ -220,15 +209,12 @@ pub async fn finish_authentication(
 
     // Find the passkey by ID.
     let Some(public_key_sec1) = sqlx::query!(
-        r"
-        select public_key_sec1
-        from passkey
-        where passkey_id = ?
-        ",
+        r"select public_key_sec1 from passkey where passkey_id = ?",
         resp.raw_id,
     )
     .fetch_optional(db)
-    .await?.map(|r| r.public_key_sec1) else {
+    .await?
+    .map(|r| r.public_key_sec1) else {
         tracing::warn!(passkey_id=?resp.raw_id, "unable to find passkey");
         return Ok(false);
     };
@@ -255,15 +241,10 @@ pub async fn finish_authentication(
 }
 
 async fn passkey_ids(db: &SqlitePool) -> Result<Vec<Vec<u8>>, sqlx::Error> {
-    Ok(sqlx::query!(
-        r"
-        select passkey_id
-        from passkey
-        ",
-    )
-    .fetch_all(db)
-    .await?
-    .into_iter()
-    .map(|r| r.passkey_id)
-    .collect::<Vec<Vec<u8>>>())
+    Ok(sqlx::query!(r"select passkey_id from passkey")
+        .fetch_all(db)
+        .await?
+        .into_iter()
+        .map(|r| r.passkey_id)
+        .collect::<Vec<Vec<u8>>>())
 }

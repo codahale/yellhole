@@ -19,15 +19,9 @@ impl Note {
         body: &str,
     ) -> Result<(), sqlx::Error> {
         let note_id = note_id.to_string();
-        sqlx::query!(
-            r"
-            insert into note (note_id, body) values (?, ?)
-            ",
-            note_id,
-            body
-        )
-        .execute(db)
-        .await?;
+        sqlx::query!(r"insert into note (note_id, body) values (?, ?)", note_id, body)
+            .execute(db)
+            .await?;
         Ok(())
     }
 

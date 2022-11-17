@@ -1,15 +1,5 @@
 {
   "db": "SQLite",
-  "019f7bd3c9cac5f334a33c2435d932d3d597b8d622edc3fd4745a28f03b3de28": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Right": 2
-      }
-    },
-    "query": "\n            insert into note (note_id, body) values (?, ?)\n            "
-  },
   "0cd06ba90903b57f6c6284bb7b4f9ebd087304da280269ed0c5a580a4f722738": {
     "describe": {
       "columns": [
@@ -34,119 +24,7 @@
     },
     "query": "\n            select image_id as \"image_id: Hyphenated\", created_at\n            from image\n            order by created_at desc\n            limit ?\n            "
   },
-  "0de84e612ee46439e49eeef08c1078c1932451f8c962eec19631e2baab6c3a0e": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Right": 0
-      }
-    },
-    "query": "\n            delete from session\n            "
-  },
-  "0f7d0cc3be0db7cfe9f7b2104d0669191e39f94aa638244a576611ac0adac26c": {
-    "describe": {
-      "columns": [
-        {
-          "name": "credential_id",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "as_json",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "created_at",
-          "ordinal": 2,
-          "type_info": "Datetime"
-        },
-        {
-          "name": "updated_at",
-          "ordinal": 3,
-          "type_info": "Datetime"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Right": 0
-      }
-    },
-    "query": "\n            select credential_id, as_json, created_at, updated_at\n            from credential\n            "
-  },
-  "1b4e89b8f180cef5606345c4558140cbf27b4f4ad8cdaa03e80b44ce9d58d473": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Right": 0
-      }
-    },
-    "query": "\n            delete from session\n            where updated_at < date('now', '-1 day');\n            "
-  },
-  "36d54fd65ca4a76e1ff98f6d70b93744f345135d7187fe1beec9dc7d79d57668": {
-    "describe": {
-      "columns": [
-        {
-          "name": "n",
-          "ordinal": 0,
-          "type_info": "Int"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Right": 0
-      }
-    },
-    "query": "\n        select count(passkey_id) as n\n        from passkey\n        "
-  },
-  "37a817c270013a2c817876692bb5f8d6fb7667db99e3a96c6dcf5aaa15d5187e": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Right": 3
-      }
-    },
-    "query": "\n            insert into session (session_id, as_json)\n            values (?, ?)\n            on conflict (session_id) do\n            update set as_json = ?, updated_at = current_timestamp\n            "
-  },
-  "3889fe3b53eecba251719b68440cdc66fe39899c4d93037d335f6fbcd5e3fe6a": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Right": 2
-      }
-    },
-    "query": "insert into credential (credential_id, as_json) values (?, ?)"
-  },
-  "4398ab609591aa4245fd322f566d3bfa02ea825a85394fdd1eda5c6038a2821d": {
-    "describe": {
-      "columns": [
-        {
-          "name": "passkey_id",
-          "ordinal": 0,
-          "type_info": "Blob"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Right": 0
-      }
-    },
-    "query": "\n        select passkey_id\n        from passkey\n        "
-  },
-  "4eaefabfd488324e8b9d041cbf590e4495ec0057709dc154f0ad4784fef7403e": {
+  "11b5c6cd16d6f147d410c7c46d9e70dea5dba25fc56f7da892ba802384508bff": {
     "describe": {
       "columns": [
         {
@@ -162,17 +40,55 @@
         "Right": 1
       }
     },
-    "query": "\n        select public_key_sec1\n        from passkey\n        where passkey_id = ?\n        "
+    "query": "select public_key_sec1 from passkey where passkey_id = ?"
   },
-  "4f79fe07ee9c6acd84ad45eef654a875978ef02364e1938a8a58141b42215037": {
+  "37a817c270013a2c817876692bb5f8d6fb7667db99e3a96c6dcf5aaa15d5187e": {
     "describe": {
       "columns": [],
       "nullable": [],
       "parameters": {
-        "Right": 1
+        "Right": 3
       }
     },
-    "query": "\n            delete from session\n            where session_id = ?\n            "
+    "query": "\n            insert into session (session_id, as_json)\n            values (?, ?)\n            on conflict (session_id) do\n            update set as_json = ?, updated_at = current_timestamp\n            "
+  },
+  "3c57c51a7e5a42cbb00629580c3eae9388479a94ecdb542cfb5dbba6f30165ff": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "insert into note (note_id, body) values (?, ?)"
+  },
+  "574323077237b135b0690125ac950c135bd90a64e2bf94d667060079cdda9f29": {
+    "describe": {
+      "columns": [
+        {
+          "name": "n",
+          "ordinal": 0,
+          "type_info": "Int"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 0
+      }
+    },
+    "query": "select count(passkey_id) as n from passkey"
+  },
+  "714982ad35c720d316be9b24a7114455306cdc50e8462fa4d7e9d2f67678dfae": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 3
+      }
+    },
+    "query": "insert into image (image_id, original_filename, content_type) values (?, ?, ?)"
   },
   "74859e5606aa5f72768ca5188b5d023145b097c1c480ec39dd2150c14fa45438": {
     "describe": {
@@ -204,53 +120,35 @@
     },
     "query": "\n            select note_id as \"note_id: Hyphenated\", body, created_at\n            from note\n            where note_id = ?\n            "
   },
-  "8ee2a1b0378701a88352f7e346cee7f6b6acda536c17684f48398e4b422bd37f": {
-    "describe": {
-      "columns": [
-        {
-          "name": "credential_id",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "as_json",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "created_at",
-          "ordinal": 2,
-          "type_info": "Datetime"
-        },
-        {
-          "name": "updated_at",
-          "ordinal": 3,
-          "type_info": "Datetime"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false,
-        true
-      ],
-      "parameters": {
-        "Right": 1
-      }
-    },
-    "query": "\n            select credential_id, as_json, created_at, updated_at\n            from credential\n            where credential_id = ?\n            "
-  },
-  "95c9945e580b8a0ce5b82590b1a157644aedbb2b2e5d6f6a13f7284e3406a77d": {
+  "a86e3bb006ee6f4e4e32aab8644ca3ecb730e92ce6a33e0562ad1b35d6c272f6": {
     "describe": {
       "columns": [],
       "nullable": [],
       "parameters": {
-        "Right": 2
+        "Right": 1
       }
     },
-    "query": "\n        insert into passkey (passkey_id, public_key_sec1)\n        values (?, ?)\n        "
+    "query": "delete from session where session_id = ?"
   },
-  "ac76fc853cf4fb8d4853e8f9351655392fbb8cd17f9a779c77fe60cbae0c727c": {
+  "aea2b8ecf7dd2be81b1a75e89676af0472836f2f8f137f77ffb66fc2e82866df": {
+    "describe": {
+      "columns": [
+        {
+          "name": "passkey_id",
+          "ordinal": 0,
+          "type_info": "Blob"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 0
+      }
+    },
+    "query": "select passkey_id from passkey"
+  },
+  "c8996a659bfaf89a58c8efdc974ef6dda3314034337baf47ada77c5a7fa3862b": {
     "describe": {
       "columns": [
         {
@@ -266,7 +164,17 @@
         "Right": 1
       }
     },
-    "query": "\n            select as_json\n            from session\n            where session_id = ?\n            "
+    "query": "select as_json from session where session_id = ?"
+  },
+  "de47af0a65b78bc96682f907331366a8015813feabbd8e84344a04758181c08d": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "insert into passkey (passkey_id, public_key_sec1) values (?, ?)"
   },
   "e4b86950bf54dec10c242141ca1f7e2e83cc5d19691f4dd63f27c42005ae84e6": {
     "describe": {
@@ -298,25 +206,25 @@
     },
     "query": "\n            select note_id as \"note_id: Hyphenated\", body, created_at\n            from note\n            order by created_at desc\n            limit ?\n            "
   },
-  "ea4f3d41509b4ec469dccfbba099c8f4f59d4f61321e91d16b4a0402a313c56e": {
+  "e864ae527ab535ca32cbc15b5177080954fb45f60cb5f819937ea20fc57b3fbb": {
     "describe": {
       "columns": [],
       "nullable": [],
       "parameters": {
-        "Right": 3
+        "Right": 0
       }
     },
-    "query": "\n            insert into image (image_id, original_filename, content_type) values (?, ?, ?)\n            "
+    "query": "delete from session"
   },
-  "ef7c697adc3a8de9c4931f1b8091fa6d918016832f969509abeb0ce7b4075f4c": {
+  "e93f278341b49c02813ce3d4f44ae11aa3aba4e15773489937b659758f3d57fb": {
     "describe": {
       "columns": [],
       "nullable": [],
       "parameters": {
-        "Right": 2
+        "Right": 0
       }
     },
-    "query": "\n                    update credential\n                    set as_json = ?, updated_at = current_timestamp\n                    where credential_id = ?\n                    "
+    "query": "delete from session where updated_at < date('now', '-1 day')"
   },
   "f9d603556f57f027ecc1de681bb627c64013e21ace2dcdf0e3bd39f8f00bcff6": {
     "describe": {
