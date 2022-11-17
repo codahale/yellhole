@@ -7,6 +7,7 @@ use axum::{Extension, Json, Router};
 use axum_sessions::extractors::{ReadableSession, WritableSession};
 use sqlx::SqlitePool;
 use url::Url;
+use uuid::Uuid;
 
 use super::Page;
 use crate::config::Author;
@@ -68,7 +69,15 @@ async fn register_start(
     base_url: Extension<Url>,
     Extension(Author(author)): Extension<Author>,
 ) -> Result<Json<RegistrationChallenge>, StatusCode> {
-    passkey::start_registration(&db, &base_url, &author).await.map(Json).map_err(|err| {
+    passkey::start_registration(
+        &db,
+        &base_url,
+        &author,
+        Uuid::default().as_hyphenated().to_string().as_bytes(),
+    )
+    .await
+    .map(Json)
+    .map_err(|err| {
         tracing::warn!(%err, "unable to start passkey registration");
         StatusCode::INTERNAL_SERVER_ERROR
     })
@@ -115,14 +124,14 @@ async fn login_start(
     base_url: Extension<Url>,
     mut session: WritableSession,
 ) -> Result<Json<AuthenticationChallenge>, StatusCode> {
-    let (resp, challenge) = passkey::start_authentication(&db, &base_url).await.map_err(|err| {
+    let resp = passkey::start_authentication(&db, &base_url).await.map_err(|err| {
         tracing::warn!(%err, "unable to start passkey authentication");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
     // Store the authentication state in the session.
     session.remove("challenge");
-    session.insert("challenge", challenge).map_err(|err| {
+    session.insert("challenge", resp.challenge).map_err(|err| {
         tracing::warn!(%err, "unable to store passkey authentication challenge in session");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;

@@ -10,7 +10,6 @@ use serde_with::{serde_as, PickFirst};
 use sha2::{Digest, Sha256};
 use sqlx::SqlitePool;
 use url::Url;
-use uuid::Uuid;
 
 pub async fn any_registered(db: &SqlitePool) -> Result<bool, sqlx::Error> {
     sqlx::query!(r"select count(passkey_id) as n from passkey").fetch_one(db).await.map(|r| r.n > 0)
@@ -37,12 +36,12 @@ pub async fn start_registration(
     db: &SqlitePool,
     base_url: &Url,
     username: &str,
+    user_id: &[u8],
 ) -> Result<RegistrationChallenge, sqlx::Error> {
-    // Return a registration challenge with an all-zero UUID as the user ID.
     Ok(RegistrationChallenge {
         rp_id: base_url.host_str().unwrap().into(),
         username: username.into(),
-        user_id: Uuid::default().as_hyphenated().to_string().into_bytes(),
+        user_id: user_id.into(),
         passkey_ids: passkey_ids(db).await?,
     })
 }
@@ -72,25 +71,13 @@ pub async fn finish_registration(
     VerifyingKey::from_public_key_der(&resp.public_key)?;
 
     // Decode and validate the client data.
-    if !serde_json::from_slice::<CollectedClientData>(&resp.client_data_json)
-        .map(|cdj| {
-            cdj.type_ == "webauthn.create"
-                && !cdj.cross_origin.unwrap_or(false)
-                && &cdj.origin == base_url
-        })
-        .unwrap_or(false)
-    {
+    if !CollectedClientData::is_valid(&resp.client_data_json, base_url, "webauthn.create", None) {
         anyhow::bail!("invalid client data");
     }
 
     // Decode and validate the authenticator data.
-    let flags = resp.authenticator_data[32];
-    anyhow::ensure!(flags & 1 == 1, "user must be present for passkey registration");
-    anyhow::ensure!(resp.authenticator_data.len() > 55, "credential ID must be included");
-    let cred_id_len =
-        u16::from_be_bytes(resp.authenticator_data[53..55].try_into().unwrap()) as usize;
-    anyhow::ensure!(resp.authenticator_data.len() > 55 + cred_id_len, "bad credential ID size");
-    let passkey_id = resp.authenticator_data[55..55 + cred_id_len].to_vec();
+    let passkey_id = parse_authenticator_data(&resp.authenticator_data, base_url)?
+        .ok_or_else(|| anyhow::anyhow!("missing passkey id"))?;
 
     // Insert the passkey ID and DER-encoded public key into the database.
     sqlx::query!(
@@ -105,20 +92,6 @@ pub async fn finish_registration(
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize)]
-struct CollectedClientData {
-    #[serde_as(as = "PickFirst<(Base64, Base64<UrlSafe, Unpadded>)>")]
-    challenge: Option<Vec<u8>>,
-    origin: Url,
-
-    #[serde(rename = "type")]
-    type_: String,
-
-    #[serde(rename = "crossOrigin")]
-    cross_origin: Option<bool>,
-}
-
-#[serde_as]
 #[derive(Debug, Serialize)]
 pub struct AuthenticationChallenge {
     #[serde(rename = "rpId")]
@@ -126,7 +99,7 @@ pub struct AuthenticationChallenge {
 
     #[serde(rename = "challengeBase64")]
     #[serde_as(as = "Base64")]
-    challenge: [u8; 32],
+    pub challenge: [u8; 32],
 
     #[serde(rename = "passkeyIdsBase64")]
     #[serde_as(as = "Vec<PickFirst<(Base64, Base64<UrlSafe, Unpadded>)>>")]
@@ -136,21 +109,18 @@ pub struct AuthenticationChallenge {
 pub async fn start_authentication(
     db: &SqlitePool,
     base_url: &Url,
-) -> Result<(AuthenticationChallenge, [u8; 32]), sqlx::Error> {
+) -> Result<AuthenticationChallenge, sqlx::Error> {
     // Find all passkey IDs.
     let passkey_ids = passkey_ids(db).await?;
 
     // Generate a random challenge.
     let challenge = thread_rng().gen::<[u8; 32]>();
 
-    Ok((
-        AuthenticationChallenge {
-            rp_id: base_url.host_str().unwrap().into(),
-            challenge,
-            passkey_ids,
-        },
+    Ok(AuthenticationChallenge {
+        rp_id: base_url.host_str().unwrap().into(),
         challenge,
-    ))
+        passkey_ids,
+    })
 }
 
 #[serde_as]
@@ -180,28 +150,19 @@ pub async fn finish_authentication(
     challenge: [u8; 32],
 ) -> Result<bool, sqlx::Error> {
     // Validate the collected client data.
-    if !serde_json::from_slice::<CollectedClientData>(&resp.client_data_json)
-        .map(|cdj| {
-            cdj.type_ == "webauthn.get"
-                && !cdj.cross_origin.unwrap_or(false)
-                && &cdj.origin == base_url
-                && constant_time_eq(&cdj.challenge.unwrap_or_default(), &challenge)
-        })
-        .unwrap_or(false)
-    {
+    if !CollectedClientData::is_valid(
+        &resp.client_data_json,
+        base_url,
+        "webauthn.get",
+        Some(&challenge),
+    ) {
         tracing::warn!(cdj=?resp.client_data_json, "invalid collected client data");
         return Ok(false);
     }
 
     // Decode and validate the authenticator data.
-    let flags = resp.authenticator_data[32];
-    if flags & 1 == 0 {
-        tracing::warn!(?flags, "user not present for passkey auth");
-        return Ok(false);
-    }
-    let rp_hash = Sha256::new().chain_update(base_url.host_str().unwrap().as_bytes()).finalize();
-    if !constant_time_eq(&rp_hash, &resp.authenticator_data[..32]) {
-        tracing::warn!(?resp.authenticator_data, "invalid authenticator data");
+    if parse_authenticator_data(&resp.authenticator_data, base_url).is_err() {
+        tracing::warn!(ad=?resp.authenticator_data, "invalid authenticator data");
         return Ok(false);
     }
 
@@ -245,4 +206,45 @@ async fn passkey_ids(db: &SqlitePool) -> Result<Vec<Vec<u8>>, sqlx::Error> {
         .into_iter()
         .map(|r| r.passkey_id)
         .collect::<Vec<Vec<u8>>>())
+}
+
+#[serde_as]
+#[derive(Debug, Deserialize)]
+struct CollectedClientData {
+    #[serde_as(as = "PickFirst<(Base64, Base64<UrlSafe, Unpadded>)>")]
+    challenge: Option<Vec<u8>>,
+    origin: Url,
+
+    #[serde(rename = "type")]
+    type_: String,
+
+    #[serde(rename = "crossOrigin")]
+    cross_origin: Option<bool>,
+}
+
+impl CollectedClientData {
+    fn is_valid(json: &[u8], base_url: &Url, action: &str, challenge: Option<&[u8]>) -> bool {
+        let Ok(cdj) = serde_json::from_slice::<CollectedClientData>(json) else {
+            return false;
+        };
+        cdj.type_ == action
+            && !cdj.cross_origin.unwrap_or(false)
+            && &cdj.origin == base_url
+            && challenge
+                .map(|v| constant_time_eq(&cdj.challenge.unwrap_or_default(), v))
+                .unwrap_or(true)
+    }
+}
+
+fn parse_authenticator_data(ad: &[u8], base_url: &Url) -> Result<Option<Vec<u8>>, anyhow::Error> {
+    let rp_hash = Sha256::new().chain_update(base_url.host_str().unwrap().as_bytes()).finalize();
+    anyhow::ensure!(constant_time_eq(&rp_hash, &ad[..32]), "invalid RP ID hash");
+    anyhow::ensure!(ad[32] & 1 != 0, "user presence flag not set");
+    if ad.len() > 55 {
+        let cred_id_len = u16::from_be_bytes(ad[53..55].try_into().unwrap()) as usize;
+        anyhow::ensure!(ad.len() > 55 + cred_id_len, "bad credential ID size");
+        Ok(Some(ad[55..55 + cred_id_len].to_vec()))
+    } else {
+        Ok(None)
+    }
 }
