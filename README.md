@@ -21,7 +21,7 @@ stored in a single directory which can be a mounted persistent volume.
 ## TODO
 
 * [ ] Improve testing
-  * [ ] Test note creation
+  * [x] Test note creation
   * [ ] Test image uploads (mock out IM)
   * [ ] Test image downloads (mock out IM)
   * [ ] Test passkey registration

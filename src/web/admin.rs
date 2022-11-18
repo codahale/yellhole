@@ -101,12 +101,14 @@ async fn download_image(
 
 #[cfg(test)]
 mod tests {
+    use axum::http;
     use axum_sessions::async_session::MemoryStore;
     use axum_sessions::SessionLayer;
     use hyper::{Body, Request};
     use sqlx::SqlitePool;
     use tempdir::TempDir;
     use tower::ServiceExt;
+    use uuid::Uuid;
 
     use crate::config::{Author, Title};
 
@@ -116,7 +118,7 @@ mod tests {
     async fn new_note_ui(db: SqlitePool) -> Result<(), anyhow::Error> {
         let temp_dir = TempDir::new("yellhole-test")?;
 
-        let app = app(&db, &temp_dir)?;
+        let (_, app) = app(&db, &temp_dir)?;
         let response =
             app.oneshot(Request::builder().uri("/admin/new").body(Body::empty())?).await?;
 
@@ -127,15 +129,50 @@ mod tests {
         Ok(())
     }
 
-    fn app(db: &SqlitePool, temp_dir: &TempDir) -> Result<Router, anyhow::Error> {
+    #[sqlx::test]
+    async fn creating_a_note(db: SqlitePool) -> Result<(), anyhow::Error> {
+        let temp_dir = TempDir::new("yellhole-test")?;
+
+        let (notes, app) = app(&db, &temp_dir)?;
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/admin/new-note")
+                    .method(http::Method::POST)
+                    .header(
+                        http::header::CONTENT_TYPE,
+                        http::HeaderValue::from_static(
+                            mime::APPLICATION_WWW_FORM_URLENCODED.as_ref(),
+                        ),
+                    )
+                    .body(r#"body=This+is+a+note."#.into())?,
+            )
+            .await?;
+
+        assert_eq!(response.status(), StatusCode::SEE_OTHER);
+        let location = response.headers().get(http::header::LOCATION).expect("missing header");
+        let note_id = location.to_str()?.split('/').last().expect("bad URI").parse::<Uuid>()?;
+
+        assert_eq!(notes.most_recent(20).await?.len(), 1);
+        let note = notes.by_id(note_id.as_hyphenated()).await?.expect("missing note");
+        assert_eq!(note.body, "This is a note.");
+
+        Ok(())
+    }
+
+    fn app(db: &SqlitePool, temp_dir: &TempDir) -> Result<(NoteService, Router), anyhow::Error> {
+        let notes = NoteService::new(db.clone());
         let store = MemoryStore::new();
         let session_layer = SessionLayer::new(store, &[69; 64]);
-        Ok(router()
-            .layer(Extension(NoteService::new(db.clone())))
-            .layer(Extension(ImageService::new(db.clone(), temp_dir)?))
-            .layer(Extension("http://example.com".parse::<Url>().unwrap()))
-            .layer(Extension(Author("Mr Magoo".into())))
-            .layer(Extension(Title("Yellhole".into())))
-            .layer(session_layer))
+        Ok((
+            notes.clone(),
+            router()
+                .layer(Extension(notes))
+                .layer(Extension(ImageService::new(db.clone(), temp_dir)?))
+                .layer(Extension("http://example.com".parse::<Url>().unwrap()))
+                .layer(Extension(Author("Mr Magoo".into())))
+                .layer(Extension(Title("Yellhole".into())))
+                .layer(session_layer),
+        ))
     }
 }
