@@ -2928,7 +2928,6 @@ dependencies = [
  "constant_time_eq 0.2.4",
  "futures",
  "hex",
- "hyper",
  "include_dir",
  "mime",
  "mime_guess",

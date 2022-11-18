@@ -162,23 +162,22 @@ mod tests {
     use axum::http;
     use axum_sessions::async_session::MemoryStore;
     use axum_sessions::SessionLayer;
-    use hyper::{Body, Request};
     use sqlx::SqlitePool;
-    use tower::ServiceExt;
     use url::Url;
 
     use crate::config::{Author, Title};
+    use crate::test_server::TestServer;
 
     use super::*;
 
     #[sqlx::test]
     async fn fresh_login_page(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let app = app(db);
-        let response = app.oneshot(Request::builder().uri("/login").body(Body::empty())?).await?;
+        let ts = TestServer::new(app(db))?;
 
-        assert_eq!(response.status(), StatusCode::SEE_OTHER);
+        let resp = ts.get("/login").await?;
+        assert_eq!(resp.status(), StatusCode::SEE_OTHER);
         assert_eq!(
-            response.headers().get(http::header::LOCATION),
+            resp.headers().get(http::header::LOCATION),
             Some(&http::HeaderValue::from_static("/register"))
         );
 
@@ -187,24 +186,22 @@ mod tests {
 
     #[sqlx::test]
     async fn fresh_register_page(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let app = app(db);
-        let response =
-            app.oneshot(Request::builder().uri("/register").body(Body::empty())?).await?;
+        let ts = TestServer::new(app(db))?;
 
-        assert_eq!(response.status(), StatusCode::OK);
+        let resp = ts.get("/register").await?;
+        assert_eq!(resp.status(), StatusCode::OK);
 
         Ok(())
     }
 
     #[sqlx::test(fixtures("fake_passkey"))]
     async fn registered_register_page(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let app = app(db);
-        let response =
-            app.oneshot(Request::builder().uri("/register").body(Body::empty())?).await?;
+        let ts = TestServer::new(app(db))?;
 
-        assert_eq!(response.status(), StatusCode::SEE_OTHER);
+        let resp = ts.get("/register").await?;
+        assert_eq!(resp.status(), StatusCode::SEE_OTHER);
         assert_eq!(
-            response.headers().get(http::header::LOCATION),
+            resp.headers().get(http::header::LOCATION),
             Some(&http::HeaderValue::from_static("/login"))
         );
 
@@ -213,10 +210,10 @@ mod tests {
 
     #[sqlx::test(fixtures("fake_passkey"))]
     async fn registered_login_page(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let app = app(db);
-        let response = app.oneshot(Request::builder().uri("/login").body(Body::empty())?).await?;
+        let ts = TestServer::new(app(db))?;
 
-        assert_eq!(response.status(), StatusCode::OK);
+        let resp = ts.get("/login").await?;
+        assert_eq!(resp.status(), StatusCode::OK);
 
         Ok(())
     }

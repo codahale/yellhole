@@ -104,26 +104,25 @@ mod tests {
     use axum::http;
     use axum_sessions::async_session::MemoryStore;
     use axum_sessions::SessionLayer;
-    use hyper::{Body, Request};
     use sqlx::SqlitePool;
     use tempdir::TempDir;
-    use tower::ServiceExt;
     use uuid::Uuid;
 
     use crate::config::{Author, Title};
+    use crate::test_server::TestServer;
 
     use super::*;
 
     #[sqlx::test(fixtures("notes", "images"))]
     async fn new_note_ui(db: SqlitePool) -> Result<(), anyhow::Error> {
         let temp_dir = TempDir::new("yellhole-test")?;
-
         let (_, app) = app(&db, &temp_dir)?;
-        let response =
-            app.oneshot(Request::builder().uri("/admin/new").body(Body::empty())?).await?;
+        let ts = TestServer::new(app)?;
 
-        assert_eq!(response.status(), StatusCode::OK);
-        let body = String::from_utf8(hyper::body::to_bytes(response.into_body()).await?.to_vec())?;
+        let resp = ts.get("/admin/new").await?;
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        let body = resp.text().await?;
         assert!(body.contains("/images/cbdc5a69-abba-4d75-9679-44259c48b272.thumb.webp"));
 
         Ok(())
@@ -132,25 +131,12 @@ mod tests {
     #[sqlx::test]
     async fn creating_a_note(db: SqlitePool) -> Result<(), anyhow::Error> {
         let temp_dir = TempDir::new("yellhole-test")?;
-
         let (notes, app) = app(&db, &temp_dir)?;
-        let response = app
-            .oneshot(
-                Request::builder()
-                    .uri("/admin/new-note")
-                    .method(http::Method::POST)
-                    .header(
-                        http::header::CONTENT_TYPE,
-                        http::HeaderValue::from_static(
-                            mime::APPLICATION_WWW_FORM_URLENCODED.as_ref(),
-                        ),
-                    )
-                    .body(r#"body=This+is+a+note."#.into())?,
-            )
-            .await?;
+        let ts = TestServer::new(app)?;
 
-        assert_eq!(response.status(), StatusCode::SEE_OTHER);
-        let location = response.headers().get(http::header::LOCATION).expect("missing header");
+        let resp = ts.post("/admin/new-note")?.form(&[("body", "This is a note.")]).send().await?;
+        assert_eq!(resp.status(), StatusCode::SEE_OTHER);
+        let location = resp.headers().get(http::header::LOCATION).expect("missing header");
         let note_id = location.to_str()?.split('/').last().expect("bad URI").parse::<Uuid>()?;
 
         assert_eq!(notes.most_recent(20).await?.len(), 1);

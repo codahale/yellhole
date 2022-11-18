@@ -40,33 +40,30 @@ static STATIC_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/assets");
 
 #[cfg(test)]
 mod tests {
-    use axum::body::Body;
-    use axum::http::Request;
-    use tower::ServiceExt;
+    use crate::test_server::TestServer;
 
     use super::*;
 
     #[tokio::test]
     async fn static_asset() -> Result<(), anyhow::Error> {
-        let app = router(".");
+        let ts = TestServer::new(router("."))?;
 
-        let response = app
-            .oneshot(Request::builder().uri("/assets/css/mvp-1.12.css").body(Body::empty())?)
-            .await?;
-
-        assert_eq!(response.status(), StatusCode::OK);
+        let resp = ts.get("/assets/css/mvp-1.12.css").await?;
+        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(
+            resp.headers().get(http::header::CONTENT_TYPE),
+            Some(&http::HeaderValue::from_static("text/css")),
+        );
 
         Ok(())
     }
 
     #[tokio::test]
     async fn image() -> Result<(), anyhow::Error> {
-        let app = router(".");
+        let ts = TestServer::new(router("."))?;
 
-        let response =
-            app.oneshot(Request::builder().uri("/images/LICENSE").body(Body::empty())?).await?;
-
-        assert_eq!(response.status(), StatusCode::OK);
+        let resp = ts.get("/images/LICENSE").await?;
+        assert_eq!(resp.status(), StatusCode::OK);
 
         Ok(())
     }

@@ -154,21 +154,22 @@ async fn single(
 
 #[cfg(test)]
 mod tests {
+    use std::io::Cursor;
+
+    use crate::test_server::TestServer;
+
     use super::*;
 
-    use axum::body::Body;
-    use axum::http::Request;
     use sqlx::SqlitePool;
-    use tower::ServiceExt;
 
     #[sqlx::test(fixtures("notes"))]
     async fn main(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let app = app(&db);
-        let response = app.oneshot(Request::builder().uri("/").body(Body::empty())?).await?;
+        let ts = TestServer::new(app(&db))?;
 
-        assert_eq!(response.status(), StatusCode::OK);
+        let resp = ts.get("/").await?;
+        assert_eq!(resp.status(), StatusCode::OK);
 
-        let body = String::from_utf8(hyper::body::to_bytes(response.into_body()).await?.to_vec())?;
+        let body = resp.text().await?;
         assert!(body.contains("Hello, it is a header"));
 
         Ok(())
@@ -176,31 +177,32 @@ mod tests {
 
     #[sqlx::test(fixtures("notes"))]
     async fn atom_feed(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let app = app(&db);
-        let response =
-            app.oneshot(Request::builder().uri("/atom.xml").body(Body::empty())?).await?;
+        let ts = TestServer::new(app(&db))?;
 
-        assert_eq!(response.status(), StatusCode::OK);
+        let resp = ts.get("/atom.xml").await?;
+        assert_eq!(resp.status(), StatusCode::OK);
         assert_eq!(
-            response.headers().get(http::header::CONTENT_TYPE),
-            Some(&http::HeaderValue::from_static(mime::TEXT_XML.as_ref()))
+            resp.headers().get(http::header::CONTENT_TYPE),
+            Some(&http::HeaderValue::from_static("text/xml"))
         );
 
-        let body = String::from_utf8(hyper::body::to_bytes(response.into_body()).await?.to_vec())?;
-        assert!(body.contains("Hello, it is a header"));
+        let feed = Feed::read_from(Cursor::new(&resp.bytes().await?))?;
+        assert_eq!(
+            feed.entries[0].content().unwrap().value().unwrap(),
+            "<p>It's a me, <em>Mario</em>.</p>\n"
+        );
 
         Ok(())
     }
 
     #[sqlx::test(fixtures("notes"))]
     async fn monthly_view(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let app = app(&db);
-        let response =
-            app.oneshot(Request::builder().uri("/notes/2022/10").body(Body::empty())?).await?;
+        let ts = TestServer::new(app(&db))?;
 
-        assert_eq!(response.status(), StatusCode::OK);
+        let resp = ts.get("/notes/2022/10").await?;
+        assert_eq!(resp.status(), StatusCode::OK);
 
-        let body = String::from_utf8(hyper::body::to_bytes(response.into_body()).await?.to_vec())?;
+        let body = resp.text().await?;
         assert!(body.contains("Hello, it is a header"));
 
         Ok(())
@@ -208,18 +210,12 @@ mod tests {
 
     #[sqlx::test(fixtures("notes"))]
     async fn single_note(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let app = app(&db);
-        let response = app
-            .oneshot(
-                Request::builder()
-                    .uri("/note/c1449d6c-6b5b-4ce4-a4d7-98853562fbf1")
-                    .body(Body::empty())?,
-            )
-            .await?;
+        let ts = TestServer::new(app(&db))?;
 
-        assert_eq!(response.status(), StatusCode::OK);
+        let resp = ts.get("/note/c1449d6c-6b5b-4ce4-a4d7-98853562fbf1").await?;
+        assert_eq!(resp.status(), StatusCode::OK);
 
-        let body = String::from_utf8(hyper::body::to_bytes(response.into_body()).await?.to_vec())?;
+        let body = resp.text().await?;
         assert!(body.contains("Hello, it is a header"));
 
         Ok(())
@@ -227,27 +223,20 @@ mod tests {
 
     #[sqlx::test(fixtures("notes"))]
     async fn bad_note_id(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let app = app(&db);
-        let response =
-            app.oneshot(Request::builder().uri("/note/missing").body(Body::empty())?).await?;
+        let ts = TestServer::new(app(&db))?;
 
-        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        let resp = ts.get("/note/not-a-uuid").await?;
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
 
         Ok(())
     }
 
     #[sqlx::test(fixtures("notes"))]
     async fn missing_note_id(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let app = app(&db);
-        let response = app
-            .oneshot(
-                Request::builder()
-                    .uri("/note/37c615b0-bb55-424d-a813-69e14ca5c20c")
-                    .body(Body::empty())?,
-            )
-            .await?;
+        let ts = TestServer::new(app(&db))?;
 
-        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        let resp = ts.get("/note/37c615b0-bb55-424d-a813-69e14ca5c20c").await?;
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
 
         Ok(())
     }
