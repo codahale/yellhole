@@ -5,14 +5,12 @@ use axum::response::Redirect;
 use axum::routing::{get, post};
 use axum::{Extension, Form, Router};
 use serde::Deserialize;
-use sqlx::SqlitePool;
 use tower::ServiceBuilder;
 use tower_http::limit::RequestBodyLimitLayer;
 use url::Url;
-use uuid::Uuid;
 
-use crate::models::Note;
 use crate::services::images::{Image, ImageService};
+use crate::services::notes::NoteService;
 
 use super::Page;
 
@@ -49,11 +47,10 @@ struct NewNote {
 }
 
 async fn create_note(
-    db: Extension<SqlitePool>,
+    notes: Extension<NoteService>,
     Form(new_note): Form<NewNote>,
 ) -> Result<Redirect, StatusCode> {
-    let note_id = Uuid::new_v4();
-    Note::create(&db, note_id.as_hyphenated(), &new_note.body).await.map_err(|err| {
+    let note_id = notes.create(&new_note.body).await.map_err(|err| {
         tracing::warn!(%err, "error inserting note");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
@@ -107,6 +104,7 @@ mod tests {
     use axum_sessions::async_session::MemoryStore;
     use axum_sessions::SessionLayer;
     use hyper::{Body, Request};
+    use sqlx::SqlitePool;
     use tempdir::TempDir;
     use tower::ServiceExt;
 
@@ -133,7 +131,7 @@ mod tests {
         let store = MemoryStore::new();
         let session_layer = SessionLayer::new(store, &[69; 64]);
         Ok(router()
-            .layer(Extension(db.clone()))
+            .layer(Extension(NoteService::new(db.clone())))
             .layer(Extension(ImageService::new(db.clone(), temp_dir)?))
             .layer(Extension("http://example.com".parse::<Url>().unwrap()))
             .layer(Extension(Author("Mr Magoo".into())))

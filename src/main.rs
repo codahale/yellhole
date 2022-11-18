@@ -12,7 +12,6 @@ use url::Url;
 use crate::web::App;
 
 mod config;
-mod models;
 mod services;
 mod web;
 

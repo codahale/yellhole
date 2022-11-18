@@ -4,28 +4,27 @@ use chrono::{DateTime, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc
 use pulldown_cmark::{Event, HeadingLevel, Parser, Tag};
 use sqlx::SqlitePool;
 use uuid::fmt::Hyphenated;
+use uuid::Uuid;
 
-#[derive(Debug)]
-pub struct Note {
-    pub note_id: Hyphenated,
-    pub body: String,
-    pub created_at: NaiveDateTime,
+#[derive(Debug, Clone)]
+pub struct NoteService {
+    db: SqlitePool,
 }
 
-impl Note {
-    pub async fn create(
-        db: &SqlitePool,
-        note_id: &Hyphenated,
-        body: &str,
-    ) -> Result<(), sqlx::Error> {
-        let note_id = note_id.to_string();
-        sqlx::query!(r"insert into note (note_id, body) values (?, ?)", note_id, body)
-            .execute(db)
-            .await?;
-        Ok(())
+impl NoteService {
+    pub fn new(db: SqlitePool) -> NoteService {
+        NoteService { db }
     }
 
-    pub async fn by_id(db: &SqlitePool, note_id: &Hyphenated) -> Result<Option<Note>, sqlx::Error> {
+    pub async fn create(&self, body: &str) -> Result<Hyphenated, sqlx::Error> {
+        let note_id = Uuid::new_v4().hyphenated();
+        sqlx::query!(r"insert into note (note_id, body) values (?, ?)", note_id, body)
+            .execute(&self.db)
+            .await?;
+        Ok(note_id)
+    }
+
+    pub async fn by_id(&self, note_id: &Hyphenated) -> Result<Option<Note>, sqlx::Error> {
         sqlx::query_as!(
             Note,
             r#"
@@ -35,11 +34,11 @@ impl Note {
             "#,
             note_id
         )
-        .fetch_optional(db)
+        .fetch_optional(&self.db)
         .await
     }
 
-    pub async fn most_recent(db: &SqlitePool, n: u16) -> Result<Vec<Note>, sqlx::Error> {
+    pub async fn most_recent(&self, n: u16) -> Result<Vec<Note>, sqlx::Error> {
         sqlx::query_as!(
             Note,
             r#"
@@ -50,12 +49,12 @@ impl Note {
             "#,
             n
         )
-        .fetch_all(db)
+        .fetch_all(&self.db)
         .await
     }
 
     pub async fn date_range(
-        db: &SqlitePool,
+        &self,
         range: Range<NaiveDate>,
     ) -> Result<Option<Vec<Note>>, sqlx::Error> {
         let start = local_date_to_utc(&range.start);
@@ -71,11 +70,20 @@ impl Note {
             start,
             end,
         )
-        .fetch_all(db)
+        .fetch_all(&self.db)
         .await
         .map(Some)
     }
+}
 
+#[derive(Debug)]
+pub struct Note {
+    pub note_id: Hyphenated,
+    pub body: String,
+    pub created_at: NaiveDateTime,
+}
+
+impl Note {
     pub fn to_html(&self) -> String {
         render_markdown(&self.body)
     }

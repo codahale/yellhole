@@ -18,6 +18,7 @@ use url::Url;
 
 use crate::config::{Author, Title};
 use crate::services::images::ImageService;
+use crate::services::notes::NoteService;
 use crate::services::passkeys::PasskeyService;
 use crate::services::sessions::SessionService;
 
@@ -66,11 +67,10 @@ impl App {
                 ServiceBuilder::new()
                     .layer(Extension(PasskeyService::new(self.db.clone(), &self.base_url)))
                     .layer(Extension(images))
+                    .layer(Extension(NoteService::new(self.db.clone())))
                     .layer(Extension(self.base_url))
-                    .layer(Extension(self.db))
                     .layer(Extension(self.author))
                     .layer(Extension(self.title))
-                    .layer(Extension(self.data_dir))
                     .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
                     .layer(SetSensitiveRequestHeadersLayer::new(std::iter::once(
                         http::header::COOKIE,

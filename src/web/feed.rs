@@ -7,14 +7,13 @@ use axum::routing::get;
 use axum::{Extension, Router};
 use chrono::{Datelike, FixedOffset, Months, NaiveDate, Utc};
 use serde::Deserialize;
-use sqlx::SqlitePool;
 use tower_http::set_header::SetResponseHeaderLayer;
 use url::Url;
 use uuid::Uuid;
 
 use super::Page;
 use crate::config::{Author, Title};
-use crate::models::Note;
+use crate::services::notes::{Note, NoteService};
 
 pub fn router() -> Router {
     let immutable = Router::new().route("/note/:note_id", get(single)).layer(
@@ -58,12 +57,12 @@ struct IndexOpts {
 }
 
 async fn index(
-    db: Extension<SqlitePool>,
+    notes: Extension<NoteService>,
     Extension(base_url): Extension<Url>,
     opts: Query<IndexOpts>,
 ) -> Result<Page<FeedPage>, StatusCode> {
     let n = opts.n.unwrap_or(100);
-    let notes = Note::most_recent(&db, n).await.map_err(|err| {
+    let notes = notes.most_recent(n).await.map_err(|err| {
         tracing::warn!(?err, n, "error querying feed index");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
@@ -74,12 +73,12 @@ async fn index(
 }
 
 async fn atom(
-    db: Extension<SqlitePool>,
+    notes: Extension<NoteService>,
     base_url: Extension<Url>,
     Extension(Author(author)): Extension<Author>,
     Extension(Title(title)): Extension<Title>,
 ) -> Result<Response, StatusCode> {
-    let notes = Note::most_recent(&db, 20).await.map_err(|err| {
+    let notes = notes.most_recent(20).await.map_err(|err| {
         tracing::warn!(?err, "error querying atom index");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
@@ -118,14 +117,15 @@ async fn atom(
 }
 
 async fn month(
-    db: Extension<SqlitePool>,
+    notes: Extension<NoteService>,
     Extension(base_url): Extension<Url>,
     Path((year, month)): Path<(i32, u32)>,
 ) -> Result<Page<FeedPage>, StatusCode> {
     let Some(start) = NaiveDate::from_ymd_opt(year, month, 1) else { return Err(StatusCode::NOT_FOUND)};
     let end = start + Months::new(1);
 
-    let notes = Note::date_range(&db, start..end)
+    let notes = notes
+        .date_range(start..end)
         .await
         .map_err(|err| {
             tracing::warn!(?err, year, month, "error querying feed for month");
@@ -136,12 +136,13 @@ async fn month(
 }
 
 async fn single(
-    db: Extension<SqlitePool>,
+    notes: Extension<NoteService>,
     Extension(base_url): Extension<Url>,
     Path(note_id): Path<String>,
 ) -> Result<Page<FeedPage>, StatusCode> {
     let note_id = note_id.parse::<Uuid>().map_err(|_| StatusCode::NOT_FOUND)?;
-    let note = Note::by_id(&db, note_id.as_hyphenated())
+    let note = notes
+        .by_id(note_id.as_hyphenated())
         .await
         .map_err(|err| {
             tracing::warn!(?err, %note_id, "error querying feed by id");
@@ -157,6 +158,7 @@ mod tests {
 
     use axum::body::Body;
     use axum::http::Request;
+    use sqlx::SqlitePool;
     use tower::ServiceExt;
 
     #[sqlx::test(fixtures("notes"))]
@@ -252,7 +254,7 @@ mod tests {
 
     fn app(db: &SqlitePool) -> Router {
         router()
-            .layer(Extension(db.clone()))
+            .layer(Extension(NoteService::new(db.clone())))
             .layer(Extension("http://example.com".parse::<Url>().unwrap()))
             .layer(Extension(Author("Mr Magoo".into())))
             .layer(Extension(Title("Yellhole".into())))
