@@ -2,17 +2,28 @@ use std::time::Duration;
 
 use axum::async_trait;
 use axum_sessions::async_session::{Result, Session, SessionStore};
+use axum_sessions::{SameSite, SessionLayer};
 use sqlx::SqlitePool;
-use tokio::time;
+use tokio::{task, time};
+use url::Url;
 
 #[derive(Debug, Clone)]
-pub struct DbSessionStore {
+pub struct SessionService {
     db: SqlitePool,
 }
 
-impl DbSessionStore {
-    pub fn new(db: &SqlitePool) -> DbSessionStore {
-        DbSessionStore { db: db.clone() }
+impl SessionService {
+    pub fn new(
+        db: &SqlitePool,
+        base_url: &Url,
+    ) -> (SessionLayer<SessionService>, task::JoinHandle<anyhow::Result<()>>) {
+        let store = SessionService { db: db.clone() };
+        let session_expiry = task::spawn(store.clone().continuously_delete_expired());
+        let session_layer = SessionLayer::new(store, &[69; 64])
+            .with_cookie_name("yellhole")
+            .with_same_site_policy(SameSite::Strict)
+            .with_secure(base_url.scheme() == "https");
+        (session_layer, session_expiry)
     }
 
     pub async fn continuously_delete_expired(self) -> Result<()> {
@@ -34,7 +45,7 @@ impl DbSessionStore {
 }
 
 #[async_trait]
-impl SessionStore for DbSessionStore {
+impl SessionStore for SessionService {
     async fn load_session(&self, cookie_value: String) -> Result<Option<Session>> {
         let session_id = Session::id_from_cookie_value(&cookie_value)?;
         tracing::trace!(session_id, "loading session");

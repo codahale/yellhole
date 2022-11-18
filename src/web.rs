@@ -6,10 +6,8 @@ use axum::http::{self, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::{Html, IntoResponse, Response};
 use axum::Extension;
-use axum_sessions::{SameSite, SessionLayer};
 use futures::Future;
 use sqlx::SqlitePool;
-use tokio::task;
 use tower::ServiceBuilder;
 use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
 use tower_http::sensitive_headers::{
@@ -19,9 +17,9 @@ use tower_http::trace::TraceLayer;
 use url::Url;
 
 use crate::config::{Author, Title};
-use crate::models::DbSessionStore;
 use crate::services::images::ImageService;
 use crate::services::passkeys::PasskeyService;
+use crate::services::sessions::SessionService;
 
 mod admin;
 mod asset;
@@ -55,21 +53,13 @@ impl App {
     ) -> anyhow::Result<()> {
         tracing::info!(%addr, base_url=%self.base_url, "starting server");
 
-        // Store sessions in the database. Use a constant key here because the cookie value is just
-        // a random ID.
-        let store = DbSessionStore::new(&self.db);
-        let session_expiry = task::spawn(store.clone().continuously_delete_expired());
-        let session_layer = SessionLayer::new(store, &[69; 64])
-            .with_cookie_name("yellhole")
-            .with_same_site_policy(SameSite::Strict)
-            .with_secure(self.base_url.scheme() == "https");
-
+        let (sessions, session_expiry) = SessionService::new(&self.db, &self.base_url);
         let images = ImageService::new(self.db.clone(), &self.data_dir)?;
 
         let app = admin::router()
             .route_layer(middleware::from_extractor::<auth::RequireAuth>())
             .merge(auth::router())
-            .layer(session_layer) // only enable sessions for auth and admin
+            .layer(sessions) // only enable sessions for auth and admin
             .merge(feed::router())
             .merge(asset::router(self.data_dir.join("images")))
             .layer(
