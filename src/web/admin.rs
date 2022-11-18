@@ -119,7 +119,7 @@ mod tests {
         let (_, app) = app(&db, &temp_dir)?;
         let ts = TestServer::new(app)?;
 
-        let resp = ts.get("/admin/new").await?;
+        let resp = ts.get("/admin/new")?.send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
 
         let body = resp.text().await?;

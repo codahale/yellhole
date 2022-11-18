@@ -19,12 +19,12 @@ impl TestServer {
 
         Ok(TestServer {
             url: Url::parse(&format!("http://{addr}/"))?,
-            client: ClientBuilder::new().redirect(Policy::none()).build()?,
+            client: ClientBuilder::new().redirect(Policy::none()).cookie_store(true).build()?,
         })
     }
 
-    pub async fn get(&self, path: &str) -> Result<reqwest::Response, anyhow::Error> {
-        Ok(self.client.get(self.url.join(path)?).send().await?)
+    pub fn get(&self, path: &str) -> Result<RequestBuilder, anyhow::Error> {
+        Ok(self.client.get(self.url.join(path)?))
     }
 
     pub fn post(&self, path: &str) -> Result<RequestBuilder, anyhow::Error> {

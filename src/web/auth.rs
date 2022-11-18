@@ -174,7 +174,7 @@ mod tests {
     async fn fresh_login_page(db: SqlitePool) -> Result<(), anyhow::Error> {
         let ts = TestServer::new(app(db))?;
 
-        let resp = ts.get("/login").await?;
+        let resp = ts.get("/login")?.send().await?;
         assert_eq!(resp.status(), StatusCode::SEE_OTHER);
         assert_eq!(
             resp.headers().get(http::header::LOCATION),
@@ -188,7 +188,7 @@ mod tests {
     async fn fresh_register_page(db: SqlitePool) -> Result<(), anyhow::Error> {
         let ts = TestServer::new(app(db))?;
 
-        let resp = ts.get("/register").await?;
+        let resp = ts.get("/register")?.send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
 
         Ok(())
@@ -198,7 +198,7 @@ mod tests {
     async fn registered_register_page(db: SqlitePool) -> Result<(), anyhow::Error> {
         let ts = TestServer::new(app(db))?;
 
-        let resp = ts.get("/register").await?;
+        let resp = ts.get("/register")?.send().await?;
         assert_eq!(resp.status(), StatusCode::SEE_OTHER);
         assert_eq!(
             resp.headers().get(http::header::LOCATION),
@@ -212,7 +212,7 @@ mod tests {
     async fn registered_login_page(db: SqlitePool) -> Result<(), anyhow::Error> {
         let ts = TestServer::new(app(db))?;
 
-        let resp = ts.get("/login").await?;
+        let resp = ts.get("/login")?.send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
 
         Ok(())

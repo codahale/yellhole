@@ -48,7 +48,7 @@ mod tests {
     async fn static_asset() -> Result<(), anyhow::Error> {
         let ts = TestServer::new(router("."))?;
 
-        let resp = ts.get("/assets/css/mvp-1.12.css").await?;
+        let resp = ts.get("/assets/css/mvp-1.12.css")?.send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
         assert_eq!(
             resp.headers().get(http::header::CONTENT_TYPE),
@@ -62,7 +62,7 @@ mod tests {
     async fn image() -> Result<(), anyhow::Error> {
         let ts = TestServer::new(router("."))?;
 
-        let resp = ts.get("/images/LICENSE").await?;
+        let resp = ts.get("/images/LICENSE")?.send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
 
         Ok(())

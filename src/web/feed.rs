@@ -166,7 +166,7 @@ mod tests {
     async fn main(db: SqlitePool) -> Result<(), anyhow::Error> {
         let ts = TestServer::new(app(&db))?;
 
-        let resp = ts.get("/").await?;
+        let resp = ts.get("/")?.send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
 
         let body = resp.text().await?;
@@ -179,7 +179,7 @@ mod tests {
     async fn atom_feed(db: SqlitePool) -> Result<(), anyhow::Error> {
         let ts = TestServer::new(app(&db))?;
 
-        let resp = ts.get("/atom.xml").await?;
+        let resp = ts.get("/atom.xml")?.send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
         assert_eq!(
             resp.headers().get(http::header::CONTENT_TYPE),
@@ -199,7 +199,7 @@ mod tests {
     async fn monthly_view(db: SqlitePool) -> Result<(), anyhow::Error> {
         let ts = TestServer::new(app(&db))?;
 
-        let resp = ts.get("/notes/2022/10").await?;
+        let resp = ts.get("/notes/2022/10")?.send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
 
         let body = resp.text().await?;
@@ -212,7 +212,7 @@ mod tests {
     async fn single_note(db: SqlitePool) -> Result<(), anyhow::Error> {
         let ts = TestServer::new(app(&db))?;
 
-        let resp = ts.get("/note/c1449d6c-6b5b-4ce4-a4d7-98853562fbf1").await?;
+        let resp = ts.get("/note/c1449d6c-6b5b-4ce4-a4d7-98853562fbf1")?.send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
 
         let body = resp.text().await?;
@@ -225,7 +225,7 @@ mod tests {
     async fn bad_note_id(db: SqlitePool) -> Result<(), anyhow::Error> {
         let ts = TestServer::new(app(&db))?;
 
-        let resp = ts.get("/note/not-a-uuid").await?;
+        let resp = ts.get("/note/not-a-uuid")?.send().await?;
         assert_eq!(resp.status(), StatusCode::NOT_FOUND);
 
         Ok(())
@@ -235,7 +235,7 @@ mod tests {
     async fn missing_note_id(db: SqlitePool) -> Result<(), anyhow::Error> {
         let ts = TestServer::new(app(&db))?;
 
-        let resp = ts.get("/note/37c615b0-bb55-424d-a813-69e14ca5c20c").await?;
+        let resp = ts.get("/note/37c615b0-bb55-424d-a813-69e14ca5c20c")?.send().await?;
         assert_eq!(resp.status(), StatusCode::NOT_FOUND);
 
         Ok(())
