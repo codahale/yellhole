@@ -1,3 +1,4 @@
+use std::fs;
 use std::path::PathBuf;
 
 use clap::Parser;
@@ -8,7 +9,6 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use url::Url;
 
-use crate::config::DataDir;
 use crate::web::App;
 
 mod config;
@@ -47,7 +47,8 @@ async fn main() -> anyhow::Result<()> {
     anyhow::ensure!(config.base_url.host().is_some(), "base URL must have a host");
 
     // Initialize the data directory.
-    let data_dir = DataDir::new(&config.data_dir)?;
+    let data_dir = config.data_dir.canonicalize()?;
+    fs::create_dir_all(&data_dir)?;
 
     // Configure tracing, defaulting to debug levels.
     tracing_subscriber::registry()
@@ -58,7 +59,7 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     // Connect to the DB.
-    let db_path = data_dir.db_path();
+    let db_path = data_dir.join("yellhole.db");
     tracing::info!(?db_path, "opening database");
     let db_opts = SqliteConnectOptions::new().create_if_missing(true).filename(db_path);
     let db = SqlitePoolOptions::new().connect_with(db_opts).await?;

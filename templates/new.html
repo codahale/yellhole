@@ -13,7 +13,7 @@
                 <summary>Recent Images</summary>
                 <div>
                     {% for image in images %}
-                    <img src="/images/{{ image.image_id }}.thumb.webp" onclick="insertImage('{{image.image_id}}')">
+                    <img src="{{ image.thumbnail_src() }}" onclick="insertImage('{{ image.main_src() }}')">
                     {% endfor %}
                 </div>
             </details>
@@ -46,12 +46,12 @@
 
 {% block tail %}
 <script type="text/javascript">
-    function insertImage(imageId) {
-        const el = document.getElementById("body");
+    function insertImage(imageSrc) {
+        const el = document.getElementById('body');
         const start = el.selectionStart
         const end = el.selectionEnd
         const text = el.value
-        const newText = "![](/images/" + imageId + ".main.webp)";
+        const newText = '![](' + imageSrc + ')';
         const before = text.substring(0, start)
         const after = text.substring(end, text.length)
         el.value = (before + newText + after)

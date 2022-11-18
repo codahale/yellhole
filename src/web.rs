@@ -1,4 +1,5 @@
 use std::net::SocketAddr;
+use std::path::PathBuf;
 
 use askama::Template;
 use axum::http::{self, StatusCode};
@@ -17,8 +18,9 @@ use tower_http::sensitive_headers::{
 use tower_http::trace::TraceLayer;
 use url::Url;
 
-use crate::config::{Author, DataDir, Title};
+use crate::config::{Author, Title};
 use crate::models::DbSessionStore;
+use crate::services::images::ImageService;
 use crate::services::passkeys::PasskeyService;
 
 mod admin;
@@ -29,7 +31,7 @@ mod feed;
 #[derive(Debug)]
 pub struct App {
     db: SqlitePool,
-    data_dir: DataDir,
+    data_dir: PathBuf,
     base_url: Url,
     title: Title,
     author: Author,
@@ -38,7 +40,7 @@ pub struct App {
 impl App {
     pub fn new(
         db: SqlitePool,
-        data_dir: DataDir,
+        data_dir: PathBuf,
         base_url: Url,
         title: Title,
         author: Author,
@@ -62,15 +64,18 @@ impl App {
             .with_same_site_policy(SameSite::Strict)
             .with_secure(self.base_url.scheme() == "https");
 
+        let images = ImageService::new(self.db.clone(), &self.data_dir)?;
+
         let app = admin::router()
             .route_layer(middleware::from_extractor::<auth::RequireAuth>())
             .merge(auth::router())
             .layer(session_layer) // only enable sessions for auth and admin
             .merge(feed::router())
-            .merge(asset::router(self.data_dir.images_dir()))
+            .merge(asset::router(self.data_dir.join("images")))
             .layer(
                 ServiceBuilder::new()
                     .layer(Extension(PasskeyService::new(self.db.clone(), &self.base_url)))
+                    .layer(Extension(images))
                     .layer(Extension(self.base_url))
                     .layer(Extension(self.db))
                     .layer(Extension(self.author))
