@@ -2984,6 +2984,7 @@ dependencies = [
  "chrono",
  "clap",
  "constant_time_eq 0.2.4",
+ "ecdsa",
  "futures",
  "hex",
  "include_dir",

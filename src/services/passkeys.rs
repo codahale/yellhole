@@ -153,42 +153,42 @@ impl PasskeyService {
 }
 
 #[serde_as]
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RegistrationChallenge {
     #[serde(rename = "rpId")]
-    rp_id: String,
+    pub rp_id: String,
 
     #[serde(rename = "userIdBase64")]
     #[serde_as(as = "PickFirst<(Base64, Base64<UrlSafe, Unpadded>)>")]
-    user_id: Vec<u8>,
+    pub user_id: Vec<u8>,
 
-    username: String,
+    pub username: String,
 
     #[serde(rename = "passkeyIdsBase64")]
     #[serde_as(as = "Vec<PickFirst<(Base64, Base64<UrlSafe, Unpadded>)>>")]
-    passkey_ids: Vec<Vec<u8>>,
+    pub passkey_ids: Vec<Vec<u8>>,
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RegistrationResponse {
     #[serde(rename = "clientDataJSONBase64")]
     #[serde_as(as = "PickFirst<(Base64, Base64<UrlSafe, Unpadded>)>")]
-    client_data_json: Vec<u8>,
+    pub client_data_json: Vec<u8>,
 
     #[serde(rename = "authenticatorDataBase64")]
     #[serde_as(as = "PickFirst<(Base64, Base64<UrlSafe, Unpadded>)>")]
-    authenticator_data: Vec<u8>,
+    pub authenticator_data: Vec<u8>,
 
     #[serde(rename = "publicKeyBase64")]
     #[serde_as(as = "PickFirst<(Base64, Base64<UrlSafe, Unpadded>)>")]
-    public_key: Vec<u8>,
+    pub public_key: Vec<u8>,
 }
 #[serde_as]
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AuthenticationChallenge {
     #[serde(rename = "rpId")]
-    rp_id: String,
+    pub rp_id: String,
 
     #[serde(rename = "challengeBase64")]
     #[serde_as(as = "Base64")]
@@ -196,34 +196,35 @@ pub struct AuthenticationChallenge {
 
     #[serde(rename = "passkeyIdsBase64")]
     #[serde_as(as = "Vec<PickFirst<(Base64, Base64<UrlSafe, Unpadded>)>>")]
-    passkey_ids: Vec<Vec<u8>>,
+    pub passkey_ids: Vec<Vec<u8>>,
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AuthenticationResponse {
     #[serde(rename = "rawIdBase64")]
     #[serde_as(as = "PickFirst<(Base64, Base64<UrlSafe, Unpadded>)>")]
-    raw_id: Vec<u8>,
+    pub raw_id: Vec<u8>,
 
     #[serde(rename = "clientDataJSONBase64")]
     #[serde_as(as = "PickFirst<(Base64, Base64<UrlSafe, Unpadded>)>")]
-    client_data_json: Vec<u8>,
+    pub client_data_json: Vec<u8>,
 
     #[serde(rename = "authenticatorDataBase64")]
     #[serde_as(as = "PickFirst<(Base64, Base64<UrlSafe, Unpadded>)>")]
-    authenticator_data: Vec<u8>,
+    pub authenticator_data: Vec<u8>,
 
     #[serde(rename = "signatureBase64")]
     #[serde_as(as = "PickFirst<(Base64, Base64<UrlSafe, Unpadded>)>")]
-    signature: Vec<u8>,
+    pub signature: Vec<u8>,
 }
 
 #[serde_as]
 #[derive(Debug, Deserialize)]
 struct CollectedClientData {
-    #[serde_as(as = "PickFirst<(Base64, Base64<UrlSafe, Unpadded>)>")]
+    #[serde_as(as = "Option<PickFirst<(Base64, Base64<UrlSafe, Unpadded>)>>")]
     challenge: Option<Vec<u8>>,
+
     origin: Url,
 
     #[serde(rename = "type")]
@@ -253,7 +254,7 @@ fn parse_authenticator_data(ad: &[u8], rp_id: &str) -> Result<Option<Vec<u8>>, a
     anyhow::ensure!(ad[32] & 1 != 0, "user presence flag not set");
     if ad.len() > 55 {
         let cred_id_len = u16::from_be_bytes(ad[53..55].try_into().unwrap()) as usize;
-        anyhow::ensure!(ad.len() > 55 + cred_id_len, "bad credential ID size");
+        anyhow::ensure!(ad.len() >= 55 + cred_id_len, "bad credential ID size");
         Ok(Some(ad[55..55 + cred_id_len].to_vec()))
     } else {
         Ok(None)

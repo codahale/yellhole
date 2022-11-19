@@ -159,9 +159,15 @@ async fn login_finish(
 
 #[cfg(test)]
 mod tests {
-    use axum::http;
+    use axum::{http, middleware};
     use axum_sessions::async_session::MemoryStore;
     use axum_sessions::SessionLayer;
+    use p256::ecdsa::signature::Signer;
+    use p256::ecdsa::SigningKey;
+    use p256::PublicKey;
+    use rand::thread_rng;
+    use sha2::{Digest, Sha256};
+    use spki::EncodePublicKey;
     use sqlx::SqlitePool;
     use url::Url;
 
@@ -218,10 +224,98 @@ mod tests {
         Ok(())
     }
 
+    #[sqlx::test]
+    async fn passkey_registration_and_login(db: SqlitePool) -> Result<(), anyhow::Error> {
+        let ts = TestServer::new(app(db))?;
+
+        // Try a protected route. We should be blocked.
+        let protected = ts.get("/protected")?.send().await?;
+        assert_eq!(protected.status(), StatusCode::SEE_OTHER);
+
+        // Generate a P-256 ECDSA key pair.
+        let signing_key = SigningKey::random(&mut thread_rng());
+        let public_key =
+            PublicKey::from(signing_key.verifying_key()).to_public_key_der()?.into_vec();
+        let key_id = Sha256::new().chain_update(&public_key).finalize().to_vec();
+
+        // Start the registration process.
+        let reg_start =
+            ts.post("/register/start")?.send().await?.json::<RegistrationChallenge>().await?;
+
+        // Generate the authenticator data.
+        let mut authenticator_data = Vec::new();
+        authenticator_data.extend(Sha256::new().chain_update(&reg_start.rp_id).finalize());
+        authenticator_data.extend([1]); // flags
+        authenticator_data.extend([0; 20]); // unused
+        authenticator_data.extend(32u16.to_be_bytes());
+        authenticator_data.extend(&key_id);
+
+        // Register our public key.
+        let reg_finish = ts
+            .post("/register/finish")?
+            .json(&RegistrationResponse {
+                authenticator_data,
+                client_data_json: r#"{"type":"webauthn.create","origin":"http://example.com"}"#
+                    .as_bytes()
+                    .to_vec(),
+                public_key,
+            })
+            .send()
+            .await?;
+        assert_eq!(reg_finish.status(), StatusCode::CREATED);
+
+        // Start the login process.
+        let login_start = ts.post("/login/start")?.send().await?;
+        let login_start = login_start.json::<AuthenticationChallenge>().await?;
+        assert!(login_start.passkey_ids.contains(&key_id));
+
+        // Generate the collected client data and authenticator data.
+        let cdj = format!(
+            "{{\"type\":\"webauthn.get\",\"origin\":\"http://example.com\",\"challenge\": {:?}}}",
+            base64::encode(login_start.challenge)
+        );
+
+        let mut authenticator_data = Vec::new();
+        authenticator_data.extend(Sha256::new().chain_update(&login_start.rp_id).finalize());
+        authenticator_data.extend([1]); // flags
+        authenticator_data.extend([0; 20]); // unused
+        authenticator_data.extend(32u16.to_be_bytes());
+        authenticator_data.extend(&key_id);
+
+        // Sign authenticator data and a hash of the collected client data.
+        let mut signed = authenticator_data.clone();
+        signed.extend(Sha256::new().chain_update(&cdj).finalize());
+        let signature = signing_key.sign(&signed).to_der();
+
+        // Send our signature to authenticate.
+        let login_finish = ts
+            .post("/login/finish")?
+            .json(&AuthenticationResponse {
+                raw_id: key_id.clone(),
+                authenticator_data,
+                client_data_json: cdj.as_bytes().to_vec(),
+                signature: signature.as_bytes().to_vec(),
+            })
+            .send()
+            .await?;
+        assert_eq!(login_finish.status(), StatusCode::ACCEPTED);
+
+        // Try the protected resource again.
+        let protected = ts.get("/protected")?.send().await?;
+        assert_eq!(protected.status(), StatusCode::OK);
+
+        Ok(())
+    }
+
     fn app(db: SqlitePool) -> Router {
         let store = MemoryStore::new();
-        let session_layer = SessionLayer::new(store, &[69; 64]);
-        router()
+        let session_layer = SessionLayer::new(store, &[69; 64])
+            .with_secure(false)
+            .with_same_site_policy(axum_sessions::SameSite::None);
+        Router::new()
+            .route("/protected", get(protected))
+            .route_layer(middleware::from_extractor::<RequireAuth>())
+            .merge(router())
             .layer(Extension(PasskeyService::new(
                 db,
                 &"http://example.com".parse::<Url>().unwrap(),
@@ -229,5 +323,9 @@ mod tests {
             .layer(Extension(Author("Mr Magoo".into())))
             .layer(Extension(Title("Yellhole".into())))
             .layer(session_layer)
+    }
+
+    async fn protected() -> &'static str {
+        "secure"
     }
 }
