@@ -5,15 +5,16 @@ use askama::Template;
 use axum::http::{self, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::{Html, IntoResponse, Response};
-use axum::Extension;
 use futures::Future;
 use sqlx::SqlitePool;
 use tower::ServiceBuilder;
-use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
+use tower_http::request_id::MakeRequestUuid;
 use tower_http::sensitive_headers::{
     SetSensitiveRequestHeadersLayer, SetSensitiveResponseHeadersLayer,
 };
-use tower_http::trace::TraceLayer;
+use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
+use tower_http::ServiceBuilderExt;
+use tracing::Level;
 use url::Url;
 
 use crate::config::{Author, Title};
@@ -65,22 +66,31 @@ impl App {
             .merge(asset::router(self.data_dir.join("images")))
             .layer(
                 ServiceBuilder::new()
-                    .layer(Extension(PasskeyService::new(self.db.clone(), &self.base_url)))
-                    .layer(Extension(images))
-                    .layer(Extension(NoteService::new(self.db.clone())))
-                    .layer(Extension(self.base_url))
-                    .layer(Extension(self.author))
-                    .layer(Extension(self.title))
-                    .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
+                    .add_extension(PasskeyService::new(self.db.clone(), &self.base_url))
+                    .add_extension(images)
+                    .add_extension(NoteService::new(self.db.clone()))
+                    .add_extension(self.base_url)
+                    .add_extension(self.author)
+                    .add_extension(self.title)
+                    .set_x_request_id(MakeRequestUuid)
                     .layer(SetSensitiveRequestHeadersLayer::new(std::iter::once(
                         http::header::COOKIE,
                     )))
-                    .layer(TraceLayer::new_for_http())
+                    .layer(
+                        TraceLayer::new_for_http()
+                            .make_span_with(
+                                DefaultMakeSpan::new().level(Level::INFO).include_headers(true),
+                            )
+                            .on_response(
+                                DefaultOnResponse::new().level(Level::INFO).include_headers(true),
+                            ),
+                    )
                     .layer(SetSensitiveResponseHeadersLayer::new(std::iter::once(
                         http::header::SET_COOKIE,
                     )))
-                    .layer(PropagateRequestIdLayer::x_request_id())
-                    .layer(middleware::from_fn(handle_errors)),
+                    .propagate_x_request_id()
+                    .layer(middleware::from_fn(handle_errors))
+                    .catch_panic(),
             );
 
         axum::Server::bind(addr)

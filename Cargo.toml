@@ -47,12 +47,13 @@ tokio-util = "0.7.4"
 tower = "0.4.13"
 tower-http = { version = "0.3.4", features = [
     "add-extension",
-    "sensitive-headers",
-    "trace",
-    "set-header",
+    "catch-panic",
     "fs",
-    "request-id",
     "limit",
+    "request-id",
+    "sensitive-headers",
+    "set-header",
+    "trace",
 ] }
 tracing = { version = "0.1.37", features = ["log"] }
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
