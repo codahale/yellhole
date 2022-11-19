@@ -7,8 +7,9 @@
             <header>
                 <h2>New Note</h2>
             </header>
-            <textarea cols="40" rows="5" id="body" name="body" placeholder="It'sa me, _Mario_."></textarea>
-            <button type="submit">Post</button>
+            <textarea cols="40" rows="5" id="body" name="body" placeholder="It'sa me, _Mario_."
+                oninput="updatePost()"></textarea>
+            <button id="post" type="submit" disabled>Post</button>
             <details open>
                 <summary>Recent Images</summary>
                 <div>
@@ -26,8 +27,8 @@
                 <h2>Upload Images</h2>
             </header>
             <label for="image">Images:</label>
-            <input type="file" id="image" name="image" accept="image/*" multiple>
-            <button type="submit">Upload</button>
+            <input type="file" id="image" name="image" accept="image/*" multiple oninput="updateUpload()">
+            <button id="upload" type="submit" disabled>Upload</button>
         </form>
     </section>
     <hr>
@@ -37,8 +38,9 @@
                 <h2>Download Image</h2>
             </header>
             <label for="url">URL:</label>
-            <input type="input" id="url" name="url" placeholder="https://trashbat.co.uk/gonkbot.gif" size="40">
-            <button type="submit">Download</button>
+            <input type="input" id="url" name="url" placeholder="https://trashbat.co.uk/gonkbot.gif" size="40"
+                oninput="updateDownload()">
+            <button id="download" type="submit" disabled>Download</button>
         </form>
     </section>
 </article>
@@ -46,6 +48,24 @@
 
 {% block tail %}
 <script type="text/javascript">
+    function updatePost() {
+        const el = document.getElementById('body');
+        const btn = document.getElementById('post');
+        btn.disabled = el.value.length == 0;
+    }
+
+    function updateUpload() {
+        const el = document.getElementById('image');
+        const btn = document.getElementById('upload');
+        btn.disabled = el.value.length == 0;
+    }
+
+    function updateDownload() {
+        const el = document.getElementById('url');
+        const btn = document.getElementById('download');
+        btn.disabled = el.value.length == 0;
+    }
+
     function insertImage(imageSrc) {
         const el = document.getElementById('body');
         const start = el.selectionStart
