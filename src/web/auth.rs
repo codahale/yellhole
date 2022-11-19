@@ -180,7 +180,7 @@ mod tests {
     async fn fresh_login_page(db: SqlitePool) -> Result<(), anyhow::Error> {
         let ts = TestServer::new(app(db))?;
 
-        let resp = ts.get("/login")?.send().await?;
+        let resp = ts.get("/login").send().await?;
         assert_eq!(resp.status(), StatusCode::SEE_OTHER);
         assert_eq!(
             resp.headers().get(http::header::LOCATION),
@@ -194,7 +194,7 @@ mod tests {
     async fn fresh_register_page(db: SqlitePool) -> Result<(), anyhow::Error> {
         let ts = TestServer::new(app(db))?;
 
-        let resp = ts.get("/register")?.send().await?;
+        let resp = ts.get("/register").send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
 
         Ok(())
@@ -204,7 +204,7 @@ mod tests {
     async fn registered_register_page(db: SqlitePool) -> Result<(), anyhow::Error> {
         let ts = TestServer::new(app(db))?;
 
-        let resp = ts.get("/register")?.send().await?;
+        let resp = ts.get("/register").send().await?;
         assert_eq!(resp.status(), StatusCode::SEE_OTHER);
         assert_eq!(
             resp.headers().get(http::header::LOCATION),
@@ -218,7 +218,7 @@ mod tests {
     async fn registered_login_page(db: SqlitePool) -> Result<(), anyhow::Error> {
         let ts = TestServer::new(app(db))?;
 
-        let resp = ts.get("/login")?.send().await?;
+        let resp = ts.get("/login").send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
 
         Ok(())
@@ -229,7 +229,7 @@ mod tests {
         let ts = TestServer::new(app(db))?;
 
         // Try a protected route. We should be blocked.
-        let protected = ts.get("/protected")?.send().await?;
+        let protected = ts.get("/protected").send().await?;
         assert_eq!(protected.status(), StatusCode::SEE_OTHER);
 
         // Generate a P-256 ECDSA key pair.
@@ -240,7 +240,7 @@ mod tests {
 
         // Start the registration process.
         let reg_start =
-            ts.post("/register/start")?.send().await?.json::<RegistrationChallenge>().await?;
+            ts.post("/register/start").send().await?.json::<RegistrationChallenge>().await?;
 
         // Generate the authenticator data.
         let mut authenticator_data = Vec::new();
@@ -252,7 +252,7 @@ mod tests {
 
         // Register our public key.
         let reg_finish = ts
-            .post("/register/finish")?
+            .post("/register/finish")
             .json(&RegistrationResponse {
                 authenticator_data,
                 client_data_json: r#"{"type":"webauthn.create","origin":"http://example.com"}"#
@@ -265,7 +265,7 @@ mod tests {
         assert_eq!(reg_finish.status(), StatusCode::CREATED);
 
         // Start the login process.
-        let login_start = ts.post("/login/start")?.send().await?;
+        let login_start = ts.post("/login/start").send().await?;
         let login_start = login_start.json::<AuthenticationChallenge>().await?;
         assert!(login_start.passkey_ids.contains(&key_id));
 
@@ -289,7 +289,7 @@ mod tests {
 
         // Send our signature to authenticate.
         let login_finish = ts
-            .post("/login/finish")?
+            .post("/login/finish")
             .json(&AuthenticationResponse {
                 raw_id: key_id.clone(),
                 authenticator_data,
@@ -301,7 +301,7 @@ mod tests {
         assert_eq!(login_finish.status(), StatusCode::ACCEPTED);
 
         // Try the protected resource again.
-        let protected = ts.get("/protected")?.send().await?;
+        let protected = ts.get("/protected").send().await?;
         assert_eq!(protected.status(), StatusCode::OK);
 
         Ok(())

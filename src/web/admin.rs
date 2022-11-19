@@ -119,7 +119,7 @@ mod tests {
         let (_, _, app) = app(&db, &temp_dir)?;
         let ts = TestServer::new(app)?;
 
-        let resp = ts.get("/admin/new")?.send().await?;
+        let resp = ts.get("/admin/new").send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
 
         let body = resp.text().await?;
@@ -134,7 +134,7 @@ mod tests {
         let (_, notes, app) = app(&db, &temp_dir)?;
         let ts = TestServer::new(app)?;
 
-        let resp = ts.post("/admin/new-note")?.form(&[("body", "This is a note.")]).send().await?;
+        let resp = ts.post("/admin/new-note").form(&[("body", "This is a note.")]).send().await?;
         assert_eq!(resp.status(), StatusCode::SEE_OTHER);
         let location = resp.headers().get(http::header::LOCATION).expect("missing header");
         let note_id = location.to_str()?.split('/').last().expect("bad URI").parse::<Uuid>()?;
@@ -157,7 +157,7 @@ mod tests {
             "one",
             multipart::Part::bytes(img).file_name("example.webp").mime_str("image/webp")?,
         );
-        let resp = ts.post("/admin/upload-images")?.multipart(form).send().await?;
+        let resp = ts.post("/admin/upload-images").multipart(form).send().await?;
         assert_eq!(resp.status(), StatusCode::SEE_OTHER);
 
         let recent = images.most_recent(1).await?;
@@ -173,7 +173,7 @@ mod tests {
         let ts = TestServer::new(app)?;
 
         let resp = ts
-            .post("/admin/download-image")?
+            .post("/admin/download-image")
             .form(&[("url", "https://crates.io/assets/Cargo-Logo-Small.png")])
             .send()
             .await?;

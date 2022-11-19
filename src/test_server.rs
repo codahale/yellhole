@@ -23,11 +23,11 @@ impl TestServer {
         })
     }
 
-    pub fn get(&self, path: &str) -> Result<RequestBuilder, anyhow::Error> {
-        Ok(self.client.get(self.url.join(path)?))
+    pub fn get(&self, path: &str) -> RequestBuilder {
+        self.client.get(self.url.join(path).unwrap())
     }
 
-    pub fn post(&self, path: &str) -> Result<RequestBuilder, anyhow::Error> {
-        Ok(self.client.post(self.url.join(path)?))
+    pub fn post(&self, path: &str) -> RequestBuilder {
+        self.client.post(self.url.join(path).unwrap())
     }
 }
