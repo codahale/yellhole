@@ -4,12 +4,11 @@
 
 ## A Hole To Yell In
 
-A lightweight tumblelog which can run on e.g. [fly.io](https://fly.io). All persistent data is
-stored in a single directory which can be a mounted persistent volume.
+Yellhole is a lightweight tumblelog which can run on e.g. [fly.io](https://fly.io) for cheap.
 
 ## Features
 
-* Run as a single node. Use a CDN if you're popular.
+* Runs on a single node. Use a CDN if you're popular.
 * All data is stored in a single directory.
 * Simple single-user registration/login with Passkeys.
 * Simple mobile-friendly interface.
@@ -20,14 +19,27 @@ stored in a single directory which can be a mounted persistent volume.
 * No titles, contents addressable by ID, contents sorted by time.
 * Atom feed so your friends can watch.
 
-## TODO
+## Installation
 
-* [x] Improve testing
-  * [x] Test note creation
-  * [x] Test image uploads (mock out IM)
-  * [x] Test image downloads (mock out IM)
-  * [x] Test passkey registration
-  * [x] Test passkey authentication
+```shell
+cargo install --locked yellhole
+```
+
+Requires SQLite and a TLS stack as build dependencies.
+
+Requires ImageMagick as system dependency (specifically, `convert` must be in `$PATH`).
+
+## Operation
+
+See `Dockerfile` for packaging example. See `fly.toml` for deployment example.
+
+## Shitposting
+
+1. Get Yellhole running somewhere.
+2. Go to `/register` and register a Passkey.
+3. Log in with your Passkey and go to `/admin/new`.
+4. Shitpost.
+5. Go to `/` and admire your work.
 
 ## License
 
