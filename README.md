@@ -22,10 +22,10 @@ stored in a single directory which can be a mounted persistent volume.
 
 ## TODO
 
-* [ ] Improve testing
+* [x] Improve testing
   * [x] Test note creation
   * [x] Test image uploads (mock out IM)
-  * [ ] Test image downloads (mock out IM)
+  * [x] Test image downloads (mock out IM)
   * [x] Test passkey registration
   * [x] Test passkey authentication
 

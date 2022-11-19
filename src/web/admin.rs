@@ -166,6 +166,25 @@ mod tests {
         Ok(())
     }
 
+    #[sqlx::test]
+    async fn downloading_an_image(db: SqlitePool) -> Result<(), anyhow::Error> {
+        let temp_dir = TempDir::new("yellhole-test")?;
+        let (images, _, app) = app(&db, &temp_dir)?;
+        let ts = TestServer::new(app)?;
+
+        let resp = ts
+            .post("/admin/download-image")?
+            .form(&[("url", "https://crates.io/assets/Cargo-Logo-Small.png")])
+            .send()
+            .await?;
+        assert_eq!(resp.status(), StatusCode::SEE_OTHER);
+
+        let recent = images.most_recent(1).await?;
+        assert_eq!(1, recent.len());
+
+        Ok(())
+    }
+
     fn app(
         db: &SqlitePool,
         temp_dir: &TempDir,
