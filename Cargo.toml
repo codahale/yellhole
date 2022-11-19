@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 description = "A simple tumblelog."
 license = "AGPL-3.0-or-later"
+include = ["src/**/*", "LICENSE", "README.md", "migrations/*", "templates/*", "build.rs", "!**/fixtures/**/*"]
 
 [dependencies]
 anyhow = "1.0.66"
