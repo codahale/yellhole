@@ -26,11 +26,12 @@ pub struct ImageService {
 impl ImageService {
     pub fn new(db: SqlitePool, data_dir: impl AsRef<Path>) -> Result<ImageService, io::Error> {
         let data_dir = data_dir.as_ref().to_path_buf();
-        fs::create_dir_all(data_dir.join("images"))?;
-        fs::create_dir_all(data_dir.join("uploads"))?;
+        fs::create_dir_all(data_dir.join(IMAGES_DIR))?;
+        fs::create_dir_all(data_dir.join(UPLOADS_DIR))?;
         Ok(ImageService { db, data_dir })
     }
 
+    /// Returns the `n` most recent images, in reverse chronological order.
     pub async fn most_recent(&self, n: u16) -> Result<Vec<Image>, sqlx::Error> {
         sqlx::query_as!(
             Image,
@@ -46,6 +47,8 @@ impl ImageService {
         .await
     }
 
+    /// Processes the given stream as an image file and adds it to the database. Generates a main
+    /// WebP image for displaying in the feed and a thumbnail WebP image for the new note gallery.
     pub async fn add<S, E>(
         &self,
         original_filename: &str,
@@ -56,27 +59,29 @@ impl ImageService {
         S: Stream<Item = Result<Bytes, E>>,
         E: Into<BoxError>,
     {
-        // 1. create an image ID
+        // Create a unique ID for the image.
         let image_id = Uuid::new_v4().hyphenated();
 
-        // 2. write image to dir/uploads/{image_id}.orig.{ext}
+        // Stream the image file to the uploads directory.
         let original_path = self
             .data_dir
-            .join("uploads")
+            .join(UPLOADS_DIR)
             .join(format!("{image_id}.orig.{}", content_type.subtype()));
-        stream_to_file(&original_path, stream).await.context("error streaming image")?;
+        stream_to_file(stream, &original_path).await.context("error streaming image")?;
 
-        // 3. process image, generating thumbnail etc. in parallel
-        let main_path = self.data_dir.join("images").join(format!("{image_id}.main.webp"));
-        let main = process_image(original_path.clone(), main_path, "600");
+        // Generate a 600px-wide main WebP image.
+        let main_path = self.data_dir.join(IMAGES_DIR).join(main_filename(&image_id));
+        let main = process_image(&original_path, &main_path, "600");
 
-        let thumbnail_path = self.data_dir.join("images").join(format!("{image_id}.thumb.webp"));
-        let thumbnail = process_image(original_path.clone(), thumbnail_path, "100");
+        // Generate a 100px-wide thumbnail WebP image.
+        let thumbnail_path = self.data_dir.join(IMAGES_DIR).join(thumbnail_filename(&image_id));
+        let thumbnail = process_image(&original_path, &thumbnail_path, "100");
 
+        // Wait for image processing to complete.
         main.await.context("error generating main image")?;
         thumbnail.await.context("error generating thumbnail image")?;
 
-        // 4. Insert image into DB.
+        // Add image to the database.
         let content_type = content_type.to_string();
         sqlx::query!(
             r"insert into image (image_id, original_filename, content_type) values (?, ?, ?)",
@@ -104,27 +109,40 @@ impl ImageService {
             .ok_or_else(|| anyhow::anyhow!("no Content-Type header"))
             .and_then(|s| s.parse::<Mime>().context("invalid Content-Type header"))?;
 
+        // Add the response body as an image.
         self.add(&original_filename, &content_type, image.bytes_stream()).await
     }
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Image {
-    pub image_id: Hyphenated,
+    image_id: Hyphenated,
     pub created_at: NaiveDateTime,
 }
 
 impl Image {
+    /// The URI for the main version of the image.
     pub fn main_src(&self) -> String {
-        format!("/images/{}.main.webp", &self.image_id)
+        format!("/{}/{}", IMAGES_DIR, main_filename(&self.image_id))
     }
 
+    /// The URI for the thumbnail version of the image.
     pub fn thumbnail_src(&self) -> String {
-        format!("/images/{}.thumb.webp", &self.image_id)
+        format!("/{}/{}", IMAGES_DIR, thumbnail_filename(&self.image_id))
     }
 }
 
-async fn stream_to_file<S, E>(path: &Path, stream: S) -> Result<(), io::Error>
+/// The canonical filename of the main version of an image.
+fn main_filename(image_id: &Hyphenated) -> String {
+    format!("{}.main.webp", image_id)
+}
+
+/// The canonical filename of the thumbnail version of an image.
+fn thumbnail_filename(image_id: &Hyphenated) -> String {
+    format!("{}.thumb.webp", image_id)
+}
+
+async fn stream_to_file<S, E>(stream: S, path: &Path) -> Result<(), io::Error>
 where
     S: Stream<Item = Result<Bytes, E>>,
     E: Into<BoxError>,
@@ -134,7 +152,7 @@ where
     let body_reader = StreamReader::new(body_with_io_error);
     futures::pin_mut!(body_reader);
 
-    // Create the file. `File` implements `AsyncWrite`.
+    // Create the file.
     let mut file = BufWriter::new(File::create(path).await?);
 
     // Copy the body into the file.
@@ -143,9 +161,9 @@ where
     Ok(())
 }
 
-async fn process_image(
-    input: PathBuf,
-    output: PathBuf,
+async fn process_image<'a>(
+    input: &'a Path,
+    output: &'a Path,
     geometry: &'static str,
 ) -> io::Result<ExitStatus> {
     let mut proc = Command::new("convert")
@@ -158,6 +176,10 @@ async fn process_image(
         .spawn()?;
     proc.wait().await
 }
+
+const UPLOADS_DIR: &str = "uploads";
+
+const IMAGES_DIR: &str = "images";
 
 #[cfg(test)]
 mod tests {
