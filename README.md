@@ -24,7 +24,7 @@ stored in a single directory which can be a mounted persistent volume.
 
 * [ ] Improve testing
   * [x] Test note creation
-  * [ ] Test image uploads (mock out IM)
+  * [x] Test image uploads (mock out IM)
   * [ ] Test image downloads (mock out IM)
   * [x] Test passkey registration
   * [x] Test passkey authentication

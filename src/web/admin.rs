@@ -102,10 +102,10 @@ async fn download_image(
 #[cfg(test)]
 mod tests {
     use axum::http;
-    use axum_sessions::async_session::MemoryStore;
-    use axum_sessions::SessionLayer;
+    use reqwest::multipart;
     use sqlx::SqlitePool;
     use tempdir::TempDir;
+    use tokio::fs;
     use uuid::Uuid;
 
     use crate::config::{Author, Title};
@@ -116,7 +116,7 @@ mod tests {
     #[sqlx::test(fixtures("notes", "images"))]
     async fn new_note_ui(db: SqlitePool) -> Result<(), anyhow::Error> {
         let temp_dir = TempDir::new("yellhole-test")?;
-        let (_, app) = app(&db, &temp_dir)?;
+        let (_, _, app) = app(&db, &temp_dir)?;
         let ts = TestServer::new(app)?;
 
         let resp = ts.get("/admin/new")?.send().await?;
@@ -131,7 +131,7 @@ mod tests {
     #[sqlx::test]
     async fn creating_a_note(db: SqlitePool) -> Result<(), anyhow::Error> {
         let temp_dir = TempDir::new("yellhole-test")?;
-        let (notes, app) = app(&db, &temp_dir)?;
+        let (_, notes, app) = app(&db, &temp_dir)?;
         let ts = TestServer::new(app)?;
 
         let resp = ts.post("/admin/new-note")?.form(&[("body", "This is a note.")]).send().await?;
@@ -146,19 +146,41 @@ mod tests {
         Ok(())
     }
 
-    fn app(db: &SqlitePool, temp_dir: &TempDir) -> Result<(NoteService, Router), anyhow::Error> {
+    #[sqlx::test]
+    async fn uploading_an_image(db: SqlitePool) -> Result<(), anyhow::Error> {
+        let temp_dir = TempDir::new("yellhole-test")?;
+        let (images, _, app) = app(&db, &temp_dir)?;
+        let ts = TestServer::new(app)?;
+
+        let img = fs::read("yellhole.webp").await?;
+        let form = multipart::Form::new().part(
+            "one",
+            multipart::Part::bytes(img).file_name("example.webp").mime_str("image/webp")?,
+        );
+        let resp = ts.post("/admin/upload-images")?.multipart(form).send().await?;
+        assert_eq!(resp.status(), StatusCode::SEE_OTHER);
+
+        let recent = images.most_recent(1).await?;
+        assert_eq!(1, recent.len());
+
+        Ok(())
+    }
+
+    fn app(
+        db: &SqlitePool,
+        temp_dir: &TempDir,
+    ) -> Result<(ImageService, NoteService, Router), anyhow::Error> {
+        let images = ImageService::new(db.clone(), temp_dir)?;
         let notes = NoteService::new(db.clone());
-        let store = MemoryStore::new();
-        let session_layer = SessionLayer::new(store, &[69; 64]);
         Ok((
+            images.clone(),
             notes.clone(),
             router()
+                .layer(Extension(images))
                 .layer(Extension(notes))
-                .layer(Extension(ImageService::new(db.clone(), temp_dir)?))
                 .layer(Extension("http://example.com".parse::<Url>().unwrap()))
                 .layer(Extension(Author("Mr Magoo".into())))
-                .layer(Extension(Title("Yellhole".into())))
-                .layer(session_layer),
+                .layer(Extension(Title("Yellhole".into()))),
         ))
     }
 }
