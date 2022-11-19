@@ -28,3 +28,9 @@ stored in a single directory which can be a mounted persistent volume.
   * [ ] Test image downloads (mock out IM)
   * [x] Test passkey registration
   * [x] Test passkey authentication
+
+## License
+
+Copyright © 2022 Coda Hale
+
+Distributed under the Affero General Public License (v3 or later).
