@@ -1,5 +1,7 @@
 # Yellhole
 
+![A hole to yell in.](yellhole.webp)
+
 ## A Hole To Yell In
 
 A lightweight tumblelog which can run on e.g. [fly.io](https://fly.io). All persistent data is
