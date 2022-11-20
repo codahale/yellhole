@@ -1,14 +1,12 @@
 use std::fs;
-use std::path::PathBuf;
 
 use clap::Parser;
-use config::{Author, Title};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use tokio::signal;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use url::Url;
 
+use crate::config::Config;
 use crate::web::App;
 
 mod config;
@@ -16,29 +14,6 @@ mod services;
 #[cfg(test)]
 mod test_server;
 mod web;
-
-#[derive(Debug, Parser)]
-struct Config {
-    /// The port on which to listen. Binds to 0.0.0.0.
-    #[clap(long, default_value = "3000", env("PORT"))]
-    port: u16,
-
-    /// The base URL of the server.
-    #[clap(long, default_value = "http://localhost:3000", env("BASE_URL"))]
-    base_url: Url,
-
-    /// The directory in which all persistent data is stored.
-    #[clap(long, default_value = "./data", env("DATA_DIR"))]
-    data_dir: PathBuf,
-
-    /// The title of the Yellhole instance.
-    #[clap(long, default_value = "Yellhole", env("TITLE"))]
-    title: Title,
-
-    /// The name of the person posting this crap.
-    #[clap(long, default_value = "Luther Blissett", env("AUTHOR"))]
-    author: Author,
-}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
