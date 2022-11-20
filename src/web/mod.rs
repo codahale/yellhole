@@ -1,12 +1,13 @@
-use std::net::SocketAddr;
+use std::fs;
 use std::path::PathBuf;
 
 use askama::Template;
 use axum::http::{self, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::{Html, IntoResponse, Response};
-use futures::Future;
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use sqlx::SqlitePool;
+use tokio::signal;
 use tower::ServiceBuilder;
 use tower_http::request_id::MakeRequestUuid;
 use tower_http::sensitive_headers::{
@@ -15,9 +16,8 @@ use tower_http::sensitive_headers::{
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
 use tower_http::ServiceBuilderExt;
 use tracing::Level;
-use url::Url;
 
-use crate::config::{Author, Title};
+use crate::config::Config;
 use crate::services::images::ImageService;
 use crate::services::notes::NoteService;
 use crate::services::passkeys::PasskeyService;
@@ -32,30 +32,36 @@ mod feed;
 pub struct App {
     db: SqlitePool,
     data_dir: PathBuf,
-    base_url: Url,
-    title: Title,
-    author: Author,
+    config: Config,
 }
 
 impl App {
-    pub fn new(
-        db: SqlitePool,
-        data_dir: PathBuf,
-        base_url: Url,
-        title: Title,
-        author: Author,
-    ) -> App {
-        App { db, data_dir, base_url, title, author }
+    pub async fn new(config: Config) -> Result<App, anyhow::Error> {
+        anyhow::ensure!(config.base_url.path() == "/", "base URL must not have a path");
+        anyhow::ensure!(config.base_url.host().is_some(), "base URL must have a host");
+
+        // Initialize the data directory.
+        let data_dir = config.data_dir.canonicalize()?;
+        fs::create_dir_all(&data_dir)?;
+
+        // Connect to the DB.
+        let db_path = data_dir.join("yellhole.db");
+        tracing::info!(?db_path, "opening database");
+        let db_opts = SqliteConnectOptions::new().create_if_missing(true).filename(db_path);
+        let db = SqlitePoolOptions::new().connect_with(db_opts).await?;
+
+        // Run any pending migrations.
+        tracing::info!("running migrations");
+        sqlx::migrate!().run(&db).await?;
+
+        Ok(App { db, data_dir, config })
     }
 
-    pub async fn serve(
-        self,
-        addr: &SocketAddr,
-        shutdown_hook: impl Future<Output = ()>,
-    ) -> anyhow::Result<()> {
-        tracing::info!(%addr, base_url=%self.base_url, "starting server");
+    pub async fn serve(self) -> anyhow::Result<()> {
+        let addr = &([0, 0, 0, 0], self.config.port).into();
+        tracing::info!(%addr, base_url=%self.config.base_url, "starting server");
 
-        let (sessions, session_expiry) = SessionService::new(&self.db, &self.base_url);
+        let (sessions, session_expiry) = SessionService::new(&self.db, &self.config.base_url);
         let images = ImageService::new(self.db.clone(), &self.data_dir)?;
 
         let app = admin::router()
@@ -66,12 +72,12 @@ impl App {
             .merge(asset::router(self.data_dir.join("images")))
             .layer(
                 ServiceBuilder::new()
-                    .add_extension(PasskeyService::new(self.db.clone(), &self.base_url))
+                    .add_extension(PasskeyService::new(self.db.clone(), &self.config.base_url))
                     .add_extension(images)
                     .add_extension(NoteService::new(self.db.clone()))
-                    .add_extension(self.base_url)
-                    .add_extension(self.author)
-                    .add_extension(self.title)
+                    .add_extension(self.config.base_url)
+                    .add_extension(self.config.author)
+                    .add_extension(self.config.title)
                     .set_x_request_id(MakeRequestUuid)
                     .layer(SetSensitiveRequestHeadersLayer::new(std::iter::once(
                         http::header::COOKIE,
@@ -95,7 +101,7 @@ impl App {
 
         axum::Server::bind(addr)
             .serve(app.into_make_service())
-            .with_graceful_shutdown(shutdown_hook)
+            .with_graceful_shutdown(shutdown_signal())
             .await?;
 
         session_expiry.await??;
@@ -139,4 +145,34 @@ impl<T: Template> IntoResponse for Page<T> {
             }
         }
     }
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        if let Err(err) = signal::ctrl_c().await {
+            tracing::error!(%err, "unable to install ^C signal handler");
+        }
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        match signal::unix::signal(signal::unix::SignalKind::terminate()) {
+            Ok(mut h) => {
+                h.recv().await;
+            }
+            Err(err) => {
+                tracing::error!(%err, "unable to install SIGTERM handler");
+            }
+        };
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+
+    tracing::info!("starting graceful shutdown");
 }
