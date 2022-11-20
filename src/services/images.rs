@@ -180,22 +180,3 @@ async fn process_image<'a>(
 const UPLOADS_DIR: &str = "uploads";
 
 const IMAGES_DIR: &str = "images";
-
-#[cfg(test)]
-mod tests {
-    use tempdir::TempDir;
-
-    use super::*;
-
-    #[sqlx::test(fixtures("images"))]
-    async fn most_recent(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let temp_dir = TempDir::new("yellhole")?;
-        let images = ImageService::new(db, temp_dir)?;
-        let top_2 = images.most_recent(2).await?;
-        assert_eq!(2, top_2.len());
-        assert_eq!("4c89cfef-9031-49c0-8b91-2578c0e227f3", &top_2[0].image_id.to_string());
-        assert_eq!("7963d8bc-9cf8-4459-a593-b6d49b94b541", &top_2[1].image_id.to_string());
-
-        Ok(())
-    }
-}
