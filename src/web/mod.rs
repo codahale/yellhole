@@ -69,7 +69,7 @@ impl App {
             .merge(auth::router())
             .layer(sessions) // only enable sessions for auth and admin
             .merge(feed::router())
-            .merge(asset::router(self.data_dir.join("images")))
+            .merge(asset::router(images.images_dir()))
             .layer(
                 ServiceBuilder::new()
                     .add_extension(PasskeyService::new(self.db.clone(), &self.config.base_url))

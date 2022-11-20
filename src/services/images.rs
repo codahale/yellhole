@@ -112,6 +112,10 @@ impl ImageService {
         // Add the response body as an image.
         self.add(&original_filename, &content_type, image.bytes_stream()).await
     }
+
+    pub fn images_dir(&self) -> PathBuf {
+        self.data_dir.join(IMAGES_DIR)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
