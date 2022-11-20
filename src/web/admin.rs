@@ -140,7 +140,7 @@ mod tests {
         let note_id = location.to_str()?.split('/').last().expect("bad URI").parse::<Uuid>()?;
 
         assert_eq!(notes.most_recent(20).await?.len(), 1);
-        let note = notes.by_id(note_id.as_hyphenated()).await?.expect("missing note");
+        let note = notes.by_id(&note_id).await?.expect("missing note");
         assert_eq!(note.body, "This is a note.");
 
         Ok(())

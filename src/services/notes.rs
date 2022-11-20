@@ -24,7 +24,8 @@ impl NoteService {
         Ok(note_id)
     }
 
-    pub async fn by_id(&self, note_id: &Hyphenated) -> Result<Option<Note>, sqlx::Error> {
+    pub async fn by_id(&self, note_id: &Uuid) -> Result<Option<Note>, sqlx::Error> {
+        let note_id = note_id.as_hyphenated();
         sqlx::query_as!(
             Note,
             r#"

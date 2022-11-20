@@ -142,7 +142,7 @@ async fn single(
 ) -> Result<Page<FeedPage>, StatusCode> {
     let note_id = note_id.parse::<Uuid>().map_err(|_| StatusCode::NOT_FOUND)?;
     let note = notes
-        .by_id(note_id.as_hyphenated())
+        .by_id(&note_id)
         .await
         .map_err(|err| {
             tracing::warn!(?err, %note_id, "error querying feed by id");
