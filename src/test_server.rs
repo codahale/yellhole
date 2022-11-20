@@ -10,7 +10,7 @@ pub struct TestServer {
 
 impl TestServer {
     pub fn new(app: Router) -> Result<TestServer, anyhow::Error> {
-        let listener = TcpListener::bind("0.0.0.0:0".parse::<SocketAddr>()?)?;
+        let listener = TcpListener::bind::<SocketAddr>(([0, 0, 0, 0], 0).into())?;
         let addr = listener.local_addr()?;
 
         tokio::spawn(async move {
