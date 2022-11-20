@@ -12,7 +12,7 @@ use url::Url;
 use uuid::Uuid;
 
 use super::Page;
-use crate::config::{Author, Title};
+use crate::config::Config;
 use crate::services::notes::{Note, NoteService};
 
 pub fn router() -> Router {
@@ -58,7 +58,7 @@ struct IndexOpts {
 
 async fn index(
     notes: Extension<NoteService>,
-    Extension(base_url): Extension<Url>,
+    config: Extension<Config>,
     opts: Query<IndexOpts>,
 ) -> Result<Page<FeedPage>, StatusCode> {
     let n = opts.n.unwrap_or(100);
@@ -69,14 +69,12 @@ async fn index(
 
     let older = notes.last().and_then(|n| n.created_at.date().with_day(1));
 
-    Ok(Page(FeedPage { notes, base_url, newer: None, older }))
+    Ok(Page(FeedPage { notes, base_url: config.base_url.clone(), newer: None, older }))
 }
 
 async fn atom(
     notes: Extension<NoteService>,
-    base_url: Extension<Url>,
-    Extension(Author(author)): Extension<Author>,
-    Extension(Title(title)): Extension<Title>,
+    config: Extension<Config>,
 ) -> Result<Response, StatusCode> {
     let notes = notes.most_recent(20).await.map_err(|err| {
         tracing::warn!(?err, "error querying atom index");
@@ -86,7 +84,7 @@ async fn atom(
     let entries = notes
         .iter()
         .map(|n| Entry {
-            id: base_url.join(&format!("note/{}", n.note_id)).unwrap().to_string(),
+            id: config.base_url.join(&format!("note/{}", n.note_id)).unwrap().to_string(),
             title: Text { value: n.note_id.to_string(), ..Default::default() },
             content: Some(Content {
                 content_type: Some("html".into()),
@@ -99,12 +97,16 @@ async fn atom(
         .collect();
 
     let feed = Feed {
-        id: base_url.to_string(),
-        authors: vec![Person { name: author, ..Default::default() }],
-        base: Some(base_url.to_string()),
-        title: Text { value: title, ..Default::default() },
+        id: config.base_url.to_string(),
+        authors: vec![Person { name: config.author.clone(), ..Default::default() }],
+        base: Some(config.base_url.to_string()),
+        title: Text { value: config.title.clone(), ..Default::default() },
         entries,
-        links: vec![Link { href: base_url.to_string(), rel: "self".into(), ..Default::default() }],
+        links: vec![Link {
+            href: config.base_url.to_string(),
+            rel: "self".into(),
+            ..Default::default()
+        }],
         updated: FixedDateTime::from_utc(Utc::now().naive_utc(), FixedOffset::east_opt(0).unwrap()),
         ..Default::default()
     };
@@ -118,7 +120,7 @@ async fn atom(
 
 async fn month(
     notes: Extension<NoteService>,
-    Extension(base_url): Extension<Url>,
+    config: Extension<Config>,
     Path((year, month)): Path<(i32, u32)>,
 ) -> Result<Page<FeedPage>, StatusCode> {
     let Some(start) = NaiveDate::from_ymd_opt(year, month, 1) else { return Err(StatusCode::NOT_FOUND)};
@@ -132,12 +134,17 @@ async fn month(
             StatusCode::INTERNAL_SERVER_ERROR
         })?
         .ok_or(StatusCode::NOT_FOUND)?;
-    Ok(Page(FeedPage { notes, base_url, newer: Some(end), older: Some(start - Months::new(1)) }))
+    Ok(Page(FeedPage {
+        notes,
+        base_url: config.base_url.clone(),
+        newer: Some(end),
+        older: Some(start - Months::new(1)),
+    }))
 }
 
 async fn single(
     notes: Extension<NoteService>,
-    Extension(base_url): Extension<Url>,
+    config: Extension<Config>,
     Path(note_id): Path<String>,
 ) -> Result<Page<FeedPage>, StatusCode> {
     let note_id = note_id.parse::<Uuid>().map_err(|_| StatusCode::NOT_FOUND)?;
@@ -149,7 +156,12 @@ async fn single(
             StatusCode::INTERNAL_SERVER_ERROR
         })?
         .ok_or(StatusCode::NOT_FOUND)?;
-    Ok(Page(FeedPage { notes: vec![note], base_url, newer: None, older: None }))
+    Ok(Page(FeedPage {
+        notes: vec![note],
+        base_url: config.base_url.clone(),
+        newer: None,
+        older: None,
+    }))
 }
 
 #[cfg(test)]
@@ -242,10 +254,12 @@ mod tests {
     }
 
     fn app(db: &SqlitePool) -> Router {
-        router()
-            .layer(Extension(NoteService::new(db.clone())))
-            .layer(Extension("http://example.com".parse::<Url>().unwrap()))
-            .layer(Extension(Author("Mr Magoo".into())))
-            .layer(Extension(Title("Yellhole".into())))
+        router().layer(Extension(NoteService::new(db.clone()))).layer(Extension(Config {
+            port: 8080,
+            base_url: "http://example.com".parse::<Url>().unwrap(),
+            data_dir: ".".into(),
+            title: "Yellhole".into(),
+            author: "Luther Blissett".into(),
+        }))
     }
 }

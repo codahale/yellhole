@@ -75,9 +75,7 @@ impl App {
                     .add_extension(PasskeyService::new(self.db.clone(), &self.config.base_url))
                     .add_extension(images)
                     .add_extension(NoteService::new(self.db.clone()))
-                    .add_extension(self.config.base_url)
-                    .add_extension(self.config.author)
-                    .add_extension(self.config.title)
+                    .add_extension(self.config)
                     .set_x_request_id(MakeRequestUuid)
                     .layer(SetSensitiveRequestHeadersLayer::new(std::iter::once(
                         http::header::COOKIE,

@@ -1,11 +1,9 @@
-use std::convert::Infallible;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 use clap::Parser;
 use url::Url;
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Clone, Parser)]
 pub struct Config {
     /// The port on which to listen. Binds to 0.0.0.0.
     #[clap(long, default_value = "3000", env("PORT"))]
@@ -21,31 +19,9 @@ pub struct Config {
 
     /// The title of the Yellhole instance.
     #[clap(long, default_value = "Yellhole", env("TITLE"))]
-    pub title: Title,
+    pub title: String,
 
     /// The name of the person posting this crap.
     #[clap(long, default_value = "Luther Blissett", env("AUTHOR"))]
-    pub author: Author,
-}
-
-#[derive(Debug, Clone)]
-pub struct Author(pub String);
-
-impl FromStr for Author {
-    type Err = Infallible;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Author(s.into()))
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Title(pub String);
-
-impl FromStr for Title {
-    type Err = Infallible;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Title(s.into()))
-    }
+    pub author: String,
 }

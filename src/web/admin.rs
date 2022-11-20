@@ -108,7 +108,6 @@ mod tests {
     use tokio::fs;
     use uuid::Uuid;
 
-    use crate::config::{Author, Title};
     use crate::test_server::TestServer;
 
     use super::*;
@@ -194,12 +193,7 @@ mod tests {
         Ok((
             images.clone(),
             notes.clone(),
-            router()
-                .layer(Extension(images))
-                .layer(Extension(notes))
-                .layer(Extension("http://example.com".parse::<Url>().unwrap()))
-                .layer(Extension(Author("Mr Magoo".into())))
-                .layer(Extension(Title("Yellhole".into()))),
+            router().layer(Extension(images)).layer(Extension(notes)),
         ))
     }
 }

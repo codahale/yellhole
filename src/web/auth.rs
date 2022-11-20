@@ -8,7 +8,7 @@ use axum_sessions::extractors::{ReadableSession, WritableSession};
 use uuid::Uuid;
 
 use super::Page;
-use crate::config::Author;
+use crate::config::Config;
 use crate::services::passkeys::{
     AuthenticationChallenge, AuthenticationResponse, PasskeyService, RegistrationChallenge,
     RegistrationResponse,
@@ -64,10 +64,10 @@ async fn register(
 
 async fn register_start(
     passkeys: Extension<PasskeyService>,
-    Extension(Author(author)): Extension<Author>,
+    config: Extension<Config>,
 ) -> Result<Json<RegistrationChallenge>, StatusCode> {
     passkeys
-        .start_registration(&author, Uuid::default().as_hyphenated().to_string().as_bytes())
+        .start_registration(&config.author, Uuid::default().as_hyphenated().to_string().as_bytes())
         .await
         .map(Json)
         .map_err(|err| {
@@ -171,7 +171,6 @@ mod tests {
     use sqlx::SqlitePool;
     use url::Url;
 
-    use crate::config::{Author, Title};
     use crate::test_server::TestServer;
 
     use super::*;
@@ -312,16 +311,19 @@ mod tests {
         let session_layer = SessionLayer::new(store, &[69; 64])
             .with_secure(false)
             .with_same_site_policy(axum_sessions::SameSite::None);
+        let base_url = "http://example.com".parse::<Url>().unwrap();
         Router::new()
             .route("/protected", get(protected))
             .route_layer(middleware::from_extractor::<RequireAuth>())
             .merge(router())
-            .layer(Extension(PasskeyService::new(
-                db,
-                &"http://example.com".parse::<Url>().unwrap(),
-            )))
-            .layer(Extension(Author("Mr Magoo".into())))
-            .layer(Extension(Title("Yellhole".into())))
+            .layer(Extension(PasskeyService::new(db, &base_url)))
+            .layer(Extension(Config {
+                port: 8080,
+                base_url,
+                data_dir: ".".into(),
+                title: "Yellhole".into(),
+                author: "Luther Blissett".into(),
+            }))
             .layer(session_layer)
     }
 
