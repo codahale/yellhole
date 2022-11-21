@@ -57,7 +57,7 @@ impl NoteService {
     pub async fn months(&self) -> Result<Vec<NaiveDate>, sqlx::Error> {
         Ok(sqlx::query!(
             r#"
-            select strftime('%Y-%m-01', datetime(created_at, 'localtime')) as "month: NaiveDate"
+            select strftime('%Y-%m-01', datetime(created_at, 'localtime')) as "month!: NaiveDate"
             from note
             group by 1
             order by 1 desc
@@ -66,7 +66,7 @@ impl NoteService {
         .fetch_all(&self.db)
         .await?
         .into_iter()
-        .flat_map(|r| r.month)
+        .map(|r| r.month)
         .collect())
     }
 
