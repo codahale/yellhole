@@ -80,6 +80,16 @@
     },
     "query": "select count(passkey_id) as n from passkey"
   },
+  "6e4552cd32e1c2586d2578a55fdc3b885ae15566604bc234d987287a6fca14e6": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 0
+      }
+    },
+    "query": "delete from session where updated_at < datetime('now', '-7 days')"
+  },
   "706f1a8390b2f373444a1ec0fbd1df78ebe5321c5d43f005c58223dcf641ee97": {
     "describe": {
       "columns": [],
@@ -193,16 +203,6 @@
       }
     },
     "query": "select as_json from session where session_id = ?"
-  },
-  "d846d6f52ff94a0d205736cb4a5c2cea39df56c8af071b942a8deaf843a181ca": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Right": 0
-      }
-    },
-    "query": "delete from session where updated_at < date('now', '-7 days')"
   },
   "e4b86950bf54dec10c242141ca1f7e2e83cc5d19691f4dd63f27c42005ae84e6": {
     "describe": {

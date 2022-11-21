@@ -38,7 +38,7 @@ impl SessionService {
 
     async fn delete_expired(&self) -> Result<()> {
         tracing::trace!("destroying expired sessions");
-        sqlx::query!(r"delete from session where updated_at < date('now', '-7 days')")
+        sqlx::query!(r"delete from session where updated_at < datetime('now', '-7 days')")
             .execute(&self.db)
             .await?;
         Ok(())
