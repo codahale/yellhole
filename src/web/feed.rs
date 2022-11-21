@@ -103,7 +103,7 @@ async fn atom(
         title: Text { value: config.title.clone(), ..Default::default() },
         entries,
         links: vec![Link {
-            href: config.base_url.to_string(),
+            href: config.base_url.join("atom.xml").unwrap().to_string(),
             rel: "self".into(),
             ..Default::default()
         }],
