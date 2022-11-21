@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use chrono::{DateTime, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
+use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone, Utc};
 use pulldown_cmark::{Event, HeadingLevel, Parser, Tag};
 use sqlx::SqlitePool;
 use uuid::fmt::Hyphenated;
@@ -29,7 +29,7 @@ impl NoteService {
         sqlx::query_as!(
             Note,
             r#"
-            select note_id as "note_id: Hyphenated", body, created_at
+            select note_id as "note_id: Hyphenated", body, created_at as "created_at: DateTime<Utc>"
             from note
             where note_id = ?
             "#,
@@ -43,7 +43,7 @@ impl NoteService {
         sqlx::query_as!(
             Note,
             r#"
-            select note_id as "note_id: Hyphenated", body, created_at
+            select note_id as "note_id: Hyphenated", body, created_at as "created_at: DateTime<Utc>"
             from note
             order by created_at desc
             limit ?
@@ -79,7 +79,7 @@ impl NoteService {
         sqlx::query_as!(
             Note,
             r#"
-            select note_id as "note_id: Hyphenated", body, created_at
+            select note_id as "note_id: Hyphenated", body, created_at as "created_at: DateTime<Utc>"
             from note
             where created_at >= ? and created_at < ?
             order by created_at desc
@@ -97,7 +97,7 @@ impl NoteService {
 pub struct Note {
     pub note_id: Hyphenated,
     pub body: String,
-    pub created_at: NaiveDateTime,
+    pub created_at: DateTime<Utc>,
 }
 
 impl Note {
@@ -161,7 +161,7 @@ mod tests {
             "#
             .trim()
             .into(),
-            created_at: Local::now().naive_local(),
+            created_at: Utc::now(),
         };
 
         assert_eq!(

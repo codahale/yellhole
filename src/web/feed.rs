@@ -43,10 +43,10 @@ struct FeedPage {
 }
 
 mod filters {
-    use chrono::{DateTime, Datelike, Local, NaiveDate, NaiveDateTime, TimeZone};
+    use chrono::{DateTime, Datelike, Local, NaiveDate, Utc};
 
-    pub fn to_local_tz(t: &NaiveDateTime) -> askama::Result<DateTime<Local>> {
-        Ok(Local.from_utc_datetime(t))
+    pub fn to_local_tz(t: &DateTime<Utc>) -> askama::Result<DateTime<Local>> {
+        Ok(t.with_timezone(&Local))
     }
 
     pub fn to_month(d: &NaiveDate) -> askama::Result<String> {
@@ -97,7 +97,7 @@ async fn atom(
                 value: Some(n.to_html()),
                 ..Default::default()
             }),
-            updated: FixedDateTime::from_local(n.created_at, FixedOffset::east_opt(0).unwrap()),
+            updated: n.created_at.with_timezone(&FixedOffset::east_opt(0).unwrap()),
             ..Default::default()
         })
         .collect();

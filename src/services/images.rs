@@ -5,7 +5,7 @@ use std::process::ExitStatus;
 use anyhow::Context;
 use axum::body::Bytes;
 use axum::{http, BoxError};
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use futures::{Stream, TryStreamExt};
 use mime::Mime;
 use sqlx::SqlitePool;
@@ -36,7 +36,7 @@ impl ImageService {
         sqlx::query_as!(
             Image,
             r#"
-            select image_id as "image_id: Hyphenated", created_at
+            select image_id as "image_id: Hyphenated", created_at as "created_at: DateTime<Utc>"
             from image
             order by created_at desc
             limit ?
@@ -121,7 +121,7 @@ impl ImageService {
 #[derive(Debug, PartialEq, Eq)]
 pub struct Image {
     image_id: Hyphenated,
-    pub created_at: NaiveDateTime,
+    pub created_at: DateTime<Utc>,
 }
 
 impl Image {

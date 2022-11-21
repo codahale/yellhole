@@ -1,29 +1,5 @@
 {
   "db": "SQLite",
-  "0cd06ba90903b57f6c6284bb7b4f9ebd087304da280269ed0c5a580a4f722738": {
-    "describe": {
-      "columns": [
-        {
-          "name": "image_id: Hyphenated",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "created_at",
-          "ordinal": 1,
-          "type_info": "Datetime"
-        }
-      ],
-      "nullable": [
-        false,
-        false
-      ],
-      "parameters": {
-        "Right": 1
-      }
-    },
-    "query": "\n            select image_id as \"image_id: Hyphenated\", created_at\n            from image\n            order by created_at desc\n            limit ?\n            "
-  },
   "37a817c270013a2c817876692bb5f8d6fb7667db99e3a96c6dcf5aaa15d5187e": {
     "describe": {
       "columns": [],
@@ -44,6 +20,36 @@
     },
     "query": "insert into note (note_id, body) values (?, ?)"
   },
+  "3f492670149e35c2c88d5850ed7154bf2e2abd63255aad6b8ac8c38683339e8c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "note_id: Hyphenated",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "body",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at: DateTime<Utc>",
+          "ordinal": 2,
+          "type_info": "Datetime"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "\n            select note_id as \"note_id: Hyphenated\", body, created_at as \"created_at: DateTime<Utc>\"\n            from note\n            where note_id = ?\n            "
+  },
   "574323077237b135b0690125ac950c135bd90a64e2bf94d667060079cdda9f29": {
     "describe": {
       "columns": [
@@ -61,6 +67,36 @@
       }
     },
     "query": "select count(passkey_id) as n from passkey"
+  },
+  "637a30ab20aa25fe979b55fabd0bf2c701a6e04f18627c8ff335e3c5f89b3583": {
+    "describe": {
+      "columns": [
+        {
+          "name": "note_id: Hyphenated",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "body",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at: DateTime<Utc>",
+          "ordinal": 2,
+          "type_info": "Datetime"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "\n            select note_id as \"note_id: Hyphenated\", body, created_at as \"created_at: DateTime<Utc>\"\n            from note\n            where created_at >= ? and created_at < ?\n            order by created_at desc\n            "
   },
   "6e4552cd32e1c2586d2578a55fdc3b885ae15566604bc234d987287a6fca14e6": {
     "describe": {
@@ -92,7 +128,7 @@
     },
     "query": "insert into image (image_id, original_filename, content_type) values (?, ?, ?)"
   },
-  "74859e5606aa5f72768ca5188b5d023145b097c1c480ec39dd2150c14fa45438": {
+  "8b94da7b7bd3bdcedcf9bf4b4ad7900cc1578db20726233e24f94753138e94b7": {
     "describe": {
       "columns": [
         {
@@ -106,7 +142,7 @@
           "type_info": "Text"
         },
         {
-          "name": "created_at",
+          "name": "created_at: DateTime<Utc>",
           "ordinal": 2,
           "type_info": "Datetime"
         }
@@ -120,7 +156,7 @@
         "Right": 1
       }
     },
-    "query": "\n            select note_id as \"note_id: Hyphenated\", body, created_at\n            from note\n            where note_id = ?\n            "
+    "query": "\n            select note_id as \"note_id: Hyphenated\", body, created_at as \"created_at: DateTime<Utc>\"\n            from note\n            order by created_at desc\n            limit ?\n            "
   },
   "952a4d81023187e443ba892145ac5ca3b9fcd2ad93eb7346f503204a02495b49": {
     "describe": {
@@ -139,6 +175,30 @@
       }
     },
     "query": "\n            select strftime('%Y-%m-01', datetime(created_at, 'localtime')) as \"month!: NaiveDate\"\n            from note\n            group by 1\n            order by 1 desc\n            "
+  },
+  "965ebfb4464392a094bfec38848b0a89ae40d9760bad448c108dc39925f7dd3b": {
+    "describe": {
+      "columns": [
+        {
+          "name": "image_id: Hyphenated",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at: DateTime<Utc>",
+          "ordinal": 1,
+          "type_info": "Datetime"
+        }
+      ],
+      "nullable": [
+        false,
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "\n            select image_id as \"image_id: Hyphenated\", created_at as \"created_at: DateTime<Utc>\"\n            from image\n            order by created_at desc\n            limit ?\n            "
   },
   "a86e3bb006ee6f4e4e32aab8644ca3ecb730e92ce6a33e0562ad1b35d6c272f6": {
     "describe": {
@@ -204,36 +264,6 @@
     },
     "query": "select as_json from session where session_id = ?"
   },
-  "e4b86950bf54dec10c242141ca1f7e2e83cc5d19691f4dd63f27c42005ae84e6": {
-    "describe": {
-      "columns": [
-        {
-          "name": "note_id: Hyphenated",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "body",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "created_at",
-          "ordinal": 2,
-          "type_info": "Datetime"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Right": 1
-      }
-    },
-    "query": "\n            select note_id as \"note_id: Hyphenated\", body, created_at\n            from note\n            order by created_at desc\n            limit ?\n            "
-  },
   "e864ae527ab535ca32cbc15b5177080954fb45f60cb5f819937ea20fc57b3fbb": {
     "describe": {
       "columns": [],
@@ -243,35 +273,5 @@
       }
     },
     "query": "delete from session"
-  },
-  "f9d603556f57f027ecc1de681bb627c64013e21ace2dcdf0e3bd39f8f00bcff6": {
-    "describe": {
-      "columns": [
-        {
-          "name": "note_id: Hyphenated",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "body",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "created_at",
-          "ordinal": 2,
-          "type_info": "Datetime"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Right": 2
-      }
-    },
-    "query": "\n            select note_id as \"note_id: Hyphenated\", body, created_at\n            from note\n            where created_at >= ? and created_at < ?\n            order by created_at desc\n            "
   }
 }
