@@ -1,7 +1,10 @@
+use std::net::{SocketAddr, TcpListener};
+
 use axum::Router;
 use reqwest::redirect::Policy;
 use reqwest::{Client, ClientBuilder, RequestBuilder, Url};
-use std::net::{SocketAddr, TcpListener};
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
 
 pub struct TestServer {
     url: Url,
@@ -10,6 +13,13 @@ pub struct TestServer {
 
 impl TestServer {
     pub fn new(app: Router) -> Result<TestServer, anyhow::Error> {
+        let _ = tracing_subscriber::registry()
+            .with(tracing_subscriber::EnvFilter::new(
+                std::env::var("RUST_LOG").unwrap_or_else(|_| "off".into()),
+            ))
+            .with(tracing_subscriber::fmt::layer())
+            .try_init();
+
         let listener = TcpListener::bind::<SocketAddr>(([0, 0, 0, 0], 0).into())?;
         let addr = listener.local_addr()?;
 
