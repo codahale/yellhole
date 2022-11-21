@@ -39,15 +39,18 @@ pub fn router() -> Router {
 struct FeedPage {
     notes: Vec<Note>,
     base_url: Url,
-    newer: Option<NaiveDate>,
-    older: Option<NaiveDate>,
+    months: Vec<NaiveDate>,
 }
 
 mod filters {
-    use chrono::{DateTime, Local, NaiveDateTime, TimeZone};
+    use chrono::{DateTime, Datelike, Local, NaiveDate, NaiveDateTime, TimeZone};
 
     pub fn to_local_tz(t: &NaiveDateTime) -> askama::Result<DateTime<Local>> {
         Ok(Local.from_utc_datetime(t))
+    }
+
+    pub fn to_month(d: &NaiveDate) -> askama::Result<String> {
+        Ok(format!("{:04}/{:02}", d.year(), d.month()))
     }
 }
 
@@ -61,15 +64,18 @@ async fn index(
     config: Extension<Config>,
     opts: Query<IndexOpts>,
 ) -> Result<Page<FeedPage>, StatusCode> {
+    let months = notes.months().await.map_err(|err| {
+        tracing::warn!(?err, "error querying note dates");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
     let n = opts.n.unwrap_or(100);
     let notes = notes.most_recent(n).await.map_err(|err| {
         tracing::warn!(?err, n, "error querying feed index");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    let older = notes.last().and_then(|n| n.created_at.date().with_day(1));
-
-    Ok(Page(FeedPage { notes, base_url: config.base_url.clone(), newer: None, older }))
+    Ok(Page(FeedPage { notes, months, base_url: config.base_url.clone() }))
 }
 
 async fn atom(
@@ -126,6 +132,11 @@ async fn month(
     config: Extension<Config>,
     Path((year, month)): Path<(i32, u32)>,
 ) -> Result<Page<FeedPage>, StatusCode> {
+    let months = notes.months().await.map_err(|err| {
+        tracing::warn!(?err, "error querying note dates");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
     let Some(start) = NaiveDate::from_ymd_opt(year, month, 1) else { return Err(StatusCode::NOT_FOUND)};
     let end = start + Months::new(1);
 
@@ -137,12 +148,7 @@ async fn month(
             StatusCode::INTERNAL_SERVER_ERROR
         })?
         .ok_or(StatusCode::NOT_FOUND)?;
-    Ok(Page(FeedPage {
-        notes,
-        base_url: config.base_url.clone(),
-        newer: Some(end),
-        older: Some(start - Months::new(1)),
-    }))
+    Ok(Page(FeedPage { notes, months, base_url: config.base_url.clone() }))
 }
 
 async fn single(
@@ -150,6 +156,11 @@ async fn single(
     config: Extension<Config>,
     Path(note_id): Path<String>,
 ) -> Result<Page<FeedPage>, StatusCode> {
+    let months = notes.months().await.map_err(|err| {
+        tracing::warn!(?err, "error querying note dates");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
     let note_id = note_id.parse::<Uuid>().map_err(|_| StatusCode::NOT_FOUND)?;
     let note = notes
         .by_id(&note_id)
@@ -159,12 +170,7 @@ async fn single(
             StatusCode::INTERNAL_SERVER_ERROR
         })?
         .ok_or(StatusCode::NOT_FOUND)?;
-    Ok(Page(FeedPage {
-        notes: vec![note],
-        base_url: config.base_url.clone(),
-        newer: None,
-        older: None,
-    }))
+    Ok(Page(FeedPage { notes: vec![note], months, base_url: config.base_url.clone() }))
 }
 
 #[cfg(test)]

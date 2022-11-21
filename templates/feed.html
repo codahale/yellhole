@@ -4,6 +4,18 @@
 <link href="{{base_url}}atom.xml" rel="alternate" title="Atom" type="application/atom+xml" />
 {% endblock %}
 
+{% block nav %}
+<ul>
+    <li><a href="#">Archive</a>
+        <ul>
+            {% for d in months %}
+            <li><a href="/notes/{{d.year()}}/{{d.month()}}">{{d|to_month}}</a></li>
+            {% endfor %}
+        </ul>
+    </li>
+</ul>
+{% endblock %}
+
 {% block content %}
 {% if notes.is_empty() %}
 <section>
@@ -18,12 +30,4 @@
     </aside>
 </section>
 {% endfor %}
-<section>
-    {% for d in newer %}
-    <a href="/notes/{{d.year()}}/{{d.month()}}">newer</a>&nbsp;
-    {% endfor %}
-    {% for d in older %}
-    <a href="/notes/{{d.year()}}/{{d.month()}}">older</a>
-    {% endfor %}
-</section>
 {% endblock %}

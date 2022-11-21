@@ -1,6 +1,7 @@
+use std::collections::BTreeSet;
 use std::ops::Range;
 
-use chrono::{DateTime, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
+use chrono::{DateTime, Datelike, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
 use pulldown_cmark::{Event, HeadingLevel, Parser, Tag};
 use sqlx::SqlitePool;
 use uuid::fmt::Hyphenated;
@@ -52,6 +53,18 @@ impl NoteService {
         )
         .fetch_all(&self.db)
         .await
+    }
+
+    pub async fn months(&self) -> Result<Vec<NaiveDate>, sqlx::Error> {
+        Ok(sqlx::query!(r#"select created_at as "created_at: NaiveDateTime" from note"#)
+            .fetch_all(&self.db)
+            .await?
+            .into_iter()
+            .flat_map(|r| r.created_at.date().with_day(1))
+            .collect::<BTreeSet<NaiveDate>>()
+            .into_iter()
+            .rev()
+            .collect())
     }
 
     pub async fn date_range(

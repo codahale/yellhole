@@ -112,6 +112,24 @@
     },
     "query": "\n            select note_id as \"note_id: Hyphenated\", body, created_at\n            from note\n            where note_id = ?\n            "
   },
+  "9d66db1c41ade80750ce9ab22c695d136370e852e89bafd2dc3042b53304c49c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "created_at: NaiveDateTime",
+          "ordinal": 0,
+          "type_info": "Datetime"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 0
+      }
+    },
+    "query": "select created_at as \"created_at: NaiveDateTime\" from note"
+  },
   "a86e3bb006ee6f4e4e32aab8644ca3ecb730e92ce6a33e0562ad1b35d6c272f6": {
     "describe": {
       "columns": [],

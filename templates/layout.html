@@ -11,15 +11,25 @@
         :root {
             --width-card: var(--width-card-medium);
         }
+
+        nav {
+            margin-bottom: 0;
+        }
     </style>
 </head>
 
 <body>
+    <header>
+        <nav>
+            <h1><a href="/">Yellhole</a></h1>
+            {% block nav %}{% endblock %}
+        </nav>
+    </header>
     <main>
-        <h1><a href="/">Yellhole</a></h1>
         {% block content %}{% endblock %}
     </main>
     <footer>
+        {% block footer %}{% endblock %}
         <p>
             <small>Copyright &copy; 2022 Coda Hale</small>
         </p>
