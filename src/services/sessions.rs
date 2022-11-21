@@ -22,6 +22,7 @@ impl SessionService {
         let session_layer = SessionLayer::new(store, &[69; 64])
             .with_cookie_name("yellhole")
             .with_same_site_policy(SameSite::Strict)
+            .with_session_ttl(Some(Duration::from_secs(60 * 60 * 24 * 7)))
             .with_secure(base_url.scheme() == "https");
         (session_layer, session_expiry)
     }
@@ -37,7 +38,7 @@ impl SessionService {
 
     async fn delete_expired(&self) -> Result<()> {
         tracing::trace!("destroying expired sessions");
-        sqlx::query!(r"delete from session where updated_at < date('now', '-1 day')")
+        sqlx::query!(r"delete from session where updated_at < date('now', '-7 days')")
             .execute(&self.db)
             .await?;
         Ok(())
