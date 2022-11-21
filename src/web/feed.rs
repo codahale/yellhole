@@ -112,7 +112,10 @@ async fn atom(
     };
 
     Ok((
-        [(http::header::CONTENT_TYPE, http::HeaderValue::from_static(mime::TEXT_XML.as_ref()))],
+        [(
+            http::header::CONTENT_TYPE,
+            http::HeaderValue::from_static("application/atom+xml; charset=utf-8"),
+        )],
         feed.to_string(),
     )
         .into_response())
@@ -195,7 +198,7 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::OK);
         assert_eq!(
             resp.headers().get(http::header::CONTENT_TYPE),
-            Some(&http::HeaderValue::from_static("text/xml"))
+            Some(&http::HeaderValue::from_static("application/atom+xml; charset=utf-8"))
         );
 
         let feed = Feed::read_from(Cursor::new(&resp.bytes().await?))?;
