@@ -99,7 +99,7 @@ async fn atom(
     let feed = Feed {
         id: config.base_url.to_string(),
         authors: vec![Person { name: config.author.clone(), ..Default::default() }],
-        base: Some(config.base_url.to_string()),
+        base: Some(config.base_url.join("atom.xml").unwrap().to_string()),
         title: Text { value: config.title.clone(), ..Default::default() },
         entries,
         links: vec![Link {
