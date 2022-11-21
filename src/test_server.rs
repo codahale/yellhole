@@ -20,7 +20,7 @@ impl TestServer {
             .with(tracing_subscriber::fmt::layer())
             .try_init();
 
-        let listener = TcpListener::bind::<SocketAddr>(([0, 0, 0, 0], 0).into())?;
+        let listener = TcpListener::bind::<SocketAddr>(([127, 0, 0, 1], 0).into())?;
         let addr = listener.local_addr()?;
 
         tokio::spawn(async move {
