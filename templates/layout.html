@@ -2,7 +2,7 @@
 <html lang="en" color-mode="user">
 
 <head>
-    <title>Yellhole</title>
+    <title>{% block title %}Yellhole{% endblock %}</title>
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
     <meta charset='utf-8'>
     <link rel="stylesheet" href="/assets/css/mvp-1.12.css">
@@ -21,7 +21,7 @@
 <body>
     <header>
         <nav>
-            <h1><a href="/">Yellhole</a></h1>
+            <h1><a href="/">{% block title %}Yellhole{% endblock %}</a></h1>
             {% block nav %}{% endblock %}
         </nav>
     </header>
@@ -30,9 +30,6 @@
     </main>
     <footer>
         {% block footer %}{% endblock %}
-        <p>
-            <small>Copyright &copy; 2022 Coda Hale</small>
-        </p>
     </footer>
 
     {% block tail %}{% endblock %}

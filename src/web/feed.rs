@@ -8,7 +8,6 @@ use axum::{Extension, Router};
 use chrono::{Datelike, FixedOffset, Months, NaiveDate, Utc};
 use serde::Deserialize;
 use tower_http::set_header::SetResponseHeaderLayer;
-use url::Url;
 use uuid::Uuid;
 
 use super::Page;
@@ -37,8 +36,8 @@ pub fn router() -> Router {
 #[derive(Debug, Template)]
 #[template(path = "feed.html")]
 struct FeedPage {
+    config: Config,
     notes: Vec<Note>,
-    base_url: Url,
     months: Vec<NaiveDate>,
 }
 
@@ -61,7 +60,7 @@ struct IndexOpts {
 
 async fn index(
     notes: Extension<NoteService>,
-    config: Extension<Config>,
+    Extension(config): Extension<Config>,
     opts: Query<IndexOpts>,
 ) -> Result<Page<FeedPage>, StatusCode> {
     let months = notes.months().await.map_err(|err| {
@@ -75,7 +74,7 @@ async fn index(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    Ok(Page(FeedPage { notes, months, base_url: config.base_url.clone() }))
+    Ok(Page(FeedPage { config, notes, months }))
 }
 
 async fn atom(
@@ -129,7 +128,7 @@ async fn atom(
 
 async fn month(
     notes: Extension<NoteService>,
-    config: Extension<Config>,
+    Extension(config): Extension<Config>,
     Path((year, month)): Path<(i32, u32)>,
 ) -> Result<Page<FeedPage>, StatusCode> {
     let months = notes.months().await.map_err(|err| {
@@ -148,12 +147,12 @@ async fn month(
             StatusCode::INTERNAL_SERVER_ERROR
         })?
         .ok_or(StatusCode::NOT_FOUND)?;
-    Ok(Page(FeedPage { notes, months, base_url: config.base_url.clone() }))
+    Ok(Page(FeedPage { config, notes, months }))
 }
 
 async fn single(
     notes: Extension<NoteService>,
-    config: Extension<Config>,
+    Extension(config): Extension<Config>,
     Path(note_id): Path<String>,
 ) -> Result<Page<FeedPage>, StatusCode> {
     let months = notes.months().await.map_err(|err| {
@@ -170,18 +169,19 @@ async fn single(
             StatusCode::INTERNAL_SERVER_ERROR
         })?
         .ok_or(StatusCode::NOT_FOUND)?;
-    Ok(Page(FeedPage { notes: vec![note], months, base_url: config.base_url.clone() }))
+    Ok(Page(FeedPage { config, notes: vec![note], months }))
 }
 
 #[cfg(test)]
 mod tests {
     use std::io::Cursor;
 
+    use sqlx::SqlitePool;
+    use url::Url;
+
     use crate::test_server::TestServer;
 
     use super::*;
-
-    use sqlx::SqlitePool;
 
     #[sqlx::test(fixtures("notes"))]
     async fn main(db: SqlitePool) -> Result<(), anyhow::Error> {
