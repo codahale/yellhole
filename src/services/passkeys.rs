@@ -110,12 +110,11 @@ impl PasskeyService {
         }
 
         // Find the passkey by ID.
-        let public_key_spki =
+        let Some(public_key_spki) =
             sqlx::query!(r"select public_key_spki from passkey where passkey_id = ?", resp.raw_id)
                 .fetch_optional(&self.db)
                 .await?
-                .map(|r| r.public_key_spki);
-        let Some(public_key_spki) = public_key_spki else {
+                .map(|r| r.public_key_spki) else {
             tracing::warn!(passkey_id=?resp.raw_id, "unable to find passkey");
             return Ok(false);
         };
