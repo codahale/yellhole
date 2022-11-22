@@ -108,6 +108,21 @@ impl App {
     }
 }
 
+#[derive(Debug)]
+pub struct Page<T: Template>(T);
+
+impl<T: Template> IntoResponse for Page<T> {
+    fn into_response(self) -> Response {
+        match self.0.render() {
+            Ok(body) => Html(body).into_response(),
+            Err(err) => {
+                tracing::error!(?err, "unable to render template");
+                http::StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            }
+        }
+    }
+}
+
 #[derive(Debug, Template)]
 #[template(path = "error.html")]
 struct ErrorPage {
@@ -128,21 +143,6 @@ async fn handle_errors<B>(req: http::Request<B>, next: Next<B>) -> Result<Respon
         return Ok(ErrorPage::for_status(resp.status()));
     }
     Ok(resp)
-}
-
-#[derive(Debug)]
-pub struct Page<T: Template>(T);
-
-impl<T: Template> IntoResponse for Page<T> {
-    fn into_response(self) -> Response {
-        match self.0.render() {
-            Ok(body) => Html(body).into_response(),
-            Err(err) => {
-                tracing::error!(?err, "unable to render template");
-                http::StatusCode::INTERNAL_SERVER_ERROR.into_response()
-            }
-        }
-    }
 }
 
 async fn shutdown_signal() {
