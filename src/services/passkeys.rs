@@ -32,7 +32,7 @@ impl PasskeyService {
             .map(|r| r.n > 0)
     }
 
-    #[tracing::instrument(skip(self), ret, err)]
+    #[tracing::instrument(skip(self), err)]
     pub async fn start_registration(
         &self,
         username: &str,
@@ -46,7 +46,7 @@ impl PasskeyService {
         })
     }
 
-    #[tracing::instrument(skip(self), err)]
+    #[tracing::instrument(skip_all, ret, err)]
     pub async fn finish_registration(
         &self,
         resp: RegistrationResponse,
@@ -90,7 +90,7 @@ impl PasskeyService {
         Ok(AuthenticationChallenge { rp_id: self.rp_id.clone(), challenge, passkey_ids })
     }
 
-    #[tracing::instrument(skip(self), ret, err)]
+    #[tracing::instrument(skip_all, ret, err)]
     pub async fn finish_authentication(
         &self,
         resp: AuthenticationResponse,

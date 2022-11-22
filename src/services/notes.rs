@@ -16,7 +16,7 @@ impl NoteService {
         NoteService { db }
     }
 
-    #[tracing::instrument(skip(self, body), ret, err)]
+    #[tracing::instrument(skip(self, body), ret(Display), err)]
     pub async fn create(&self, body: &str) -> Result<Hyphenated, sqlx::Error> {
         let note_id = Uuid::new_v4().hyphenated();
         sqlx::query!(r"insert into note (note_id, body) values (?, ?)", note_id, body)

@@ -50,7 +50,7 @@ impl ImageService {
 
     /// Processes the given stream as an image file and adds it to the database. Generates a main
     /// WebP image for displaying in the feed and a thumbnail WebP image for the new note gallery.
-    #[tracing::instrument(skip(self, stream), ret, err)]
+    #[tracing::instrument(skip(self, stream), ret(Display), err)]
     pub async fn add<S, E>(
         &self,
         original_filename: &str,
@@ -97,7 +97,7 @@ impl ImageService {
         Ok(image_id)
     }
 
-    #[tracing::instrument(skip(self), ret, err)]
+    #[tracing::instrument(skip(self), fields(image_url=%image_url) ret(Display), err)]
     pub async fn download(&self, image_url: Url) -> Result<Hyphenated, anyhow::Error> {
         let original_filename = image_url.to_string();
 
@@ -169,7 +169,7 @@ where
     Ok(())
 }
 
-#[tracing::instrument(ret, err)]
+#[tracing::instrument(ret(Display), err)]
 async fn process_image<'a>(
     input: &'a Path,
     output: &'a Path,

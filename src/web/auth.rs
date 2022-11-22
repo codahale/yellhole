@@ -35,11 +35,10 @@ where
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
         let session = ReadableSession::from_request(req).await.expect("infallible");
-        session
-            .get::<bool>("authenticated")
-            .unwrap_or(false)
-            .then_some(Self)
-            .ok_or_else(|| Redirect::to("/login"))
+        session.get::<bool>("authenticated").unwrap_or(false).then_some(Self).ok_or_else(|| {
+            tracing::warn!("unauthenticated request");
+            Redirect::to("/login")
+        })
     }
 }
 
