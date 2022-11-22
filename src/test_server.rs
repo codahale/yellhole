@@ -3,6 +3,8 @@ use std::net::{SocketAddr, TcpListener};
 use axum::Router;
 use reqwest::redirect::Policy;
 use reqwest::{Client, ClientBuilder, RequestBuilder, Url};
+use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
+use tracing::Level;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
@@ -22,6 +24,11 @@ impl TestServer {
 
         let listener = TcpListener::bind::<SocketAddr>(([127, 0, 0, 1], 0).into())?;
         let addr = listener.local_addr()?;
+        let app = app.layer(
+            TraceLayer::new_for_http()
+                .make_span_with(DefaultMakeSpan::new().level(Level::INFO).include_headers(true))
+                .on_response(DefaultOnResponse::new().level(Level::INFO).include_headers(true)),
+        );
 
         tokio::spawn(async move {
             axum::Server::from_tcp(listener).unwrap().serve(app.into_make_service()).await.unwrap();
