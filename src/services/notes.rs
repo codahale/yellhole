@@ -70,10 +70,7 @@ impl NoteService {
         .collect())
     }
 
-    pub async fn date_range(
-        &self,
-        range: Range<NaiveDate>,
-    ) -> Result<Option<Vec<Note>>, sqlx::Error> {
+    pub async fn date_range(&self, range: Range<NaiveDate>) -> Result<Vec<Note>, sqlx::Error> {
         let start = local_date_to_utc(&range.start);
         let end = local_date_to_utc(&range.end);
         sqlx::query_as!(
@@ -89,7 +86,6 @@ impl NoteService {
         )
         .fetch_all(&self.db)
         .await
-        .map(Some)
     }
 }
 

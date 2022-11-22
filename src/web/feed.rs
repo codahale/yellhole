@@ -136,17 +136,13 @@ async fn month(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    let Some(start) = NaiveDate::from_ymd_opt(year, month, 1) else { return Err(StatusCode::NOT_FOUND)};
+    let start = NaiveDate::from_ymd_opt(year, month, 1).ok_or(StatusCode::NOT_FOUND)?;
     let end = start + Months::new(1);
 
-    let notes = notes
-        .date_range(start..end)
-        .await
-        .map_err(|err| {
-            tracing::warn!(?err, year, month, "error querying feed for month");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?
-        .ok_or(StatusCode::NOT_FOUND)?;
+    let notes = notes.date_range(start..end).await.map_err(|err| {
+        tracing::warn!(?err, year, month, "error querying feed for month");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
     Ok(Page(FeedPage { config, notes, months }))
 }
 
