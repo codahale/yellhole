@@ -1,7 +1,7 @@
 use askama::Template;
 use atom_syndication::{Content, Entry, Feed, FixedDateTime, Link, Person, Text};
 use axum::extract::{Path, Query};
-use axum::http::{self, StatusCode};
+use axum::http;
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::{Extension, Router};
@@ -10,7 +10,7 @@ use serde::Deserialize;
 use tower_http::set_header::SetResponseHeaderLayer;
 use uuid::Uuid;
 
-use super::Page;
+use super::{AppError, Page};
 use crate::config::Config;
 use crate::services::notes::{Note, NoteService};
 
@@ -62,31 +62,20 @@ async fn index(
     notes: Extension<NoteService>,
     Extension(config): Extension<Config>,
     opts: Query<IndexOpts>,
-) -> Result<Page<FeedPage>, StatusCode> {
-    let months = notes.months().await.map_err(|err| {
-        tracing::warn!(?err, "error querying note dates");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
+) -> Result<Page<FeedPage>, AppError> {
+    let months = notes.months().await?;
     let n = opts.n.unwrap_or(100);
-    let notes = notes.most_recent(n).await.map_err(|err| {
-        tracing::warn!(?err, n, "error querying feed index");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
+    let notes = notes.most_recent(n).await?;
     Ok(Page(FeedPage { config, notes, months }))
 }
 
 async fn atom(
     notes: Extension<NoteService>,
     config: Extension<Config>,
-) -> Result<Response, StatusCode> {
-    let notes = notes.most_recent(20).await.map_err(|err| {
-        tracing::warn!(?err, "error querying atom index");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
+) -> Result<Response, AppError> {
     let entries = notes
+        .most_recent(20)
+        .await?
         .iter()
         .map(|n| Entry {
             id: config.base_url.join(&format!("note/{}", n.note_id)).unwrap().to_string(),
@@ -130,19 +119,11 @@ async fn month(
     notes: Extension<NoteService>,
     Extension(config): Extension<Config>,
     Path((year, month)): Path<(i32, u32)>,
-) -> Result<Page<FeedPage>, StatusCode> {
-    let months = notes.months().await.map_err(|err| {
-        tracing::warn!(?err, "error querying note dates");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    let start = NaiveDate::from_ymd_opt(year, month, 1).ok_or(StatusCode::NOT_FOUND)?;
+) -> Result<Page<FeedPage>, AppError> {
+    let months = notes.months().await?;
+    let start = NaiveDate::from_ymd_opt(year, month, 1).ok_or(AppError::NotFound)?;
     let end = start + Months::new(1);
-
-    let notes = notes.date_range(start..end).await.map_err(|err| {
-        tracing::warn!(?err, year, month, "error querying feed for month");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+    let notes = notes.date_range(start..end).await?;
     Ok(Page(FeedPage { config, notes, months }))
 }
 
@@ -150,21 +131,10 @@ async fn single(
     notes: Extension<NoteService>,
     Extension(config): Extension<Config>,
     Path(note_id): Path<String>,
-) -> Result<Page<FeedPage>, StatusCode> {
-    let months = notes.months().await.map_err(|err| {
-        tracing::warn!(?err, "error querying note dates");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    let note_id = note_id.parse::<Uuid>().map_err(|_| StatusCode::NOT_FOUND)?;
-    let note = notes
-        .by_id(&note_id)
-        .await
-        .map_err(|err| {
-            tracing::warn!(?err, %note_id, "error querying feed by id");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?
-        .ok_or(StatusCode::NOT_FOUND)?;
+) -> Result<Page<FeedPage>, AppError> {
+    let months = notes.months().await?;
+    let note_id = note_id.parse::<Uuid>().map_err(|_| AppError::NotFound)?;
+    let note = notes.by_id(&note_id).await?.ok_or(AppError::NotFound)?;
     Ok(Page(FeedPage { config, notes: vec![note], months }))
 }
 
@@ -172,6 +142,7 @@ async fn single(
 mod tests {
     use std::io::Cursor;
 
+    use axum::http::{self, StatusCode};
     use sqlx::SqlitePool;
     use url::Url;
 

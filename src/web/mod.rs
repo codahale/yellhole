@@ -7,6 +7,7 @@ use axum::middleware::{self, Next};
 use axum::response::{Html, IntoResponse, Response};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use sqlx::SqlitePool;
+use thiserror::Error;
 use tokio::signal;
 use tower::ServiceBuilder;
 use tower_http::request_id::MakeRequestUuid;
@@ -105,6 +106,28 @@ impl App {
         session_expiry.await??;
 
         Ok(())
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum AppError {
+    #[error(transparent)]
+    Generic(#[from] anyhow::Error),
+
+    #[error(transparent)]
+    QueryFailure(#[from] sqlx::Error),
+
+    #[error("resource not found")]
+    NotFound,
+}
+
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        match self {
+            AppError::Generic(_) | AppError::QueryFailure(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::NotFound => StatusCode::NOT_FOUND,
+        }
+        .into_response()
     }
 }
 

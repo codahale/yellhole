@@ -1,7 +1,8 @@
+use anyhow::Context;
 use askama::Template;
 use axum::extract::{DefaultBodyLimit, Multipart};
 use axum::http::StatusCode;
-use axum::response::Redirect;
+use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
 use axum::{Extension, Form, Router};
 use serde::Deserialize;
@@ -12,7 +13,7 @@ use url::Url;
 use crate::services::images::{Image, ImageService};
 use crate::services::notes::NoteService;
 
-use super::Page;
+use super::{AppError, Page};
 
 pub fn router() -> Router {
     Router::new()
@@ -33,12 +34,8 @@ struct NewPage {
     images: Vec<Image>,
 }
 
-async fn new_page(images: Extension<ImageService>) -> Result<Page<NewPage>, StatusCode> {
-    let images = images.most_recent(10).await.map_err(|err| {
-        tracing::warn!(%err, "unable to query recent images");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-    Ok(Page(NewPage { images }))
+async fn new_page(images: Extension<ImageService>) -> Result<Page<NewPage>, AppError> {
+    Ok(Page(NewPage { images: images.most_recent(10).await? }))
 }
 
 #[derive(Debug, Deserialize)]
@@ -49,28 +46,22 @@ struct NewNote {
 async fn create_note(
     notes: Extension<NoteService>,
     Form(new_note): Form<NewNote>,
-) -> Result<Redirect, StatusCode> {
-    let note_id = notes.create(&new_note.body).await.map_err(|err| {
-        tracing::warn!(%err, "error inserting note");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+) -> Result<Redirect, AppError> {
+    let note_id = notes.create(&new_note.body).await?;
     Ok(Redirect::to(&format!("/note/{note_id}")))
 }
 
 pub async fn upload_images(
     images: Extension<ImageService>,
     mut multipart: Multipart,
-) -> Result<Redirect, StatusCode> {
-    while let Some(field) = multipart.next_field().await.map_err(|_| StatusCode::BAD_REQUEST)? {
+) -> Result<Redirect, AppError> {
+    while let Some(field) = multipart.next_field().await.context("multipart error")? {
         if let Some(content_type) =
             field.content_type().and_then(|ct| ct.parse::<mime::Mime>().ok())
         {
             if content_type.type_() == mime::IMAGE {
                 let original_filename = field.file_name().unwrap_or("none").to_string();
-                images.add(&original_filename, &content_type, field).await.map_err(|err| {
-                    tracing::warn!(%err, "unable to add image");
-                    StatusCode::INTERNAL_SERVER_ERROR
-                })?;
+                images.add(&original_filename, &content_type, field).await?;
             }
         }
     }
@@ -85,18 +76,14 @@ struct DownloadImage {
 async fn download_image(
     images: Extension<ImageService>,
     Form(image): Form<DownloadImage>,
-) -> Result<Redirect, StatusCode> {
-    let url = image.url.parse::<Url>().map_err(|err| {
-        tracing::warn!(%err, "invalid URL");
-        StatusCode::BAD_REQUEST
-    })?;
+) -> Result<Response, AppError> {
+    let Ok(url) = image.url.parse::<Url>() else {
+        return Ok(StatusCode::BAD_REQUEST.into_response());
+    };
 
-    images.download(url).await.map_err(|err| {
-        tracing::warn!(%err, "unable to download image");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+    images.download(url).await?;
 
-    Ok(Redirect::to("/admin/new"))
+    Ok(Redirect::to("/admin/new").into_response())
 }
 
 #[cfg(test)]
