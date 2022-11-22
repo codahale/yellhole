@@ -6,7 +6,7 @@ processes = []
 [env]
 PORT = "8080"
 DATA_DIR = "/data"
-AUTHOR = "Coda"
+AUTHOR = "Coda Hale"
 RUST_LOG = "info,sqlx=warn"
 BASE_URL = "https://www.yellhole.com"
 
