@@ -15,9 +15,9 @@ mod web;
 async fn main() -> anyhow::Result<()> {
     // Configure tracing, defaulting to debug levels.
     tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::new(std::env::var("RUST_LOG").unwrap_or_else(|_| {
-            "trace,yellhole=debug,sqlx=info,hyper=info,mio=info,tower_http=debug".into()
-        })))
+        .with(tracing_subscriber::EnvFilter::new(
+            std::env::var("RUST_LOG").unwrap_or_else(|_| "info,sqlx=warn".into()),
+        ))
         .with(tracing_subscriber::fmt::layer())
         .init();
 
