@@ -32,6 +32,7 @@ impl ImageService {
     }
 
     /// Returns the `n` most recent images, in reverse chronological order.
+    #[tracing::instrument(skip(self), err)]
     pub async fn most_recent(&self, n: u16) -> Result<Vec<Image>, sqlx::Error> {
         sqlx::query_as!(
             Image,
@@ -49,6 +50,7 @@ impl ImageService {
 
     /// Processes the given stream as an image file and adds it to the database. Generates a main
     /// WebP image for displaying in the feed and a thumbnail WebP image for the new note gallery.
+    #[tracing::instrument(skip(self, stream), ret, err)]
     pub async fn add<S, E>(
         &self,
         original_filename: &str,
@@ -95,6 +97,7 @@ impl ImageService {
         Ok(image_id)
     }
 
+    #[tracing::instrument(skip(self), ret, err)]
     pub async fn download(&self, image_url: Url) -> Result<Hyphenated, anyhow::Error> {
         let original_filename = image_url.to_string();
 
@@ -146,6 +149,7 @@ fn thumbnail_filename(image_id: &Hyphenated) -> String {
     format!("{}.thumb.webp", image_id)
 }
 
+#[tracing::instrument(skip(stream), err)]
 async fn stream_to_file<S, E>(stream: S, path: &Path) -> Result<(), io::Error>
 where
     S: Stream<Item = Result<Bytes, E>>,
@@ -165,6 +169,7 @@ where
     Ok(())
 }
 
+#[tracing::instrument(ret, err)]
 async fn process_image<'a>(
     input: &'a Path,
     output: &'a Path,
