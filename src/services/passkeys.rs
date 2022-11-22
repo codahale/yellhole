@@ -24,6 +24,7 @@ impl PasskeyService {
         PasskeyService { db, rp_id, origin: base_url.clone() }
     }
 
+    #[tracing::instrument(skip(self), ret, err)]
     pub async fn any_registered(&self) -> Result<bool, sqlx::Error> {
         sqlx::query!(r"select count(passkey_id) as n from passkey")
             .fetch_one(&self.db)
@@ -31,6 +32,7 @@ impl PasskeyService {
             .map(|r| r.n > 0)
     }
 
+    #[tracing::instrument(skip(self), ret, err)]
     pub async fn start_registration(
         &self,
         username: &str,
@@ -44,26 +46,26 @@ impl PasskeyService {
         })
     }
 
+    #[tracing::instrument(skip(self), err)]
     pub async fn finish_registration(
         &self,
         resp: RegistrationResponse,
-    ) -> Result<(), anyhow::Error> {
+    ) -> Result<bool, sqlx::Error> {
         // Try decoding the P-256 public key from its DER encoding.
-        VerifyingKey::from_public_key_der(&resp.public_key)?;
+        if VerifyingKey::from_public_key_der(&resp.public_key).is_err() {
+            return Ok(false);
+        }
 
         // Decode and validate the client data.
-        if !CollectedClientData::is_valid(
-            &resp.client_data_json,
-            &self.origin,
-            "webauthn.create",
-            None,
-        ) {
-            anyhow::bail!("invalid client data");
+        let cdj = &resp.client_data_json;
+        if CollectedClientData::validate(cdj, &self.origin, "webauthn.create", None).is_err() {
+            return Ok(false);
         }
 
         // Decode and validate the authenticator data.
-        let passkey_id = parse_authenticator_data(&resp.authenticator_data, &self.rp_id)?
-            .ok_or_else(|| anyhow::anyhow!("missing passkey id"))?;
+        let Ok(passkey_id) = parse_authenticator_data(&resp.authenticator_data, &self.rp_id) else {
+            return Ok(false);
+        };
 
         // Insert the passkey ID and DER-encoded public key into the database.
         sqlx::query!(
@@ -74,9 +76,10 @@ impl PasskeyService {
         .execute(&self.db)
         .await?;
 
-        Ok(())
+        Ok(true)
     }
 
+    #[tracing::instrument(skip(self), err)]
     pub async fn start_authentication(&self) -> Result<AuthenticationChallenge, sqlx::Error> {
         // Find all passkey IDs.
         let passkey_ids = self.passkey_ids().await?;
@@ -87,19 +90,17 @@ impl PasskeyService {
         Ok(AuthenticationChallenge { rp_id: self.rp_id.clone(), challenge, passkey_ids })
     }
 
+    #[tracing::instrument(skip(self), ret, err)]
     pub async fn finish_authentication(
         &self,
         resp: AuthenticationResponse,
         challenge: [u8; 32],
     ) -> Result<bool, sqlx::Error> {
         // Validate the collected client data.
-        if !CollectedClientData::is_valid(
-            &resp.client_data_json,
-            &self.origin,
-            "webauthn.get",
-            Some(&challenge),
-        ) {
-            tracing::warn!(cdj=?resp.client_data_json, "invalid collected client data");
+        let cdj = &resp.client_data_json;
+        if CollectedClientData::validate(cdj, &self.origin, "webauthn.get", Some(&challenge))
+            .is_err()
+        {
             return Ok(false);
         }
 
@@ -140,6 +141,7 @@ impl PasskeyService {
         Ok(public_key.verify(&signed, &signature).is_ok())
     }
 
+    #[tracing::instrument(skip(self), err)]
     async fn passkey_ids(&self) -> Result<Vec<Vec<u8>>, sqlx::Error> {
         Ok(sqlx::query!(r"select passkey_id from passkey")
             .fetch_all(&self.db)
@@ -233,19 +235,28 @@ struct CollectedClientData {
 }
 
 impl CollectedClientData {
-    fn is_valid(json: &[u8], origin: &Url, action: &str, challenge: Option<&[u8]>) -> bool {
-        let Ok(cdj) = serde_json::from_slice::<CollectedClientData>(json) else {
-            return false;
-        };
-        cdj.type_ == action
-            && !cdj.cross_origin.unwrap_or(false)
-            && &cdj.origin == origin
-            && challenge
-                .map(|v| constant_time_eq(&cdj.challenge.unwrap_or_default(), v))
-                .unwrap_or(true)
+    fn validate(
+        json: &[u8],
+        origin: &Url,
+        action: &str,
+        challenge: Option<&[u8]>,
+    ) -> Result<(), anyhow::Error> {
+        let cdj = serde_json::from_slice::<CollectedClientData>(json)?;
+        anyhow::ensure!(cdj.type_ == action, "invalid type: {}", cdj.type_);
+        anyhow::ensure!(!cdj.cross_origin.unwrap_or(false), "cross-origin webauthn request");
+        anyhow::ensure!(&cdj.origin == origin, "invalid origin: {}", cdj.origin);
+        if let Some(challenge) = challenge {
+            anyhow::ensure!(
+                constant_time_eq(challenge, &cdj.challenge.unwrap_or_default()),
+                "invalid challenge"
+            );
+        }
+
+        Ok(())
     }
 }
 
+#[tracing::instrument(skip_all, err)]
 fn parse_authenticator_data(ad: &[u8], rp_id: &str) -> Result<Option<Vec<u8>>, anyhow::Error> {
     let rp_hash = Sha256::new().chain_update(rp_id.as_bytes()).finalize();
     anyhow::ensure!(constant_time_eq(&rp_hash, &ad[..32]), "invalid RP ID hash");

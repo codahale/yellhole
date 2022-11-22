@@ -72,8 +72,11 @@ async fn register_finish(
     passkeys: Extension<PasskeyService>,
     Json(resp): Json<RegistrationResponse>,
 ) -> Result<Response, AppError> {
-    passkeys.finish_registration(resp).await?;
-    Ok(StatusCode::CREATED.into_response())
+    if passkeys.finish_registration(resp).await? {
+        Ok(StatusCode::CREATED.into_response())
+    } else {
+        Ok(StatusCode::BAD_REQUEST.into_response())
+    }
 }
 
 #[derive(Debug, Template)]
