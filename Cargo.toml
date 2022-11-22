@@ -55,7 +55,7 @@ tower-http = { version = "0.3.4", features = [
     "set-header",
     "trace",
 ] }
-tracing = { version = "0.1.37", features = ["log"] }
+tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 url = { version = "2.3.1", features = ["serde"] }
 uuid = { version = "1.2.2", features = ["std", "v4"] }

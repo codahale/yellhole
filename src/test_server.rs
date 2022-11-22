@@ -5,8 +5,10 @@ use reqwest::redirect::Policy;
 use reqwest::{Client, ClientBuilder, RequestBuilder, Url};
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
 use tracing::Level;
+use tracing_subscriber::fmt::format::FmtSpan;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::EnvFilter;
 
 pub struct TestServer {
     url: Url,
@@ -16,10 +18,8 @@ pub struct TestServer {
 impl TestServer {
     pub fn new(app: Router) -> Result<TestServer, anyhow::Error> {
         let _ = tracing_subscriber::registry()
-            .with(tracing_subscriber::EnvFilter::new(
-                std::env::var("RUST_LOG").unwrap_or_else(|_| "off".into()),
-            ))
-            .with(tracing_subscriber::fmt::layer())
+            .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("off")))
+            .with(tracing_subscriber::fmt::layer().with_span_events(FmtSpan::FULL).pretty())
             .try_init();
 
         let listener = TcpListener::bind::<SocketAddr>(([127, 0, 0, 1], 0).into())?;

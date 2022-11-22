@@ -1,6 +1,7 @@
 use clap::Parser;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::EnvFilter;
 
 use crate::config::Config;
 use crate::web::App;
@@ -13,13 +14,13 @@ mod web;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Configure tracing, defaulting to debug levels.
+    // Configure tracing, defaulting to INFO except for sqlx, which is wild chatty.
     tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::new(
-            std::env::var("RUST_LOG").unwrap_or_else(|_| "info,sqlx=warn".into()),
-        ))
+        .with(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info,sqlx=warn")),
+        )
         .with(tracing_subscriber::fmt::layer())
-        .init();
+        .try_init()?;
 
     // Parse the command line args.
     let config = Config::parse();
