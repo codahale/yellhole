@@ -47,9 +47,9 @@ impl SessionService {
 
 #[async_trait]
 impl SessionStore for SessionService {
+    #[tracing::instrument(skip(self), level = "trace", err)]
     async fn load_session(&self, cookie_value: String) -> Result<Option<Session>> {
         let session_id = Session::id_from_cookie_value(&cookie_value)?;
-        tracing::trace!(session_id, "loading session");
         Ok(sqlx::query!(r"select as_json from session where session_id = ?", session_id)
             .fetch_optional(&self.db)
             .await?
@@ -57,10 +57,10 @@ impl SessionStore for SessionService {
             .transpose()?)
     }
 
+    #[tracing::instrument(skip(self, session), fields(id = session.id()), level = "trace", err)]
     async fn store_session(&self, session: Session) -> Result<Option<String>> {
         let json = serde_json::to_string(&session)?;
         let session_id = session.id();
-        tracing::trace!(session_id, "storing session");
         sqlx::query!(
             r"
             insert into session (session_id, as_json)
@@ -79,18 +79,17 @@ impl SessionStore for SessionService {
         Ok(session.into_cookie_value())
     }
 
-    /// Remove a session from the session store
+    #[tracing::instrument(skip(self, session), fields(id = session.id()), level = "trace", err)]
     async fn destroy_session(&self, session: Session) -> Result {
         let session_id = session.id();
-        tracing::trace!(session_id, "destroying session");
         sqlx::query!(r"delete from session where session_id = ?", session_id)
             .execute(&self.db)
             .await?;
         Ok(())
     }
 
+    #[tracing::instrument(skip(self), level = "trace", err)]
     async fn clear_store(&self) -> Result {
-        tracing::trace!("destroying all sessions");
         sqlx::query!(r"delete from session").execute(&self.db).await?;
         Ok(())
     }
