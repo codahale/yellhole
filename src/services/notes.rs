@@ -16,6 +16,7 @@ impl NoteService {
         NoteService { db }
     }
 
+    #[tracing::instrument(skip(self, body), ret, err)]
     pub async fn create(&self, body: &str) -> Result<Hyphenated, sqlx::Error> {
         let note_id = Uuid::new_v4().hyphenated();
         sqlx::query!(r"insert into note (note_id, body) values (?, ?)", note_id, body)
@@ -24,6 +25,7 @@ impl NoteService {
         Ok(note_id)
     }
 
+    #[tracing::instrument(skip(self), err)]
     pub async fn by_id(&self, note_id: &Uuid) -> Result<Option<Note>, sqlx::Error> {
         let note_id = note_id.as_hyphenated();
         sqlx::query_as!(
@@ -39,6 +41,7 @@ impl NoteService {
         .await
     }
 
+    #[tracing::instrument(skip(self), err)]
     pub async fn most_recent(&self, n: u16) -> Result<Vec<Note>, sqlx::Error> {
         sqlx::query_as!(
             Note,
@@ -54,6 +57,7 @@ impl NoteService {
         .await
     }
 
+    #[tracing::instrument(skip(self), err)]
     pub async fn months(&self) -> Result<Vec<NaiveDate>, sqlx::Error> {
         Ok(sqlx::query!(
             r#"
@@ -70,6 +74,7 @@ impl NoteService {
         .collect())
     }
 
+    #[tracing::instrument(skip(self), err)]
     pub async fn date_range(&self, range: Range<NaiveDate>) -> Result<Vec<Note>, sqlx::Error> {
         let start = local_date_to_utc(&range.start);
         let end = local_date_to_utc(&range.end);
