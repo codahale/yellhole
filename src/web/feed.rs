@@ -68,6 +68,29 @@ async fn index(
     Ok(Page(FeedPage { config, notes, weeks }))
 }
 
+async fn week(
+    notes: Extension<NoteService>,
+    Extension(config): Extension<Config>,
+    Path(start): Path<String>,
+) -> Result<Page<FeedPage>, AppError> {
+    let weeks = notes.weeks().await?;
+    let start = NaiveDate::from_str(&start).or(Err(AppError::NotFound))?;
+    let end = start + Days::new(7);
+    let notes = notes.date_range(start..end).await?;
+    Ok(Page(FeedPage { config, notes, weeks }))
+}
+
+async fn single(
+    notes: Extension<NoteService>,
+    Extension(config): Extension<Config>,
+    Path(note_id): Path<String>,
+) -> Result<Page<FeedPage>, AppError> {
+    let weeks = notes.weeks().await?;
+    let note_id = note_id.parse::<Uuid>().or(Err(AppError::NotFound))?;
+    let note = notes.by_id(&note_id).await?.ok_or(AppError::NotFound)?;
+    Ok(Page(FeedPage { config, notes: vec![note], weeks }))
+}
+
 async fn atom(
     notes: Extension<NoteService>,
     config: Extension<Config>,
@@ -109,29 +132,6 @@ async fn atom(
 
 const fn atom_xml() -> http::HeaderValue {
     http::HeaderValue::from_static("application/atom+xml; charset=utf-8")
-}
-
-async fn week(
-    notes: Extension<NoteService>,
-    Extension(config): Extension<Config>,
-    Path(start): Path<String>,
-) -> Result<Page<FeedPage>, AppError> {
-    let weeks = notes.weeks().await?;
-    let start = NaiveDate::from_str(&start).or(Err(AppError::NotFound))?;
-    let end = start + Days::new(7);
-    let notes = notes.date_range(start..end).await?;
-    Ok(Page(FeedPage { config, notes, weeks }))
-}
-
-async fn single(
-    notes: Extension<NoteService>,
-    Extension(config): Extension<Config>,
-    Path(note_id): Path<String>,
-) -> Result<Page<FeedPage>, AppError> {
-    let weeks = notes.weeks().await?;
-    let note_id = note_id.parse::<Uuid>().or(Err(AppError::NotFound))?;
-    let note = notes.by_id(&note_id).await?.ok_or(AppError::NotFound)?;
-    Ok(Page(FeedPage { config, notes: vec![note], weeks }))
 }
 
 #[cfg(test)]
