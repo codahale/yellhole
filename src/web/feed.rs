@@ -63,7 +63,7 @@ async fn index(
     opts: Query<IndexOpts>,
 ) -> Result<Page<FeedPage>, AppError> {
     let weeks = notes.weeks().await?;
-    let n = opts.n.unwrap_or(10);
+    let n = opts.n.unwrap_or(25);
     let notes = notes.most_recent(n).await?;
     Ok(Page(FeedPage { config, notes, weeks }))
 }
