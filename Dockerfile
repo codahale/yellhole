@@ -1,6 +1,6 @@
 # Create a Rust builder with stable Rust and OpenSSL. Disable static linking of musl because it
 # segfaults.
-FROM alpine:edge AS rust-base
+FROM alpine:3.17 AS rust-base
 RUN apk --no-cache add build-base rustup openssl-dev
 RUN rustup-init -y
 ENV RUSTFLAGS="-C target-feature=-crt-static"
@@ -25,10 +25,10 @@ RUN cargo build --release
 
 # Create a deployable image from base Alpine with ImageMagick, OpenSSL, SQLite (for admin stuff),
 # set to my time zone, with just the compiled binary.
-FROM alpine:edge
+FROM alpine:3.17
 RUN apk --no-cache add imagemagick openssl sqlite tzdata && \
     cp /usr/share/zoneinfo/America/Denver /etc/localtime && \
     echo "America/Denver" > /etc/timezone && \
-    apk del tzdata
+    apk del tzdata && magick --version
 COPY --from=rust-builder /app/target/release/yellhole .
 ENTRYPOINT ["/yellhole"]
