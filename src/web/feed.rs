@@ -105,14 +105,11 @@ async fn atom(
         ..Default::default()
     };
 
-    Ok((
-        [(
-            http::header::CONTENT_TYPE,
-            http::HeaderValue::from_static("application/atom+xml; charset=utf-8"),
-        )],
-        feed.to_string(),
-    )
-        .into_response())
+    Ok(([(http::header::CONTENT_TYPE, atom_xml())], feed.to_string()).into_response())
+}
+
+const fn atom_xml() -> http::HeaderValue {
+    http::HeaderValue::from_static("application/atom+xml; charset=utf-8")
 }
 
 async fn month(
@@ -169,10 +166,7 @@ mod tests {
 
         let resp = ts.get("/atom.xml").send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
-        assert_eq!(
-            resp.headers().get(http::header::CONTENT_TYPE),
-            Some(&http::HeaderValue::from_static("application/atom+xml; charset=utf-8"))
-        );
+        assert_eq!(resp.headers().get(http::header::CONTENT_TYPE), Some(&atom_xml()));
 
         let feed = Feed::read_from(Cursor::new(&resp.bytes().await?))?;
         assert_eq!(
