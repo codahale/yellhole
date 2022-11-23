@@ -1,3 +1,6 @@
+use std::ops::Range;
+use std::str::FromStr;
+
 use askama::Template;
 use atom_syndication::{Content, Entry, Feed, FixedDateTime, Link, Person, Text};
 use axum::extract::{Path, Query};
@@ -5,7 +8,7 @@ use axum::http;
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::{Extension, Router};
-use chrono::{Datelike, FixedOffset, Months, NaiveDate, Utc};
+use chrono::{Days, FixedOffset, NaiveDate, Utc};
 use serde::Deserialize;
 use tower_http::set_header::SetResponseHeaderLayer;
 use uuid::Uuid;
@@ -25,7 +28,7 @@ pub fn router() -> Router {
     Router::new()
         .route("/", get(index))
         .route("/atom.xml", get(atom))
-        .route("/notes/:year/:month", get(month))
+        .route("/notes/:start", get(week))
         .layer(SetResponseHeaderLayer::overriding(
             http::header::CACHE_CONTROL,
             http::HeaderValue::from_static("max-age=300"),
@@ -38,18 +41,14 @@ pub fn router() -> Router {
 struct FeedPage {
     config: Config,
     notes: Vec<Note>,
-    months: Vec<NaiveDate>,
+    weeks: Vec<Range<NaiveDate>>,
 }
 
 mod filters {
-    use chrono::{DateTime, Datelike, Local, NaiveDate, Utc};
+    use chrono::{DateTime, Local, Utc};
 
     pub fn to_local_tz(t: &DateTime<Utc>) -> askama::Result<DateTime<Local>> {
         Ok(t.with_timezone(&Local))
-    }
-
-    pub fn to_month(d: &NaiveDate) -> askama::Result<String> {
-        Ok(format!("{:04}/{:02}", d.year(), d.month()))
     }
 }
 
@@ -63,10 +62,10 @@ async fn index(
     Extension(config): Extension<Config>,
     opts: Query<IndexOpts>,
 ) -> Result<Page<FeedPage>, AppError> {
-    let months = notes.months().await?;
-    let n = opts.n.unwrap_or(100);
+    let weeks = notes.weeks().await?;
+    let n = opts.n.unwrap_or(10);
     let notes = notes.most_recent(n).await?;
-    Ok(Page(FeedPage { config, notes, months }))
+    Ok(Page(FeedPage { config, notes, weeks }))
 }
 
 async fn atom(
@@ -112,16 +111,16 @@ const fn atom_xml() -> http::HeaderValue {
     http::HeaderValue::from_static("application/atom+xml; charset=utf-8")
 }
 
-async fn month(
+async fn week(
     notes: Extension<NoteService>,
     Extension(config): Extension<Config>,
-    Path((year, month)): Path<(i32, u32)>,
+    Path(start): Path<String>,
 ) -> Result<Page<FeedPage>, AppError> {
-    let months = notes.months().await?;
-    let start = NaiveDate::from_ymd_opt(year, month, 1).ok_or(AppError::NotFound)?;
-    let end = start + Months::new(1);
+    let weeks = notes.weeks().await?;
+    let start = NaiveDate::from_str(&start).or(Err(AppError::NotFound))?;
+    let end = start + Days::new(7);
     let notes = notes.date_range(start..end).await?;
-    Ok(Page(FeedPage { config, notes, months }))
+    Ok(Page(FeedPage { config, notes, weeks }))
 }
 
 async fn single(
@@ -129,10 +128,10 @@ async fn single(
     Extension(config): Extension<Config>,
     Path(note_id): Path<String>,
 ) -> Result<Page<FeedPage>, AppError> {
-    let months = notes.months().await?;
+    let weeks = notes.weeks().await?;
     let note_id = note_id.parse::<Uuid>().or(Err(AppError::NotFound))?;
     let note = notes.by_id(&note_id).await?.ok_or(AppError::NotFound)?;
-    Ok(Page(FeedPage { config, notes: vec![note], months }))
+    Ok(Page(FeedPage { config, notes: vec![note], weeks }))
 }
 
 #[cfg(test)]
@@ -178,10 +177,10 @@ mod tests {
     }
 
     #[sqlx::test(fixtures("notes"))]
-    async fn monthly_view(db: SqlitePool) -> Result<(), anyhow::Error> {
+    async fn weekly_view(db: SqlitePool) -> Result<(), anyhow::Error> {
         let ts = TestServer::new(app(&db))?;
 
-        let resp = ts.get("/notes/2022/10").send().await?;
+        let resp = ts.get("/notes/2022-10-09").send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
 
         let body = resp.text().await?;

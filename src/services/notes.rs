@@ -58,19 +58,19 @@ impl NoteService {
     }
 
     #[tracing::instrument(skip(self), err)]
-    pub async fn months(&self) -> Result<Vec<NaiveDate>, sqlx::Error> {
+    pub async fn weeks(&self) -> Result<Vec<Range<NaiveDate>>, sqlx::Error> {
         Ok(sqlx::query!(
             r#"
-            select strftime('%Y-%m-01', datetime(created_at, 'localtime')) as "month!: NaiveDate"
-            from note
-            group by 1
-            order by 1 desc
-            "#
+            select
+              date(local, 'weekday 0', '-7 days') as "start!: NaiveDate",
+              date(local, 'weekday 0') as "end!: NaiveDate"
+            from (select datetime(created_at, 'localtime') as local from note)
+            group by 1 order by 1 desc"#,
         )
         .fetch_all(&self.db)
         .await?
         .into_iter()
-        .map(|r| r.month)
+        .map(|r| r.start..r.end)
         .collect())
     }
 

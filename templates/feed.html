@@ -10,8 +10,12 @@
 <ul>
     <li><a href="#">Archive</a>
         <ul>
-            {% for d in months %}
-            <li><a href="/notes/{{d.year()}}/{{d.month()}}">{{d|to_month}}</a></li>
+            {% for d in weeks %}
+            <li>
+                <a href="/notes/{{d.start}}">
+                    {{d.start}} to {{d.end}}
+                </a>
+            </li>
             {% endfor %}
         </ul>
     </li>

@@ -1,5 +1,29 @@
 {
   "db": "SQLite",
+  "2263eb28429a2586141c6991762e5716720ed5897e443f99340740e18246e740": {
+    "describe": {
+      "columns": [
+        {
+          "name": "start!: NaiveDate",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "end!: NaiveDate",
+          "ordinal": 1,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        null,
+        null
+      ],
+      "parameters": {
+        "Right": 0
+      }
+    },
+    "query": "\n            select\n              date(local, 'weekday 0', '-7 days') as \"start!: NaiveDate\",\n              date(local, 'weekday 0') as \"end!: NaiveDate\"\n            from (select datetime(created_at, 'localtime') as local from note)\n            group by 1 order by 1 desc"
+  },
   "37a817c270013a2c817876692bb5f8d6fb7667db99e3a96c6dcf5aaa15d5187e": {
     "describe": {
       "columns": [],
@@ -157,24 +181,6 @@
       }
     },
     "query": "\n            select note_id as \"note_id: Hyphenated\", body, created_at as \"created_at: DateTime<Utc>\"\n            from note\n            order by created_at desc\n            limit ?\n            "
-  },
-  "952a4d81023187e443ba892145ac5ca3b9fcd2ad93eb7346f503204a02495b49": {
-    "describe": {
-      "columns": [
-        {
-          "name": "month!: NaiveDate",
-          "ordinal": 0,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        null
-      ],
-      "parameters": {
-        "Right": 0
-      }
-    },
-    "query": "\n            select strftime('%Y-%m-01', datetime(created_at, 'localtime')) as \"month!: NaiveDate\"\n            from note\n            group by 1\n            order by 1 desc\n            "
   },
   "965ebfb4464392a094bfec38848b0a89ae40d9760bad448c108dc39925f7dd3b": {
     "describe": {
