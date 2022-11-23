@@ -166,6 +166,7 @@ mod tests {
         };
 
         assert_eq!(
+            note.to_html(),
             r#"
 <h2>This is a heading.</h2>
 <h3>This is a subheading.</h3>
@@ -174,7 +175,6 @@ mod tests {
 <h6>This is a nitpick.</h6>
 <strong>Unclear.</strong>"#
                 .trim(),
-            note.to_html()
         );
     }
 }

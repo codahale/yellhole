@@ -147,7 +147,7 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::SEE_OTHER);
 
         let recent = images.most_recent(1).await?;
-        assert_eq!(1, recent.len());
+        assert_eq!(recent.len(), 1);
 
         Ok(())
     }
@@ -166,7 +166,7 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::SEE_OTHER);
 
         let recent = images.most_recent(1).await?;
-        assert_eq!(1, recent.len());
+        assert_eq!(recent.len(), 1);
 
         Ok(())
     }
