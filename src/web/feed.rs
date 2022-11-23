@@ -63,8 +63,7 @@ async fn index(
     opts: Query<IndexOpts>,
 ) -> Result<Page<FeedPage>, AppError> {
     let weeks = notes.weeks().await?;
-    let n = opts.n.unwrap_or(25);
-    let notes = notes.most_recent(n).await?;
+    let notes = notes.most_recent(opts.n.unwrap_or(25)).await?;
     Ok(Page(FeedPage { config, notes, weeks }))
 }
 
@@ -75,8 +74,7 @@ async fn week(
 ) -> Result<Page<FeedPage>, AppError> {
     let weeks = notes.weeks().await?;
     let start = NaiveDate::from_str(&start).or(Err(AppError::NotFound))?;
-    let end = start + Days::new(7);
-    let notes = notes.date_range(start..end).await?;
+    let notes = notes.date_range(start..(start + Days::new(7))).await?;
     Ok(Page(FeedPage { config, notes, weeks }))
 }
 
@@ -87,8 +85,8 @@ async fn single(
 ) -> Result<Page<FeedPage>, AppError> {
     let weeks = notes.weeks().await?;
     let note_id = note_id.parse::<Uuid>().or(Err(AppError::NotFound))?;
-    let note = notes.by_id(&note_id).await?.ok_or(AppError::NotFound)?;
-    Ok(Page(FeedPage { config, notes: vec![note], weeks }))
+    let notes = vec![notes.by_id(&note_id).await?.ok_or(AppError::NotFound)?];
+    Ok(Page(FeedPage { config, notes, weeks }))
 }
 
 async fn atom(
