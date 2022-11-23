@@ -133,7 +133,7 @@ async fn single(
     Path(note_id): Path<String>,
 ) -> Result<Page<FeedPage>, AppError> {
     let months = notes.months().await?;
-    let note_id = note_id.parse::<Uuid>().map_err(|_| AppError::NotFound)?;
+    let note_id = note_id.parse::<Uuid>().or(Err(AppError::NotFound))?;
     let note = notes.by_id(&note_id).await?.ok_or(AppError::NotFound)?;
     Ok(Page(FeedPage { config, notes: vec![note], months }))
 }
