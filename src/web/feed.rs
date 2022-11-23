@@ -1,5 +1,4 @@
 use std::ops::Range;
-use std::str::FromStr;
 
 use askama::Template;
 use atom_syndication::{Content, Entry, Feed, FixedDateTime, Link, Person, Text};
@@ -70,10 +69,10 @@ async fn index(
 async fn week(
     notes: Extension<NoteService>,
     Extension(config): Extension<Config>,
-    Path(start): Path<String>,
+    start: Option<Path<NaiveDate>>,
 ) -> Result<Page<FeedPage>, AppError> {
     let weeks = notes.weeks().await?;
-    let start = NaiveDate::from_str(&start).or(Err(AppError::NotFound))?;
+    let start = start.ok_or(AppError::NotFound)?.0;
     let notes = notes.date_range(start..(start + Days::new(7))).await?;
     Ok(Page(FeedPage { config, notes, weeks }))
 }
@@ -81,10 +80,10 @@ async fn week(
 async fn single(
     notes: Extension<NoteService>,
     Extension(config): Extension<Config>,
-    Path(note_id): Path<String>,
+    note_id: Option<Path<Uuid>>,
 ) -> Result<Page<FeedPage>, AppError> {
     let weeks = notes.weeks().await?;
-    let note_id = note_id.parse::<Uuid>().or(Err(AppError::NotFound))?;
+    let note_id = note_id.ok_or(AppError::NotFound)?;
     let notes = vec![notes.by_id(&note_id).await?.ok_or(AppError::NotFound)?];
     Ok(Page(FeedPage { config, notes, weeks }))
 }
