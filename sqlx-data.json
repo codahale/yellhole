@@ -92,6 +92,16 @@
     },
     "query": "select count(passkey_id) as n from passkey"
   },
+  "60260000def8637a662bdc0e758497b8ca92ab28b36fb6bd8d1f918a5ee31b1d": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "insert into challenge (challenge_id, bytes) values (?, ?)"
+  },
   "637a30ab20aa25fe979b55fabd0bf2c701a6e04f18627c8ff335e3c5f89b3583": {
     "describe": {
       "columns": [
@@ -181,6 +191,24 @@
       }
     },
     "query": "\n            select note_id as \"note_id: Hyphenated\", body, created_at as \"created_at: DateTime<Utc>\"\n            from note\n            order by created_at desc\n            limit ?\n            "
+  },
+  "939f0d17d30efe318bc20de0219b2f424226b53228b9a1a926082d4c39cbbc61": {
+    "describe": {
+      "columns": [
+        {
+          "name": "bytes",
+          "ordinal": 0,
+          "type_info": "Blob"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "\n            delete from challenge\n            where challenge_id = ? and created_at > datetime('now', '-5 minutes')\n            returning bytes"
   },
   "965ebfb4464392a094bfec38848b0a89ae40d9760bad448c108dc39925f7dd3b": {
     "describe": {

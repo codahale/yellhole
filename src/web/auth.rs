@@ -101,11 +101,11 @@ async fn login_start(
     passkeys: Extension<PasskeyService>,
     mut session: WritableSession,
 ) -> Result<Json<AuthenticationChallenge>, AppError> {
-    let resp = passkeys.start_authentication().await?;
+    let (challenge_id, resp) = passkeys.start_authentication().await?;
 
     // Store the authentication state in the session.
     session.remove("challenge");
-    session.insert("challenge", resp.challenge).unwrap();
+    session.insert("challenge", challenge_id).unwrap();
 
     Ok(Json(resp))
 }
@@ -115,12 +115,12 @@ async fn login_finish(
     mut session: WritableSession,
     Json(auth): Json<AuthenticationResponse>,
 ) -> Result<Response, AppError> {
-    let Some(challenge) = session.get::<[u8; 32]>("challenge") else {
+    let Some(challenge_id) = session.get::<Uuid>("challenge") else {
         return Ok(StatusCode::BAD_REQUEST.into_response())
     };
     session.remove("challenge");
 
-    if passkeys.finish_authentication(auth, challenge).await? {
+    if passkeys.finish_authentication(auth, &challenge_id).await? {
         session.insert("authenticated", true).unwrap();
         Ok(StatusCode::ACCEPTED.into_response())
     } else {

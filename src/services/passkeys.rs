@@ -10,6 +10,7 @@ use serde_with::{serde_as, PickFirst};
 use sha2::{Digest, Sha256};
 use sqlx::SqlitePool;
 use url::Url;
+use uuid::Uuid;
 
 #[derive(Debug, Clone)]
 pub struct PasskeyService {
@@ -80,22 +81,51 @@ impl PasskeyService {
     }
 
     #[tracing::instrument(skip(self), err)]
-    pub async fn start_authentication(&self) -> Result<AuthenticationChallenge, sqlx::Error> {
+    pub async fn start_authentication(
+        &self,
+    ) -> Result<(Uuid, AuthenticationChallenge), sqlx::Error> {
         // Find all passkey IDs.
         let passkey_ids = self.passkey_ids().await?;
 
-        // Generate a random challenge.
+        // Generate and store a random challenge.
+        let challenge_id = Uuid::new_v4();
         let challenge = thread_rng().gen::<[u8; 32]>();
+        {
+            let challenge_id = challenge_id.as_hyphenated().to_string();
+            let challenge = challenge.to_vec();
+            sqlx::query!(
+                r#"insert into challenge (challenge_id, bytes) values (?, ?)"#,
+                challenge_id,
+                challenge
+            )
+            .execute(&self.db)
+            .await?;
+        }
 
-        Ok(AuthenticationChallenge { rp_id: self.rp_id.clone(), challenge, passkey_ids })
+        let rp_id = self.rp_id.clone();
+        Ok((challenge_id, AuthenticationChallenge { rp_id, challenge, passkey_ids }))
     }
 
-    #[tracing::instrument(skip_all, ret, err)]
+    #[tracing::instrument(skip(self, resp), ret, err)]
     pub async fn finish_authentication(
         &self,
         resp: AuthenticationResponse,
-        challenge: [u8; 32],
+        challenge_id: &Uuid,
     ) -> Result<bool, sqlx::Error> {
+        let challenge_id = challenge_id.as_hyphenated().to_string();
+        let Some(challenge) = sqlx::query!(
+            r#"
+            delete from challenge
+            where challenge_id = ? and created_at > datetime('now', '-5 minutes')
+            returning bytes"#,
+            challenge_id
+        )
+        .fetch_optional(&self.db)
+        .await?
+        .and_then(|r| r.bytes) else {
+            return Ok(false)
+        };
+
         // Validate the collected client data.
         let cdj = &resp.client_data_json;
         if CollectedClientData::validate(cdj, &self.origin, "webauthn.get", Some(&challenge))
