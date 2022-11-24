@@ -1,10 +1,15 @@
+use std::time::Duration;
+
 use askama::Template;
 use axum::extract::{FromRequest, RequestParts};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
 use axum::{Extension, Json, Router};
+use axum_extra::extract::cookie::Cookie;
+use axum_extra::extract::CookieJar;
 use axum_sessions::extractors::{ReadableSession, WritableSession};
+use axum_sessions::SameSite;
 use uuid::Uuid;
 
 use super::{AppError, Page};
@@ -99,32 +104,38 @@ async fn login(
 
 async fn login_start(
     passkeys: Extension<PasskeyService>,
-    mut session: WritableSession,
-) -> Result<Json<AuthenticationChallenge>, AppError> {
+    config: Extension<Config>,
+    cookies: CookieJar,
+) -> Result<(CookieJar, Json<AuthenticationChallenge>), AppError> {
     let (challenge_id, resp) = passkeys.start_authentication().await?;
+    let cookies = cookies.add(
+        Cookie::build("challenge", challenge_id.as_hyphenated().to_string())
+            .http_only(true)
+            .same_site(SameSite::Strict)
+            .max_age(Duration::from_secs(5 * 60).try_into().expect("invalid duration"))
+            .secure(config.base_url.scheme() == "https")
+            .finish(),
+    );
 
-    // Store the authentication state in the session.
-    session.remove("challenge");
-    session.insert("challenge", challenge_id).unwrap();
-
-    Ok(Json(resp))
+    Ok((cookies, Json(resp)))
 }
 
 async fn login_finish(
     passkeys: Extension<PasskeyService>,
+    cookies: CookieJar,
     mut session: WritableSession,
     Json(auth): Json<AuthenticationResponse>,
-) -> Result<Response, AppError> {
-    let Some(challenge_id) = session.get::<Uuid>("challenge") else {
-        return Ok(StatusCode::BAD_REQUEST.into_response())
+) -> Result<(CookieJar, StatusCode), AppError> {
+    let Some(challenge_id) = cookies.get("challenge").and_then(|c| c.value().parse().ok()) else {
+        return Ok((cookies, StatusCode::BAD_REQUEST));
     };
-    session.remove("challenge");
 
+    let cookies = cookies.remove(Cookie::named("challenge"));
     if passkeys.finish_authentication(auth, &challenge_id).await? {
         session.insert("authenticated", true).unwrap();
-        Ok(StatusCode::ACCEPTED.into_response())
+        Ok((cookies, StatusCode::ACCEPTED))
     } else {
-        Ok(StatusCode::BAD_REQUEST.into_response())
+        Ok((cookies, StatusCode::BAD_REQUEST))
     }
 }
 

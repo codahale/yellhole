@@ -2961,6 +2961,7 @@ dependencies = [
  "askama",
  "atom_syndication",
  "axum",
+ "axum-extra",
  "axum-sessions",
  "base64",
  "chrono",
