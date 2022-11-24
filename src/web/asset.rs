@@ -12,7 +12,7 @@ use tower_http::set_header::SetResponseHeaderLayer;
 pub fn router(images_dir: impl AsRef<std::path::Path>) -> Router {
     Router::new()
         .route("/assets/*path", get(static_path))
-        .nest(
+        .nest_service(
             "/images",
             get_service(ServiceBuilder::new().service(ServeDir::new(images_dir)))
                 .handle_error(io_error),

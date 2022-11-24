@@ -1,11 +1,12 @@
 use std::time::Duration;
 
 use askama::Template;
-use axum::extract::{FromRequest, RequestParts};
+use axum::extract::FromRequestParts;
+use axum::http::request::Parts;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
-use axum::{Extension, Json, Router};
+use axum::{async_trait, Extension, Json, Router};
 use axum_extra::extract::cookie::{Cookie, SameSite};
 use axum_extra::extract::CookieJar;
 use uuid::Uuid;
@@ -30,17 +31,18 @@ pub fn router() -> Router {
 
 pub struct RequireAuth;
 
-#[axum::async_trait]
-impl<B> FromRequest<B> for RequireAuth
+#[async_trait]
+impl<S> FromRequestParts<S> for RequireAuth
 where
-    B: Send,
+    S: Send + Sync,
 {
     type Rejection = Redirect;
 
-    async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let cookies = CookieJar::from_request(req).await.expect("infallible");
-        let sessions =
-            Extension::<SessionService>::from_request(req).await.expect("SessionService not found");
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let cookies = CookieJar::from_request_parts(parts, state).await.expect("infallible");
+        let sessions = Extension::<SessionService>::from_request_parts(parts, state)
+            .await
+            .expect("SessionService not found");
         match sessions.is_authenticated(&cookies).await {
             Ok(true) => Ok(Self),
             _ => {
