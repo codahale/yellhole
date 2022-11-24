@@ -25,6 +25,7 @@ pub fn router(images_dir: impl AsRef<std::path::Path>) -> Router<AppState> {
         ))
 }
 
+#[tracing::instrument(err)]
 async fn static_path(Path(path): Path<String>) -> Result<Response, StatusCode> {
     let path = path.trim_start_matches('/');
     let mime_type = mime_guess::from_path(path).first_or_octet_stream();
@@ -33,8 +34,8 @@ async fn static_path(Path(path): Path<String>) -> Result<Response, StatusCode> {
     Ok(([(http::header::CONTENT_TYPE, content_type)], file.contents()).into_response())
 }
 
+#[tracing::instrument(level = "warn")]
 async fn io_error(err: io::Error) -> StatusCode {
-    tracing::warn!(%err, "error handling static asset");
     StatusCode::INTERNAL_SERVER_ERROR
 }
 

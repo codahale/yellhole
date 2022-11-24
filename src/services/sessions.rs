@@ -47,7 +47,6 @@ impl SessionService {
     #[tracing::instrument(skip_all, ret, err)]
     pub async fn is_authenticated(&self, cookies: &CookieJar) -> Result<bool, sqlx::Error> {
         let Some(cookie) = cookies.get("session") else {
-            tracing::warn!("no cookie");
             return Ok(false);
         };
 
@@ -62,8 +61,6 @@ impl SessionService {
         .fetch_one(&self.db)
         .await?
         .n > 0;
-
-        tracing::warn!(session_id, authenticated, "checked authentication");
 
         Ok(authenticated)
     }
