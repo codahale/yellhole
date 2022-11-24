@@ -1,21 +1,20 @@
 use anyhow::Context;
 use askama::Template;
-use axum::extract::{DefaultBodyLimit, Multipart};
+use axum::extract::{DefaultBodyLimit, Multipart, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
-use axum::{Extension, Form, Router};
+use axum::{Form, Router};
 use serde::Deserialize;
 use tower::ServiceBuilder;
 use tower_http::limit::RequestBodyLimitLayer;
 use url::Url;
 
-use crate::services::images::{Image, ImageService};
-use crate::services::notes::NoteService;
+use crate::services::images::Image;
 
-use super::{AppError, Page};
+use super::{AppError, AppState, Page};
 
-pub fn router() -> Router {
+pub fn router() -> Router<AppState> {
     Router::new()
         .route("/admin/new", get(new_page))
         .route("/admin/new-note", post(create_note))
@@ -34,8 +33,8 @@ struct NewPage {
     images: Vec<Image>,
 }
 
-async fn new_page(images: Extension<ImageService>) -> Result<Page<NewPage>, AppError> {
-    Ok(Page(NewPage { images: images.most_recent(10).await? }))
+async fn new_page(state: State<AppState>) -> Result<Page<NewPage>, AppError> {
+    Ok(Page(NewPage { images: state.images.most_recent(10).await? }))
 }
 
 #[derive(Debug, Deserialize)]
@@ -44,15 +43,15 @@ struct NewNote {
 }
 
 async fn create_note(
-    notes: Extension<NoteService>,
+    state: State<AppState>,
     Form(new_note): Form<NewNote>,
 ) -> Result<Redirect, AppError> {
-    let note_id = notes.create(&new_note.body).await?;
+    let note_id = state.notes.create(&new_note.body).await?;
     Ok(Redirect::to(&format!("/note/{note_id}")))
 }
 
 pub async fn upload_images(
-    images: Extension<ImageService>,
+    state: State<AppState>,
     mut multipart: Multipart,
 ) -> Result<Redirect, AppError> {
     while let Some(field) = multipart.next_field().await.context("multipart error")? {
@@ -61,7 +60,7 @@ pub async fn upload_images(
         {
             if content_type.type_() == mime::IMAGE {
                 let original_filename = field.file_name().unwrap_or("none").to_string();
-                images.add(&original_filename, &content_type, field).await?;
+                state.images.add(&original_filename, &content_type, field).await?;
             }
         }
     }
@@ -74,14 +73,14 @@ struct DownloadImage {
 }
 
 async fn download_image(
-    images: Extension<ImageService>,
+    state: State<AppState>,
     Form(image): Form<DownloadImage>,
 ) -> Result<Response, AppError> {
     let Ok(url) = image.url.parse::<Url>() else {
         return Ok(StatusCode::BAD_REQUEST.into_response());
     };
 
-    images.download(url).await?;
+    state.images.download(url).await?;
 
     Ok(Redirect::to("/admin/new").into_response())
 }
@@ -91,19 +90,16 @@ mod tests {
     use axum::http;
     use reqwest::multipart;
     use sqlx::SqlitePool;
-    use tempdir::TempDir;
     use tokio::fs;
     use uuid::Uuid;
 
-    use crate::test_server::TestServer;
+    use crate::test_server::TestEnv;
 
     use super::*;
 
     #[sqlx::test(fixtures("notes", "images"))]
     async fn new_note_ui(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let temp_dir = TempDir::new("yellhole-test")?;
-        let (_, _, app) = app(&db, &temp_dir)?;
-        let ts = TestServer::new(app)?;
+        let ts = TestEnv::new(db)?.into_server(router())?;
 
         let resp = ts.get("/admin/new").send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
@@ -116,17 +112,15 @@ mod tests {
 
     #[sqlx::test]
     async fn creating_a_note(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let temp_dir = TempDir::new("yellhole-test")?;
-        let (_, notes, app) = app(&db, &temp_dir)?;
-        let ts = TestServer::new(app)?;
+        let ts = TestEnv::new(db)?.into_server(router())?;
 
         let resp = ts.post("/admin/new-note").form(&[("body", "This is a note.")]).send().await?;
         assert_eq!(resp.status(), StatusCode::SEE_OTHER);
         let location = resp.headers().get(http::header::LOCATION).expect("missing header");
         let note_id = location.to_str()?.split('/').last().expect("bad URI").parse::<Uuid>()?;
 
-        assert_eq!(notes.most_recent(20).await?.len(), 1);
-        let note = notes.by_id(&note_id).await?.expect("missing note");
+        assert_eq!(ts.state.notes.most_recent(20).await?.len(), 1);
+        let note = ts.state.notes.by_id(&note_id).await?.expect("missing note");
         assert_eq!(note.body, "This is a note.");
 
         Ok(())
@@ -134,9 +128,7 @@ mod tests {
 
     #[sqlx::test]
     async fn uploading_an_image(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let temp_dir = TempDir::new("yellhole-test")?;
-        let (images, _, app) = app(&db, &temp_dir)?;
-        let ts = TestServer::new(app)?;
+        let ts = TestEnv::new(db)?.into_server(router())?;
 
         let img = fs::read("yellhole.webp").await?;
         let form = multipart::Form::new().part(
@@ -146,7 +138,7 @@ mod tests {
         let resp = ts.post("/admin/upload-images").multipart(form).send().await?;
         assert_eq!(resp.status(), StatusCode::SEE_OTHER);
 
-        let recent = images.most_recent(1).await?;
+        let recent = ts.state.images.most_recent(1).await?;
         assert_eq!(recent.len(), 1);
 
         Ok(())
@@ -154,9 +146,7 @@ mod tests {
 
     #[sqlx::test]
     async fn downloading_an_image(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let temp_dir = TempDir::new("yellhole-test")?;
-        let (images, _, app) = app(&db, &temp_dir)?;
-        let ts = TestServer::new(app)?;
+        let ts = TestEnv::new(db)?.into_server(router())?;
 
         let resp = ts
             .post("/admin/download-image")
@@ -165,22 +155,9 @@ mod tests {
             .await?;
         assert_eq!(resp.status(), StatusCode::SEE_OTHER);
 
-        let recent = images.most_recent(1).await?;
+        let recent = ts.state.images.most_recent(1).await?;
         assert_eq!(recent.len(), 1);
 
         Ok(())
-    }
-
-    fn app(
-        db: &SqlitePool,
-        temp_dir: &TempDir,
-    ) -> Result<(ImageService, NoteService, Router), anyhow::Error> {
-        let images = ImageService::new(db.clone(), temp_dir)?;
-        let notes = NoteService::new(db.clone());
-        Ok((
-            images.clone(),
-            notes.clone(),
-            router().layer(Extension(images)).layer(Extension(notes)),
-        ))
     }
 }

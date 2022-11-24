@@ -1,9 +1,9 @@
 {% extends "layout.html" %}
 
-{% block title %}{{config.title}}{% endblock %}
+{% block title %}{{title}}{% endblock %}
 
 {% block head %}
-<link href="{{config.base_url}}atom.xml" rel="alternate" title="Atom" type="application/atom+xml" />
+<link href="{{base_url}}atom.xml" rel="alternate" title="Atom" type="application/atom+xml" />
 {% endblock %}
 
 {% block nav %}
@@ -40,6 +40,6 @@
 
 {% block footer %}
 <p>
-    <small>Copyright &copy; 2022 {{config.author}}</small>
+    <small>Copyright &copy; 2022 {{author}}</small>
 </p>
 {% endblock %}

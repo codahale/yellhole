@@ -9,7 +9,9 @@ use tower::ServiceBuilder;
 use tower_http::services::ServeDir;
 use tower_http::set_header::SetResponseHeaderLayer;
 
-pub fn router(images_dir: impl AsRef<std::path::Path>) -> Router {
+use super::AppState;
+
+pub fn router(images_dir: impl AsRef<std::path::Path>) -> Router<AppState> {
     Router::new()
         .route("/assets/*path", get(static_path))
         .nest_service(
@@ -40,13 +42,15 @@ static STATIC_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/assets");
 
 #[cfg(test)]
 mod tests {
-    use crate::test_server::TestServer;
+    use sqlx::SqlitePool;
+
+    use crate::test_server::TestEnv;
 
     use super::*;
 
-    #[tokio::test]
-    async fn static_asset() -> Result<(), anyhow::Error> {
-        let ts = TestServer::new(router("."))?;
+    #[sqlx::test]
+    async fn static_asset(db: SqlitePool) -> Result<(), anyhow::Error> {
+        let ts = TestEnv::new(db)?.into_server(router("."))?;
 
         let resp = ts.get("/assets/css/mvp-1.12.css").send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
@@ -58,9 +62,9 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    async fn image() -> Result<(), anyhow::Error> {
-        let ts = TestServer::new(router("."))?;
+    #[sqlx::test]
+    async fn image(db: SqlitePool) -> Result<(), anyhow::Error> {
+        let ts = TestEnv::new(db)?.into_server(router("."))?;
 
         let resp = ts.get("/images/LICENSE").send().await?;
         assert_eq!(resp.status(), StatusCode::OK);

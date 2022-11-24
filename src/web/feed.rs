@@ -2,21 +2,20 @@ use std::ops::Range;
 
 use askama::Template;
 use atom_syndication::{Content, Entry, Feed, FixedDateTime, Link, Person, Text};
-use axum::extract::{Path, Query};
+use axum::extract::{Path, Query, State};
 use axum::http;
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
-use axum::{Extension, Router};
+use axum::Router;
 use chrono::{Days, FixedOffset, NaiveDate, Utc};
 use serde::Deserialize;
 use tower_http::set_header::SetResponseHeaderLayer;
 use uuid::Uuid;
 
-use super::{AppError, Page};
-use crate::config::Config;
-use crate::services::notes::{Note, NoteService};
+use super::{AppError, AppState, Page};
+use crate::services::notes::Note;
 
-pub fn router() -> Router {
+pub fn router() -> Router<AppState> {
     let immutable = Router::new().route("/note/:note_id", get(single)).layer(
         SetResponseHeaderLayer::overriding(
             http::header::CACHE_CONTROL,
@@ -38,9 +37,23 @@ pub fn router() -> Router {
 #[derive(Debug, Template)]
 #[template(path = "feed.html")]
 struct FeedPage {
-    config: Config,
+    author: String,
+    title: String,
+    base_url: url::Url,
     notes: Vec<Note>,
     weeks: Vec<Range<NaiveDate>>,
+}
+
+impl FeedPage {
+    fn from_state(state: &AppState, notes: Vec<Note>, weeks: Vec<Range<NaiveDate>>) -> FeedPage {
+        FeedPage {
+            author: state.author.clone(),
+            title: state.title.clone(),
+            base_url: state.base_url.clone(),
+            notes,
+            weeks,
+        }
+    }
 }
 
 mod filters {
@@ -56,48 +69,40 @@ struct IndexOpts {
     n: Option<u16>,
 }
 
-async fn index(
-    notes: Extension<NoteService>,
-    Extension(config): Extension<Config>,
-    opts: Query<IndexOpts>,
-) -> Result<Page<FeedPage>, AppError> {
-    let weeks = notes.weeks().await?;
-    let notes = notes.most_recent(opts.n.unwrap_or(25)).await?;
-    Ok(Page(FeedPage { config, notes, weeks }))
+async fn index(state: State<AppState>, opts: Query<IndexOpts>) -> Result<Page<FeedPage>, AppError> {
+    let weeks = state.notes.weeks().await?;
+    let notes = state.notes.most_recent(opts.n.unwrap_or(25)).await?;
+    Ok(Page(FeedPage::from_state(&state, notes, weeks)))
 }
 
 async fn week(
-    notes: Extension<NoteService>,
-    Extension(config): Extension<Config>,
+    state: State<AppState>,
     start: Option<Path<NaiveDate>>,
 ) -> Result<Page<FeedPage>, AppError> {
-    let weeks = notes.weeks().await?;
+    let weeks = state.notes.weeks().await?;
     let start = start.ok_or(AppError::NotFound)?.0;
-    let notes = notes.date_range(start..(start + Days::new(7))).await?;
-    Ok(Page(FeedPage { config, notes, weeks }))
+    let notes = state.notes.date_range(start..(start + Days::new(7))).await?;
+    Ok(Page(FeedPage::from_state(&state, notes, weeks)))
 }
 
 async fn single(
-    notes: Extension<NoteService>,
-    Extension(config): Extension<Config>,
+    state: State<AppState>,
     note_id: Option<Path<Uuid>>,
 ) -> Result<Page<FeedPage>, AppError> {
-    let weeks = notes.weeks().await?;
+    let weeks = state.notes.weeks().await?;
     let note_id = note_id.ok_or(AppError::NotFound)?;
-    let notes = vec![notes.by_id(&note_id).await?.ok_or(AppError::NotFound)?];
-    Ok(Page(FeedPage { config, notes, weeks }))
+    let notes = vec![state.notes.by_id(&note_id).await?.ok_or(AppError::NotFound)?];
+    Ok(Page(FeedPage::from_state(&state, notes, weeks)))
 }
 
-async fn atom(
-    notes: Extension<NoteService>,
-    config: Extension<Config>,
-) -> Result<Response, AppError> {
-    let entries = notes
+async fn atom(state: State<AppState>) -> Result<Response, AppError> {
+    let entries = state
+        .notes
         .most_recent(20)
         .await?
         .iter()
         .map(|n| Entry {
-            id: config.base_url.join(&format!("note/{}", n.note_id)).unwrap().to_string(),
+            id: state.base_url.join(&format!("note/{}", n.note_id)).unwrap().to_string(),
             title: Text { value: n.note_id.to_string(), ..Default::default() },
             content: Some(Content {
                 content_type: Some("html".into()),
@@ -110,13 +115,13 @@ async fn atom(
         .collect();
 
     let feed = Feed {
-        id: config.base_url.to_string(),
-        authors: vec![Person { name: config.author.clone(), ..Default::default() }],
-        base: Some(config.base_url.join("atom.xml").unwrap().to_string()),
-        title: Text { value: config.title.clone(), ..Default::default() },
+        id: state.base_url.to_string(),
+        authors: vec![Person { name: state.author.clone(), ..Default::default() }],
+        base: Some(state.base_url.join("atom.xml").unwrap().to_string()),
+        title: Text { value: state.title.clone(), ..Default::default() },
         entries,
         links: vec![Link {
-            href: config.base_url.join("atom.xml").unwrap().to_string(),
+            href: state.base_url.join("atom.xml").unwrap().to_string(),
             rel: "self".into(),
             ..Default::default()
         }],
@@ -137,15 +142,14 @@ mod tests {
 
     use axum::http::{self, StatusCode};
     use sqlx::SqlitePool;
-    use url::Url;
 
-    use crate::test_server::TestServer;
+    use crate::test_server::TestEnv;
 
     use super::*;
 
     #[sqlx::test(fixtures("notes"))]
     async fn main(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestServer::new(app(&db))?;
+        let ts = TestEnv::new(db)?.into_server(router())?;
 
         let resp = ts.get("/").send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
@@ -158,7 +162,7 @@ mod tests {
 
     #[sqlx::test(fixtures("notes"))]
     async fn atom_feed(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestServer::new(app(&db))?;
+        let ts = TestEnv::new(db)?.into_server(router())?;
 
         let resp = ts.get("/atom.xml").send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
@@ -175,7 +179,7 @@ mod tests {
 
     #[sqlx::test(fixtures("notes"))]
     async fn weekly_view(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestServer::new(app(&db))?;
+        let ts = TestEnv::new(db)?.into_server(router())?;
 
         let resp = ts.get("/notes/2022-10-09").send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
@@ -188,7 +192,7 @@ mod tests {
 
     #[sqlx::test(fixtures("notes"))]
     async fn single_note(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestServer::new(app(&db))?;
+        let ts = TestEnv::new(db)?.into_server(router())?;
 
         let resp = ts.get("/note/c1449d6c-6b5b-4ce4-a4d7-98853562fbf1").send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
@@ -201,7 +205,7 @@ mod tests {
 
     #[sqlx::test(fixtures("notes"))]
     async fn bad_note_id(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestServer::new(app(&db))?;
+        let ts = TestEnv::new(db)?.into_server(router())?;
 
         let resp = ts.get("/note/not-a-uuid").send().await?;
         assert_eq!(resp.status(), StatusCode::NOT_FOUND);
@@ -211,21 +215,11 @@ mod tests {
 
     #[sqlx::test(fixtures("notes"))]
     async fn missing_note_id(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestServer::new(app(&db))?;
+        let ts = TestEnv::new(db)?.into_server(router())?;
 
         let resp = ts.get("/note/37c615b0-bb55-424d-a813-69e14ca5c20c").send().await?;
         assert_eq!(resp.status(), StatusCode::NOT_FOUND);
 
         Ok(())
-    }
-
-    fn app(db: &SqlitePool) -> Router {
-        router().layer(Extension(NoteService::new(db.clone()))).layer(Extension(Config {
-            port: 8080,
-            base_url: "http://example.com".parse::<Url>().unwrap(),
-            data_dir: ".".into(),
-            title: "Yellhole".into(),
-            author: "Luther Blissett".into(),
-        }))
     }
 }

@@ -1,14 +1,16 @@
-use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::{fs, io};
 
 use askama::Template;
 use axum::http::{self, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::{Html, IntoResponse, Response};
+use axum::Router;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use sqlx::SqlitePool;
 use thiserror::Error;
 use tokio::signal;
+use tokio::task::JoinHandle;
 use tower::ServiceBuilder;
 use tower_http::request_id::MakeRequestUuid;
 use tower_http::sensitive_headers::{
@@ -23,6 +25,7 @@ use crate::services::images::ImageService;
 use crate::services::notes::NoteService;
 use crate::services::passkeys::PasskeyService;
 use crate::services::sessions::SessionService;
+use crate::web::auth::RequireAuth;
 
 mod admin;
 mod asset;
@@ -62,22 +65,21 @@ impl App {
         let addr = &([0, 0, 0, 0], self.config.port).into();
         tracing::info!(%addr, base_url=%self.config.base_url, "starting server");
 
-        let (sessions, session_expiry) =
-            SessionService::new(self.db.clone(), &self.config.base_url);
-        let images = ImageService::new(self.db.clone(), &self.data_dir)?;
-
-        let app = admin::router()
-            .route_layer(middleware::from_extractor::<auth::RequireAuth>())
+        let (state, expiry) = AppState::new(
+            self.db,
+            &self.config.author,
+            &self.config.title,
+            &self.config.base_url,
+            &self.data_dir,
+        )?;
+        let app = Router::new()
+            .merge(admin::router())
+            .route_layer(middleware::from_extractor_with_state::<RequireAuth, _>(state.clone()))
             .merge(auth::router())
             .merge(feed::router())
-            .merge(asset::router(images.images_dir()))
+            .merge(asset::router(state.images.images_dir()))
             .layer(
                 ServiceBuilder::new()
-                    .add_extension(PasskeyService::new(self.db.clone(), &self.config.base_url))
-                    .add_extension(images)
-                    .add_extension(NoteService::new(self.db.clone()))
-                    .add_extension(sessions)
-                    .add_extension(self.config)
                     .set_x_request_id(MakeRequestUuid)
                     .layer(SetSensitiveRequestHeadersLayer::new(std::iter::once(
                         http::header::COOKIE,
@@ -97,16 +99,55 @@ impl App {
                     .propagate_x_request_id()
                     .layer(middleware::from_fn(handle_errors))
                     .catch_panic(),
-            );
+            )
+            .with_state(state);
 
         axum::Server::bind(addr)
             .serve(app.into_make_service())
             .with_graceful_shutdown(shutdown_signal())
             .await?;
 
-        session_expiry.await??;
+        expiry.await??;
 
         Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AppState {
+    author: String,
+    title: String,
+    notes: NoteService,
+    passkeys: PasskeyService,
+    base_url: url::Url,
+    sessions: SessionService,
+    images: ImageService,
+}
+
+impl AppState {
+    pub fn new(
+        db: SqlitePool,
+        author: &str,
+        title: &str,
+        base_url: &url::Url,
+        data_dir: impl AsRef<Path>,
+    ) -> Result<(AppState, JoinHandle<Result<(), sqlx::Error>>), io::Error> {
+        let (sessions, session_expiry) = SessionService::new(db.clone(), base_url);
+        let images = ImageService::new(db.clone(), &data_dir)?;
+        let notes = NoteService::new(db.clone());
+        let passkeys = PasskeyService::new(db, base_url);
+        Ok((
+            AppState {
+                author: author.into(),
+                title: title.into(),
+                notes,
+                passkeys,
+                base_url: base_url.clone(),
+                sessions,
+                images,
+            },
+            session_expiry,
+        ))
     }
 }
 

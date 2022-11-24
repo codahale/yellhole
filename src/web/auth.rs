@@ -1,25 +1,22 @@
 use std::time::Duration;
 
 use askama::Template;
-use axum::extract::FromRequestParts;
+use axum::extract::{FromRequestParts, State};
 use axum::http::request::Parts;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
-use axum::{async_trait, Extension, Json, Router};
+use axum::{async_trait, Json, Router};
 use axum_extra::extract::cookie::{Cookie, SameSite};
 use axum_extra::extract::CookieJar;
 use uuid::Uuid;
 
-use super::{AppError, Page};
-use crate::config::Config;
+use super::{AppError, AppState, Page};
 use crate::services::passkeys::{
-    AuthenticationChallenge, AuthenticationResponse, PasskeyService, RegistrationChallenge,
-    RegistrationResponse,
+    AuthenticationChallenge, AuthenticationResponse, RegistrationChallenge, RegistrationResponse,
 };
-use crate::services::sessions::SessionService;
 
-pub fn router() -> Router {
+pub fn router() -> Router<AppState> {
     Router::new()
         .route("/register", get(register))
         .route("/register/start", post(register_start))
@@ -32,18 +29,15 @@ pub fn router() -> Router {
 pub struct RequireAuth;
 
 #[async_trait]
-impl<S> FromRequestParts<S> for RequireAuth
-where
-    S: Send + Sync,
-{
+impl FromRequestParts<AppState> for RequireAuth {
     type Rejection = Redirect;
 
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
         let cookies = CookieJar::from_request_parts(parts, state).await.expect("infallible");
-        let sessions = Extension::<SessionService>::from_request_parts(parts, state)
-            .await
-            .expect("SessionService not found");
-        match sessions.is_authenticated(&cookies).await {
+        match state.sessions.is_authenticated(&cookies).await {
             Ok(true) => Ok(Self),
             _ => {
                 tracing::warn!("unauthenticated request");
@@ -57,33 +51,27 @@ where
 #[template(path = "register.html")]
 struct RegisterPage {}
 
-async fn register(
-    passkeys: Extension<PasskeyService>,
-    sessions: Extension<SessionService>,
-    cookies: CookieJar,
-) -> Result<Response, AppError> {
-    if passkeys.any_registered().await? && !sessions.is_authenticated(&cookies).await? {
+async fn register(state: State<AppState>, cookies: CookieJar) -> Result<Response, AppError> {
+    if state.passkeys.any_registered().await? && !state.sessions.is_authenticated(&cookies).await? {
         return Ok(Redirect::to("/login").into_response());
     }
 
     Ok(Page(RegisterPage {}).into_response())
 }
 
-async fn register_start(
-    passkeys: Extension<PasskeyService>,
-    config: Extension<Config>,
-) -> Result<Json<RegistrationChallenge>, AppError> {
-    Ok(passkeys
-        .start_registration(&config.author, Uuid::default().as_hyphenated().to_string().as_bytes())
+async fn register_start(state: State<AppState>) -> Result<Json<RegistrationChallenge>, AppError> {
+    Ok(state
+        .passkeys
+        .start_registration(&state.author, Uuid::default().as_hyphenated().to_string().as_bytes())
         .await
         .map(Json)?)
 }
 
 async fn register_finish(
-    passkeys: Extension<PasskeyService>,
+    state: State<AppState>,
     Json(resp): Json<RegistrationResponse>,
 ) -> Result<Response, AppError> {
-    if passkeys.finish_registration(resp).await? {
+    if state.passkeys.finish_registration(resp).await? {
         Ok(StatusCode::CREATED.into_response())
     } else {
         Ok(StatusCode::BAD_REQUEST.into_response())
@@ -94,16 +82,12 @@ async fn register_finish(
 #[template(path = "login.html")]
 struct LoginPage {}
 
-async fn login(
-    passkeys: Extension<PasskeyService>,
-    sessions: Extension<SessionService>,
-    cookies: CookieJar,
-) -> Result<Response, AppError> {
-    if sessions.is_authenticated(&cookies).await? {
+async fn login(state: State<AppState>, cookies: CookieJar) -> Result<Response, AppError> {
+    if state.sessions.is_authenticated(&cookies).await? {
         return Ok(Redirect::to("/admin/new").into_response());
     }
 
-    if !passkeys.any_registered().await? {
+    if !state.passkeys.any_registered().await? {
         return Ok(Redirect::to("/register").into_response());
     }
 
@@ -111,17 +95,16 @@ async fn login(
 }
 
 async fn login_start(
-    passkeys: Extension<PasskeyService>,
-    config: Extension<Config>,
+    state: State<AppState>,
     cookies: CookieJar,
 ) -> Result<(CookieJar, Json<AuthenticationChallenge>), AppError> {
-    let (challenge_id, resp) = passkeys.start_authentication().await?;
+    let (challenge_id, resp) = state.passkeys.start_authentication().await?;
     let cookies = cookies.add(
         Cookie::build("challenge", challenge_id.as_hyphenated().to_string())
             .http_only(true)
             .same_site(SameSite::Strict)
             .max_age(Duration::from_secs(5 * 60).try_into().expect("invalid duration"))
-            .secure(config.base_url.scheme() == "https")
+            .secure(state.base_url.scheme() == "https")
             .path("/")
             .finish(),
     );
@@ -130,9 +113,8 @@ async fn login_start(
 }
 
 async fn login_finish(
-    passkeys: Extension<PasskeyService>,
+    state: State<AppState>,
     cookies: CookieJar,
-    sessions: Extension<SessionService>,
     Json(auth): Json<AuthenticationResponse>,
 ) -> Result<(CookieJar, StatusCode), AppError> {
     let Some(challenge_id) = cookies.get("challenge").and_then(|c| c.value().parse().ok()) else {
@@ -140,8 +122,8 @@ async fn login_finish(
     };
 
     let cookies = cookies.remove(Cookie::build("challenge", "").path("/").finish());
-    if passkeys.finish_authentication(auth, &challenge_id).await? {
-        Ok((sessions.authenticate(cookies).await?, StatusCode::ACCEPTED))
+    if state.passkeys.finish_authentication(auth, &challenge_id).await? {
+        Ok((state.sessions.authenticate(cookies).await?, StatusCode::ACCEPTED))
     } else {
         Ok((cookies, StatusCode::BAD_REQUEST))
     }
@@ -157,15 +139,16 @@ mod tests {
     use sha2::{Digest, Sha256};
     use spki::EncodePublicKey;
     use sqlx::SqlitePool;
-    use url::Url;
 
-    use crate::test_server::TestServer;
+    use crate::test_server::TestEnv;
 
     use super::*;
 
     #[sqlx::test]
     async fn fresh_login_page(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestServer::new(app(db))?;
+        let env = TestEnv::new(db)?;
+        let app = app(&env.state);
+        let ts = env.into_server(app)?;
 
         let resp = ts.get("/login").send().await?;
         assert_eq!(resp.status(), StatusCode::SEE_OTHER);
@@ -179,7 +162,9 @@ mod tests {
 
     #[sqlx::test]
     async fn fresh_register_page(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestServer::new(app(db))?;
+        let env = TestEnv::new(db)?;
+        let app = app(&env.state);
+        let ts = env.into_server(app)?;
 
         let resp = ts.get("/register").send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
@@ -189,7 +174,9 @@ mod tests {
 
     #[sqlx::test(fixtures("fake_passkey"))]
     async fn registered_register_page(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestServer::new(app(db))?;
+        let env = TestEnv::new(db)?;
+        let app = app(&env.state);
+        let ts = env.into_server(app)?;
 
         let resp = ts.get("/register").send().await?;
         assert_eq!(resp.status(), StatusCode::SEE_OTHER);
@@ -203,7 +190,9 @@ mod tests {
 
     #[sqlx::test(fixtures("fake_passkey"))]
     async fn registered_login_page(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestServer::new(app(db))?;
+        let env = TestEnv::new(db)?;
+        let app = app(&env.state);
+        let ts = env.into_server(app)?;
 
         let resp = ts.get("/login").send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
@@ -213,7 +202,9 @@ mod tests {
 
     #[sqlx::test]
     async fn passkey_registration_and_login(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestServer::new(app(db))?;
+        let env = TestEnv::new(db)?;
+        let app = app(&env.state);
+        let ts = env.into_server(app)?;
 
         // Try a protected route. We should be blocked.
         let protected = ts.get("/protected").send().await?;
@@ -294,22 +285,11 @@ mod tests {
         Ok(())
     }
 
-    fn app(db: SqlitePool) -> Router {
-        let base_url = "http://example.com".parse::<Url>().unwrap();
-        let (sessions, _) = SessionService::new(db.clone(), &base_url);
-        Router::new()
+    fn app(state: &AppState) -> Router<AppState> {
+        Router::<AppState>::new()
             .route("/protected", get(protected))
-            .route_layer(middleware::from_extractor::<RequireAuth>())
+            .route_layer(middleware::from_extractor_with_state::<RequireAuth, _>(state.clone()))
             .merge(router())
-            .layer(Extension(PasskeyService::new(db, &base_url)))
-            .layer(Extension(Config {
-                port: 8080,
-                base_url,
-                data_dir: ".".into(),
-                title: "Yellhole".into(),
-                author: "Luther Blissett".into(),
-            }))
-            .layer(Extension(sessions))
     }
 
     async fn protected() -> &'static str {
