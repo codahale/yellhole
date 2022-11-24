@@ -6,10 +6,8 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
 use axum::{Extension, Json, Router};
-use axum_extra::extract::cookie::Cookie;
+use axum_extra::extract::cookie::{Cookie, SameSite};
 use axum_extra::extract::CookieJar;
-use axum_sessions::extractors::{ReadableSession, WritableSession};
-use axum_sessions::SameSite;
 use uuid::Uuid;
 
 use super::{AppError, Page};
@@ -18,6 +16,7 @@ use crate::services::passkeys::{
     AuthenticationChallenge, AuthenticationResponse, PasskeyService, RegistrationChallenge,
     RegistrationResponse,
 };
+use crate::services::sessions::SessionService;
 
 pub fn router() -> Router {
     Router::new()
@@ -39,11 +38,16 @@ where
     type Rejection = Redirect;
 
     async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
-        let session = ReadableSession::from_request(req).await.expect("infallible");
-        session.get::<bool>("authenticated").unwrap_or(false).then_some(Self).ok_or_else(|| {
-            tracing::warn!("unauthenticated request");
-            Redirect::to("/login")
-        })
+        let cookies = CookieJar::from_request(req).await.expect("infallible");
+        let sessions =
+            Extension::<SessionService>::from_request(req).await.expect("SessionService not found");
+        match sessions.is_authenticated(&cookies).await {
+            Ok(true) => Ok(Self),
+            _ => {
+                tracing::warn!("unauthenticated request");
+                Err(Redirect::to("/login"))
+            }
+        }
     }
 }
 
@@ -53,9 +57,10 @@ struct RegisterPage {}
 
 async fn register(
     passkeys: Extension<PasskeyService>,
-    session: ReadableSession,
+    sessions: Extension<SessionService>,
+    cookies: CookieJar,
 ) -> Result<Response, AppError> {
-    if passkeys.any_registered().await? && !session.get::<bool>("authenticated").unwrap_or(false) {
+    if passkeys.any_registered().await? && !sessions.is_authenticated(&cookies).await? {
         return Ok(Redirect::to("/login").into_response());
     }
 
@@ -89,9 +94,10 @@ struct LoginPage {}
 
 async fn login(
     passkeys: Extension<PasskeyService>,
-    session: ReadableSession,
+    sessions: Extension<SessionService>,
+    cookies: CookieJar,
 ) -> Result<Response, AppError> {
-    if session.get::<bool>("authenticated").unwrap_or(false) {
+    if sessions.is_authenticated(&cookies).await? {
         return Ok(Redirect::to("/admin/new").into_response());
     }
 
@@ -114,6 +120,7 @@ async fn login_start(
             .same_site(SameSite::Strict)
             .max_age(Duration::from_secs(5 * 60).try_into().expect("invalid duration"))
             .secure(config.base_url.scheme() == "https")
+            .path("/")
             .finish(),
     );
 
@@ -123,17 +130,16 @@ async fn login_start(
 async fn login_finish(
     passkeys: Extension<PasskeyService>,
     cookies: CookieJar,
-    mut session: WritableSession,
+    sessions: Extension<SessionService>,
     Json(auth): Json<AuthenticationResponse>,
 ) -> Result<(CookieJar, StatusCode), AppError> {
     let Some(challenge_id) = cookies.get("challenge").and_then(|c| c.value().parse().ok()) else {
         return Ok((cookies, StatusCode::BAD_REQUEST));
     };
 
-    let cookies = cookies.remove(Cookie::named("challenge"));
+    let cookies = cookies.remove(Cookie::build("challenge", "").path("/").finish());
     if passkeys.finish_authentication(auth, &challenge_id).await? {
-        session.insert("authenticated", true).unwrap();
-        Ok((cookies, StatusCode::ACCEPTED))
+        Ok((sessions.authenticate(cookies).await?, StatusCode::ACCEPTED))
     } else {
         Ok((cookies, StatusCode::BAD_REQUEST))
     }
@@ -142,8 +148,6 @@ async fn login_finish(
 #[cfg(test)]
 mod tests {
     use axum::{http, middleware};
-    use axum_sessions::async_session::MemoryStore;
-    use axum_sessions::SessionLayer;
     use p256::ecdsa::signature::Signer;
     use p256::ecdsa::SigningKey;
     use p256::PublicKey;
@@ -289,11 +293,8 @@ mod tests {
     }
 
     fn app(db: SqlitePool) -> Router {
-        let store = MemoryStore::new();
-        let session_layer = SessionLayer::new(store, &[69; 64])
-            .with_secure(false)
-            .with_same_site_policy(axum_sessions::SameSite::None);
         let base_url = "http://example.com".parse::<Url>().unwrap();
+        let (sessions, _) = SessionService::new(db.clone(), &base_url);
         Router::new()
             .route("/protected", get(protected))
             .route_layer(middleware::from_extractor::<RequireAuth>())
@@ -306,7 +307,7 @@ mod tests {
                 title: "Yellhole".into(),
                 author: "Luther Blissett".into(),
             }))
-            .layer(session_layer)
+            .layer(Extension(sessions))
     }
 
     async fn protected() -> &'static str {

@@ -62,13 +62,13 @@ impl App {
         let addr = &([0, 0, 0, 0], self.config.port).into();
         tracing::info!(%addr, base_url=%self.config.base_url, "starting server");
 
-        let (sessions, session_expiry) = SessionService::new(&self.db, &self.config.base_url);
+        let (sessions, session_expiry) =
+            SessionService::new(self.db.clone(), &self.config.base_url);
         let images = ImageService::new(self.db.clone(), &self.data_dir)?;
 
         let app = admin::router()
             .route_layer(middleware::from_extractor::<auth::RequireAuth>())
             .merge(auth::router())
-            .layer(sessions) // only enable sessions for auth and admin
             .merge(feed::router())
             .merge(asset::router(images.images_dir()))
             .layer(
@@ -76,6 +76,7 @@ impl App {
                     .add_extension(PasskeyService::new(self.db.clone(), &self.config.base_url))
                     .add_extension(images)
                     .add_extension(NoteService::new(self.db.clone()))
+                    .add_extension(sessions)
                     .add_extension(self.config)
                     .set_x_request_id(MakeRequestUuid)
                     .layer(SetSensitiveRequestHeadersLayer::new(std::iter::once(

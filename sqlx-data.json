@@ -1,5 +1,23 @@
 {
   "db": "SQLite",
+  "1d22f0da36f99015d28a5ba829411c82383973d152a2754e27beced0f6075426": {
+    "describe": {
+      "columns": [
+        {
+          "name": "n",
+          "ordinal": 0,
+          "type_info": "Int"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "\n            select count(1) as n\n            from session\n            where session_id = ? and created_at > datetime('now', '-7 days')"
+  },
   "2263eb28429a2586141c6991762e5716720ed5897e443f99340740e18246e740": {
     "describe": {
       "columns": [
@@ -24,15 +42,15 @@
     },
     "query": "\n            select\n              date(local, 'weekday 0', '-7 days') as \"start!: NaiveDate\",\n              date(local, 'weekday 0') as \"end!: NaiveDate\"\n            from (select datetime(created_at, 'localtime') as local from note)\n            group by 1 order by 1 desc"
   },
-  "37a817c270013a2c817876692bb5f8d6fb7667db99e3a96c6dcf5aaa15d5187e": {
+  "274c213afcb4ee3d877ebfdaf0370b60a9e617bef3d972d6906f8392798a85e6": {
     "describe": {
       "columns": [],
       "nullable": [],
       "parameters": {
-        "Right": 3
+        "Right": 1
       }
     },
-    "query": "\n            insert into session (session_id, as_json)\n            values (?, ?)\n            on conflict (session_id) do\n            update set as_json = ?, updated_at = current_timestamp\n            "
+    "query": "insert into session (session_id) values (?)"
   },
   "3c57c51a7e5a42cbb00629580c3eae9388479a94ecdb542cfb5dbba6f30165ff": {
     "describe": {
@@ -132,16 +150,6 @@
     },
     "query": "\n            select note_id as \"note_id: Hyphenated\", body, created_at as \"created_at: DateTime<Utc>\"\n            from note\n            where created_at >= ? and created_at < ?\n            order by created_at desc\n            "
   },
-  "6e4552cd32e1c2586d2578a55fdc3b885ae15566604bc234d987287a6fca14e6": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Right": 0
-      }
-    },
-    "query": "delete from session where updated_at < datetime('now', '-7 days')"
-  },
   "706f1a8390b2f373444a1ec0fbd1df78ebe5321c5d43f005c58223dcf641ee97": {
     "describe": {
       "columns": [],
@@ -161,6 +169,16 @@
       }
     },
     "query": "insert into image (image_id, original_filename, content_type) values (?, ?, ?)"
+  },
+  "8addb28394eec59151ef7b9fbd932232bd2fa66b3898a6779e77c9ff5583ddf2": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 0
+      }
+    },
+    "query": "delete from session where created_at < datetime('now', '-7 days')"
   },
   "8b94da7b7bd3bdcedcf9bf4b4ad7900cc1578db20726233e24f94753138e94b7": {
     "describe": {
@@ -234,16 +252,6 @@
     },
     "query": "\n            select image_id as \"image_id: Hyphenated\", created_at as \"created_at: DateTime<Utc>\"\n            from image\n            order by created_at desc\n            limit ?\n            "
   },
-  "a86e3bb006ee6f4e4e32aab8644ca3ecb730e92ce6a33e0562ad1b35d6c272f6": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Right": 1
-      }
-    },
-    "query": "delete from session where session_id = ?"
-  },
   "ada3985d164523ba34f03976cb0d15e46fa0fc66c10ac4114440e2e7a097a08d": {
     "describe": {
       "columns": [
@@ -279,33 +287,5 @@
       }
     },
     "query": "select passkey_id from passkey"
-  },
-  "c8996a659bfaf89a58c8efdc974ef6dda3314034337baf47ada77c5a7fa3862b": {
-    "describe": {
-      "columns": [
-        {
-          "name": "as_json",
-          "ordinal": 0,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Right": 1
-      }
-    },
-    "query": "select as_json from session where session_id = ?"
-  },
-  "e864ae527ab535ca32cbc15b5177080954fb45f60cb5f819937ea20fc57b3fbb": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Right": 0
-      }
-    },
-    "query": "delete from session"
   }
 }
