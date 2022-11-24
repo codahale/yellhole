@@ -24,7 +24,7 @@ axum = { version = "0.6.0-rc.5", features = ["multipart"] }
 axum-extra = { version = "0.4.0-rc.3", features = ["cookie"] }
 base64 = { version = "0.13.1", features = ["std"] }
 chrono = { version = "0.4.23", default-features = false, features = ["std", "serde"] }
-clap = { version = "4.0.26", features = ["derive", "env"] }
+clap = { version = "4.0.27", features = ["derive", "env"] }
 constant_time_eq = "0.2.4"
 futures = "0.3.25"
 hex = "0.4.3"
