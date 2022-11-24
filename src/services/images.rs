@@ -37,7 +37,10 @@ impl ImageService {
         sqlx::query_as!(
             Image,
             r#"
-            select image_id as "image_id: Hyphenated", created_at as "created_at: DateTime<Utc>"
+            select
+              image_id as "image_id: Hyphenated",
+              original_filename,
+              created_at as "created_at: DateTime<Utc>"
             from image
             order by created_at desc
             limit ?
@@ -124,6 +127,7 @@ impl ImageService {
 #[derive(Debug, PartialEq, Eq)]
 pub struct Image {
     image_id: Hyphenated,
+    pub original_filename: String,
     pub created_at: DateTime<Utc>,
 }
 
