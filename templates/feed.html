@@ -10,7 +10,7 @@
 <meta property="og:description" content="" />
 <meta name="twitter:card" content="summary" />
 <meta property="twitter:title" content="{{title}}" />
-<link href="{{base_url}}atom.xml" rel="alternate" title="Atom" type="application/atom+xml" />
+<link href='{{base_url.join("atom.xml").unwrap()}}' rel="alternate" title="Atom" type="application/atom+xml" />
 {% endblock %}
 
 {% block nav %}
