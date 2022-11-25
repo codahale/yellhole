@@ -46,7 +46,7 @@ struct FeedPage {
 }
 
 impl FeedPage {
-    fn from_state(state: &AppState, notes: Vec<Note>, weeks: Vec<Range<NaiveDate>>) -> FeedPage {
+    fn new(state: &AppState, notes: Vec<Note>, weeks: Vec<Range<NaiveDate>>) -> FeedPage {
         FeedPage {
             author: state.author.clone(),
             title: state.title.clone(),
@@ -73,7 +73,7 @@ struct IndexOpts {
 async fn index(state: State<AppState>, opts: Query<IndexOpts>) -> Result<Page<FeedPage>, AppError> {
     let weeks = state.notes.weeks().await?;
     let notes = state.notes.most_recent(opts.n.unwrap_or(25)).await?;
-    Ok(Page(FeedPage::from_state(&state, notes, weeks)))
+    Ok(Page(FeedPage::new(&state, notes, weeks)))
 }
 
 async fn week(
@@ -83,7 +83,7 @@ async fn week(
     let weeks = state.notes.weeks().await?;
     let start = start.ok_or(AppError::NotFound)?.0;
     let notes = state.notes.date_range(start..(start + Days::new(7))).await?;
-    Ok(Page(FeedPage::from_state(&state, notes, weeks)))
+    Ok(Page(FeedPage::new(&state, notes, weeks)))
 }
 
 async fn single(
@@ -93,7 +93,7 @@ async fn single(
     let weeks = state.notes.weeks().await?;
     let note_id = note_id.ok_or(AppError::NotFound)?;
     let notes = vec![state.notes.by_id(&note_id).await?.ok_or(AppError::NotFound)?];
-    Ok(Page(FeedPage::from_state(&state, notes, weeks)))
+    Ok(Page(FeedPage::new(&state, notes, weeks)))
 }
 
 async fn atom(state: State<AppState>) -> Result<Response, AppError> {
