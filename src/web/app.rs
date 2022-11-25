@@ -1,8 +1,9 @@
+use std::any::Any;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
 use axum::http::{self, StatusCode};
-use axum::middleware::{self, Next};
+use axum::middleware::{self};
 use axum::response::{IntoResponse, Response};
 use axum::Router;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
@@ -11,6 +12,7 @@ use thiserror::Error;
 use tokio::signal;
 use tokio::task::JoinHandle;
 use tower::ServiceBuilder;
+use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::request_id::MakeRequestUuid;
 use tower_http::sensitive_headers::{
     SetSensitiveRequestHeadersLayer, SetSensitiveResponseHeadersLayer,
@@ -92,8 +94,7 @@ impl App {
                         http::header::SET_COOKIE,
                     )))
                     .propagate_x_request_id()
-                    .layer(middleware::from_fn(handle_errors))
-                    .catch_panic(),
+                    .layer(CatchPanicLayer::custom(handle_panic)),
             )
             .with_state(state);
 
@@ -160,20 +161,24 @@ pub enum AppError {
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        match self {
+        let status = match self {
             AppError::Generic(_) | AppError::QueryFailure(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AppError::NotFound => StatusCode::NOT_FOUND,
-        }
-        .into_response()
+        };
+        ErrorPage::for_status(status).into_response()
     }
 }
 
-async fn handle_errors<B>(req: http::Request<B>, next: Next<B>) -> Result<Response, StatusCode> {
-    let resp = next.run(req).await;
-    if resp.status().is_server_error() || resp.status() == StatusCode::NOT_FOUND {
-        return Ok(ErrorPage::for_status(resp.status()));
-    }
-    Ok(resp)
+fn handle_panic(err: Box<dyn Any + Send + 'static>) -> Response {
+    let details = if let Some(s) = err.downcast_ref::<String>() {
+        s.clone()
+    } else if let Some(s) = err.downcast_ref::<&str>() {
+        s.to_string()
+    } else {
+        "Unknown panic message".to_string()
+    };
+    tracing::error!(err = details, "panic in handler");
+    ErrorPage::for_status(StatusCode::INTERNAL_SERVER_ERROR).into_response()
 }
 
 async fn shutdown_signal() {

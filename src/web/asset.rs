@@ -1,8 +1,9 @@
 use axum::extract::Path;
-use axum::http::StatusCode;
+use axum::http::{Request, StatusCode};
+use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, get_service};
-use axum::{http, Router};
+use axum::{http, middleware, Router};
 use include_dir::{include_dir, Dir};
 use tokio::io;
 use tower::ServiceBuilder;
@@ -10,6 +11,7 @@ use tower_http::services::ServeDir;
 use tower_http::set_header::SetResponseHeaderLayer;
 
 use super::app::AppState;
+use super::AppError;
 
 pub fn router(images_dir: impl AsRef<std::path::Path>) -> Router<AppState> {
     Router::new()
@@ -23,6 +25,7 @@ pub fn router(images_dir: impl AsRef<std::path::Path>) -> Router<AppState> {
             http::header::CACHE_CONTROL,
             http::HeaderValue::from_static("max-age=31536000,immutable"),
         ))
+        .layer(middleware::from_fn(not_found))
 }
 
 #[tracing::instrument(err)]
@@ -37,6 +40,16 @@ async fn static_path(Path(path): Path<String>) -> Result<Response, StatusCode> {
 #[tracing::instrument(level = "warn")]
 async fn io_error(err: io::Error) -> StatusCode {
     StatusCode::INTERNAL_SERVER_ERROR
+}
+
+async fn not_found<B>(req: Request<B>, next: Next<B>) -> Result<Response, AppError> {
+    let resp = next.run(req).await;
+    dbg!(resp.status());
+    if resp.status() == StatusCode::NOT_FOUND {
+        Err(AppError::NotFound)
+    } else {
+        Ok(resp)
+    }
 }
 
 static STATIC_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/assets");
