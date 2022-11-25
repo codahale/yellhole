@@ -75,10 +75,10 @@ impl SessionService {
     }
 
     #[tracing::instrument(skip(self), ret, err)]
-    async fn delete_expired(&self) -> Result<(), sqlx::Error> {
-        sqlx::query!(r"delete from session where created_at < datetime('now', '-7 days')")
+    async fn delete_expired(&self) -> Result<u64, sqlx::Error> {
+        Ok(sqlx::query!(r"delete from session where created_at < datetime('now', '-7 days')")
             .execute(&self.db)
-            .await?;
-        Ok(())
+            .await?
+            .rows_affected())
     }
 }
