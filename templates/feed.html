@@ -3,9 +3,13 @@
 {% block title %}{{title}}{% endblock %}
 
 {% block head %}
-<meta property="og:type" content="website">
+<meta property="og:type" content="article">
 <meta property="og:title" content="{{title}}">
 <meta property="og:url" content="{{base_url}}">
+<meta name="description" content="" />
+<meta property="og:description" content="" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="{{title}}" />
 <link href="{{base_url}}atom.xml" rel="alternate" title="Atom" type="application/atom+xml" />
 {% endblock %}
 
