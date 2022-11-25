@@ -5,18 +5,18 @@
 {% block head %}
 {%- if notes.len() == 1 -%}
 {%- for note in notes -%}
-<meta name="description" content="A post on {{title}}.">
+<meta name="description" content="{{note.description()}}">
 
 <meta property="og:url" content="{{note.url(base_url)}}">
 <meta property="og:type" content="website">
 <meta property="og:title" content="{{title}}">
-<meta property="og:description" content="A post on {{title}}.">
+<meta property="og:description" content="{{note.description()}}">
 
 <meta name="twitter:card" content="summary_large_image">
 <meta property="twitter:domain" content="{{base_url.host().unwrap()}}">
 <meta property="twitter:url" content="{{note.url(base_url)}}">
 <meta name="twitter:title" content="{{title}}">
-<meta name="twitter:description" content="A post on {{title}}.">
+<meta name="twitter:description" content="{{note.description()}}">
 
 {% for img in note.images(base_url) %}
 <meta property="og:image" content="{{img}}">

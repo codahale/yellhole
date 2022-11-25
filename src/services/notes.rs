@@ -119,6 +119,16 @@ impl Note {
             })
             .collect()
     }
+
+    pub fn description(&self) -> String {
+        Parser::new(&self.body).fold(String::with_capacity(256), |mut d, e| {
+            if let Event::Text(s) = e {
+                d.push_str(s.as_ref());
+                d.push(' ');
+            }
+            d
+        })
+    }
 }
 
 fn local_date_to_utc(d: &NaiveDate) -> DateTime<Utc> {
