@@ -11,7 +11,8 @@ use axum_extra::extract::cookie::{Cookie, SameSite};
 use axum_extra::extract::CookieJar;
 use uuid::Uuid;
 
-use super::{AppError, AppState, Page};
+use super::app::{AppError, AppState};
+use super::pages::Page;
 use crate::services::passkeys::{
     AuthenticationChallenge, AuthenticationResponse, RegistrationChallenge, RegistrationResponse,
 };

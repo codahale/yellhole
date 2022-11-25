@@ -9,7 +9,7 @@ use tower::ServiceBuilder;
 use tower_http::services::ServeDir;
 use tower_http::set_header::SetResponseHeaderLayer;
 
-use super::AppState;
+use super::app::AppState;
 
 pub fn router(images_dir: impl AsRef<std::path::Path>) -> Router<AppState> {
     Router::new()

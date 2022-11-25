@@ -12,7 +12,8 @@ use url::Url;
 
 use crate::services::images::Image;
 
-use super::{AppError, AppState, Page};
+use super::app::{AppError, AppState};
+use super::pages::Page;
 
 pub fn router() -> Router<AppState> {
     Router::new()
