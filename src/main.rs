@@ -16,9 +16,7 @@ mod web;
 async fn main() -> anyhow::Result<()> {
     // Configure tracing, defaulting to INFO except for sqlx, which is wild chatty.
     tracing_subscriber::registry()
-        .with(
-            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info,sqlx=warn")),
-        )
+        .with(EnvFilter::new(std::env::var("RUST_LOG").unwrap_or_else(|_| "info,sqlx=warn".into())))
         .with(tracing_subscriber::fmt::layer())
         .try_init()?;
 
