@@ -3,6 +3,9 @@
 {% block title %}{{title}}{% endblock %}
 
 {% block head %}
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{title}}">
+<meta property="og:url" content="{{base_url}}">
 <link href="{{base_url}}atom.xml" rel="alternate" title="Atom" type="application/atom+xml" />
 {% endblock %}
 
