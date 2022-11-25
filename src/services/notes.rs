@@ -107,10 +107,6 @@ impl Note {
         render_markdown(&self.body)
     }
 
-    pub fn url(&self, base_url: &Url) -> Url {
-        base_url.join("note/").unwrap().join(&self.note_id.to_string()).unwrap()
-    }
-
     pub fn images(&self, base_url: &Url) -> Vec<Url> {
         Parser::new(&self.body)
             .flat_map(|e| match e {

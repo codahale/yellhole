@@ -58,10 +58,25 @@ impl FeedPage {
 }
 
 mod filters {
-    use chrono::{DateTime, Local, Utc};
+    use chrono::{DateTime, Local, NaiveDate, Utc};
+    use url::Url;
+
+    use crate::services::notes::Note;
 
     pub fn to_local_tz(t: &DateTime<Utc>) -> askama::Result<DateTime<Local>> {
         Ok(t.with_timezone(&Local))
+    }
+
+    pub fn to_note_url(note: &Note, base_url: &Url) -> askama::Result<Url> {
+        Ok(base_url.join("note/").unwrap().join(&note.note_id.to_string()).unwrap())
+    }
+
+    pub fn to_atom_url(base_url: &Url) -> askama::Result<Url> {
+        Ok(base_url.join("atom.xml").unwrap())
+    }
+
+    pub fn to_weekly_url(week: &NaiveDate, base_url: &Url) -> askama::Result<Url> {
+        Ok(base_url.join("notes/").unwrap().join(&week.to_string()).unwrap())
     }
 }
 

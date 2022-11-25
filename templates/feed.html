@@ -7,14 +7,14 @@
 {%- for note in notes -%}
 <meta name="description" content="{{note.description()}}">
 
-<meta property="og:url" content="{{note.url(base_url)}}">
+<meta property="og:url" content="{{note|to_note_url(base_url)}}">
 <meta property="og:type" content="website">
 <meta property="og:title" content="{{title}}">
 <meta property="og:description" content="{{note.description()}}">
 
 <meta name="twitter:card" content="summary_large_image">
 <meta property="twitter:domain" content="{{base_url.host().unwrap()}}">
-<meta property="twitter:url" content="{{note.url(base_url)}}">
+<meta property="twitter:url" content="{{note|to_note_url(base_url)}}">
 <meta name="twitter:title" content="{{title}}">
 <meta name="twitter:description" content="{{note.description()}}">
 
@@ -25,7 +25,7 @@
 {%- endfor -%}
 {%- endif -%}
 
-<link href='{{base_url.join("atom.xml").unwrap()}}' rel="alternate" title="Atom" type="application/atom+xml" />
+<link href="{{base_url|to_atom_url}}" rel="alternate" title="Atom" type="application/atom+xml" />
 {% endblock %}
 
 {% block nav %}
@@ -34,7 +34,7 @@
         <ul>
             {% for d in weeks %}
             <li>
-                <a href="/notes/{{d.start}}">
+                <a href="{{d.start|to_weekly_url(base_url)}}">
                     {{d.start}} to {{d.end}}
                 </a>
             </li>
@@ -54,7 +54,7 @@
 <section>
     <aside>
         {{ n.to_html() | safe }}
-        <p><small><a href="/note/{{n.note_id}}">{{n.created_at|to_local_tz}}</a></small></p>
+        <p><small><a href="{{n|to_note_url(base_url)}}">{{n.created_at|to_local_tz}}</a></small></p>
     </aside>
 </section>
 {% endfor %}
