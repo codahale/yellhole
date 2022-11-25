@@ -1,12 +1,12 @@
 use std::time::Duration;
 
 use askama::Template;
-use axum::extract::{FromRequestParts, State};
-use axum::http::request::Parts;
-use axum::http::StatusCode;
+use axum::extract::State;
+use axum::http::{Request, StatusCode};
+use axum::middleware::Next;
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
-use axum::{async_trait, Json, Router};
+use axum::{Json, Router};
 use axum_extra::extract::cookie::{Cookie, SameSite};
 use axum_extra::extract::CookieJar;
 use uuid::Uuid;
@@ -27,23 +27,17 @@ pub fn router() -> Router<AppState> {
         .route("/login/finish", post(login_finish))
 }
 
-pub struct RequireAuth;
-
-#[async_trait]
-impl FromRequestParts<AppState> for RequireAuth {
-    type Rejection = Redirect;
-
-    async fn from_request_parts(
-        parts: &mut Parts,
-        state: &AppState,
-    ) -> Result<Self, Self::Rejection> {
-        let cookies = CookieJar::from_request_parts(parts, state).await.expect("infallible");
-        match state.sessions.is_authenticated(&cookies).await {
-            Ok(true) => Ok(Self),
-            _ => {
-                tracing::warn!("unauthenticated request");
-                Err(Redirect::to("/login"))
-            }
+pub async fn require_auth<B>(
+    State(state): State<AppState>,
+    cookies: CookieJar,
+    req: Request<B>,
+    next: Next<B>,
+) -> Response {
+    match state.sessions.is_authenticated(&cookies).await {
+        Ok(true) => next.run(req).await,
+        _ => {
+            tracing::warn!("unauthenticated request");
+            Redirect::to("/login").into_response()
         }
     }
 }
@@ -289,7 +283,7 @@ mod tests {
     fn app(state: &AppState) -> Router<AppState> {
         Router::<AppState>::new()
             .route("/protected", get(protected))
-            .route_layer(middleware::from_extractor_with_state::<RequireAuth, _>(state.clone()))
+            .route_layer(middleware::from_fn_with_state(state.clone(), super::require_auth))
             .merge(router())
     }
 

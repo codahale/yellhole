@@ -24,7 +24,6 @@ use crate::services::images::ImageService;
 use crate::services::notes::NoteService;
 use crate::services::passkeys::PasskeyService;
 use crate::services::sessions::SessionService;
-use crate::web::auth::RequireAuth;
 use crate::web::{admin, asset, auth, feed};
 
 use super::pages::ErrorPage;
@@ -70,7 +69,7 @@ impl App {
         )?;
         let app = Router::new()
             .merge(admin::router())
-            .route_layer(middleware::from_extractor_with_state::<RequireAuth, _>(state.clone()))
+            .route_layer(middleware::from_fn_with_state(state.clone(), auth::require_auth))
             .merge(auth::router())
             .merge(feed::router())
             .merge(asset::router(state.images.images_dir()))
