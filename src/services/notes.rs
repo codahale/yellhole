@@ -105,6 +105,15 @@ impl Note {
     pub fn to_html(&self) -> String {
         render_markdown(&self.body)
     }
+
+    pub fn images(&self) -> Vec<String> {
+        Parser::new(&self.body)
+            .flat_map(|e| match e {
+                Event::Start(Tag::Image(_, url, _)) => Some(url.to_string()),
+                _ => None,
+            })
+            .collect()
+    }
 }
 
 fn local_date_to_utc(d: &NaiveDate) -> DateTime<Utc> {

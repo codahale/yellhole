@@ -10,6 +10,13 @@
 <meta property="og:description" content="" />
 <meta name="twitter:card" content="summary" />
 <meta property="twitter:title" content="{{title}}" />
+{%- if notes.len() == 1 -%}
+{%- for note in notes -%}
+{% for img in note.images() %}
+<meta property="og:image" content='{{base_url.join(img).unwrap()}}'>
+{% endfor %}
+{%- endfor -%}
+{%- endif -%}
 <link href='{{base_url.join("atom.xml").unwrap()}}' rel="alternate" title="Atom" type="application/atom+xml" />
 {% endblock %}
 
