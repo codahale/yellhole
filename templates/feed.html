@@ -3,19 +3,19 @@
 {% block title %}{{title}}{% endblock %}
 
 {% block head %}
+{%- if notes.len() == 1 -%}
+{%- for note in notes -%}
 <meta property="og:locale" content="en_US" />
 <meta property="og:type" content="article">
 <meta property="og:title" content="{{title}}">
 <meta property="og:site_name" content="{{title}}" />
 <meta property="og:description" content="A post on {{title}}." />
-{%- if notes.len() == 1 -%}
-{%- for note in notes -%}
-{% for img in note.images() %}
-<meta property="twitter:image" content='{{base_url.join(img).unwrap()}}'>
+<meta property="og:url" content="{{note.url(base_url)}}" />
+{% for img in note.images(base_url) -%}
+<meta property="og:image" content="{{img}}">
 {% endfor %}
 {%- endfor -%}
 {%- endif -%}
-
 
 <link href='{{base_url.join("atom.xml").unwrap()}}' rel="alternate" title="Atom" type="application/atom+xml" />
 {% endblock %}

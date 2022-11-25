@@ -3,6 +3,7 @@ use std::ops::Range;
 use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone, Utc};
 use pulldown_cmark::{Event, HeadingLevel, Parser, Tag};
 use sqlx::SqlitePool;
+use url::Url;
 use uuid::fmt::Hyphenated;
 use uuid::Uuid;
 
@@ -106,10 +107,14 @@ impl Note {
         render_markdown(&self.body)
     }
 
-    pub fn images(&self) -> Vec<String> {
+    pub fn url(&self, base_url: &Url) -> Url {
+        base_url.join("note/").unwrap().join(&self.note_id.to_string()).unwrap()
+    }
+
+    pub fn images(&self, base_url: &Url) -> Vec<Url> {
         Parser::new(&self.body)
             .flat_map(|e| match e {
-                Event::Start(Tag::Image(_, url, _)) => Some(url.to_string()),
+                Event::Start(Tag::Image(_, url, _)) => base_url.join(url.as_ref()).ok(),
                 _ => None,
             })
             .collect()
