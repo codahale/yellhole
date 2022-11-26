@@ -1,7 +1,7 @@
 use std::ops::Range;
 
 use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone, Utc};
-use pulldown_cmark::{Event, HeadingLevel, Parser, Tag};
+use pulldown_cmark::{Event, Parser, Tag};
 use sqlx::SqlitePool;
 use url::Url;
 use uuid::fmt::Hyphenated;
@@ -104,7 +104,9 @@ pub struct Note {
 
 impl Note {
     pub fn to_html(&self) -> String {
-        render_markdown(&self.body)
+        let mut out = String::with_capacity(256);
+        pulldown_cmark::html::push_html(&mut out, Parser::new(&self.body));
+        out
     }
 
     pub fn images(&self, base_url: &Url) -> Vec<Url> {
@@ -120,7 +122,6 @@ impl Note {
         Parser::new(&self.body).fold(String::with_capacity(256), |mut d, e| {
             if let Event::Text(s) = e {
                 d.push_str(s.as_ref());
-                d.push(' ');
             }
             d
         })
@@ -131,70 +132,31 @@ fn local_date_to_utc(d: &NaiveDate) -> DateTime<Utc> {
     Local.from_local_datetime(&d.and_time(NaiveTime::default())).unwrap().with_timezone(&Utc)
 }
 
-fn render_markdown(md: &str) -> String {
-    // Downgrade note headings to avoid having multiple H1s.
-    fn downgrade_header(level: HeadingLevel) -> Option<HeadingLevel> {
-        match level {
-            HeadingLevel::H1 => Some(HeadingLevel::H2),
-            HeadingLevel::H2 => Some(HeadingLevel::H3),
-            HeadingLevel::H3 => Some(HeadingLevel::H4),
-            HeadingLevel::H4 => Some(HeadingLevel::H5),
-            HeadingLevel::H5 => Some(HeadingLevel::H6),
-            HeadingLevel::H6 => None,
-        }
-    }
-
-    // Parse the note body as Markdown, downgrading headers.
-    let parser = Parser::new(md).map(|e| match e {
-        Event::Start(Tag::Heading(level, frag, classes)) => match downgrade_header(level) {
-            Some(level) => Event::Start(Tag::Heading(level, frag, classes)),
-            None => Event::Start(Tag::Strong),
-        },
-        Event::End(Tag::Heading(level, frag, classes)) => match downgrade_header(level) {
-            Some(level) => Event::End(Tag::Heading(level, frag, classes)),
-            None => Event::End(Tag::Strong),
-        },
-        e => e,
-    });
-
-    // Render the parsed Markdown AST as HTML.
-    let mut out = String::new();
-    pulldown_cmark::html::push_html(&mut out, parser);
-    out
-}
-
 #[cfg(test)]
 mod tests {
     use uuid::Uuid;
 
     use super::*;
+
     #[test]
-    fn render_markdown() {
+    fn body_to_html() {
         let note = Note {
             note_id: Uuid::new_v4().hyphenated(),
-            body: r#"
-# This is a heading.
-## This is a subheading.
-### This is a sub-sub-heading.
-#### This is a section heading?
-##### This is a nitpick.
-###### Unclear.
-            "#
-            .trim()
-            .into(),
+            body: r#"It's _electric_!"#.into(),
             created_at: Utc::now(),
         };
 
-        assert_eq!(
-            note.to_html(),
-            r#"
-<h2>This is a heading.</h2>
-<h3>This is a subheading.</h3>
-<h4>This is a sub-sub-heading.</h4>
-<h5>This is a section heading?</h5>
-<h6>This is a nitpick.</h6>
-<strong>Unclear.</strong>"#
-                .trim(),
-        );
+        assert_eq!(note.to_html(), "<p>It's <em>electric</em>!</p>\n");
+    }
+
+    #[test]
+    fn body_to_description() {
+        let note = Note {
+            note_id: Uuid::new_v4().hyphenated(),
+            body: r#"It's _electric_!"#.into(),
+            created_at: Utc::now(),
+        };
+
+        assert_eq!(note.description(), r#"It's electric!"#);
     }
 }
