@@ -56,7 +56,6 @@ async fn io_error(err: io::Error) -> StatusCode {
 
 async fn not_found<B>(req: Request<B>, next: Next<B>) -> Result<Response, AppError> {
     let resp = next.run(req).await;
-    dbg!(resp.status());
     if resp.status() == StatusCode::NOT_FOUND {
         Err(AppError::NotFound)
     } else {
