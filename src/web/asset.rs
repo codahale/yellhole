@@ -1,5 +1,5 @@
 use axum::extract::Path;
-use axum::http::{Request, StatusCode};
+use axum::http::{Request, StatusCode, Uri};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, get_service};
@@ -15,6 +15,13 @@ use super::AppError;
 
 pub fn router(images_dir: impl AsRef<std::path::Path>) -> Router<AppState> {
     Router::new()
+        .route("/android-chrome-192x192.png", get(static_asset))
+        .route("/android-chrome-512x512.png", get(static_asset))
+        .route("/apple-touch-icon.png", get(static_asset))
+        .route("/favicon-16x16.png", get(static_asset))
+        .route("/favicon-32x32.png", get(static_asset))
+        .route("/favicon.ico", get(static_asset))
+        .route("/site.webmanifest", get(static_asset))
         .route("/assets/*path", get(static_path))
         .nest_service(
             "/images",
@@ -26,6 +33,11 @@ pub fn router(images_dir: impl AsRef<std::path::Path>) -> Router<AppState> {
             http::HeaderValue::from_static("max-age=31536000,immutable"),
         ))
         .layer(middleware::from_fn(not_found))
+}
+
+#[tracing::instrument(err)]
+async fn static_asset(uri: Uri) -> Result<Response, StatusCode> {
+    static_path(Path(uri.to_string())).await
 }
 
 #[tracing::instrument(err)]
