@@ -20,6 +20,7 @@ use tower_http::sensitive_headers::{
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
 use tower_http::ServiceBuilderExt;
 use tracing::Level;
+use url::Url;
 
 use crate::config::Config;
 use crate::services::images::ImageService;
@@ -115,7 +116,7 @@ pub struct AppState {
     pub title: String,
     pub notes: NoteService,
     pub passkeys: PasskeyService,
-    pub base_url: url::Url,
+    pub base_url: Url,
     pub sessions: SessionService,
     pub images: ImageService,
 }
@@ -125,7 +126,7 @@ impl AppState {
         db: SqlitePool,
         author: &str,
         title: &str,
-        base_url: &url::Url,
+        base_url: &Url,
         data_dir: impl AsRef<Path>,
     ) -> Result<(AppState, JoinHandle<Result<(), sqlx::Error>>), io::Error> {
         let (sessions, session_expiry) = SessionService::new(db.clone(), base_url);
