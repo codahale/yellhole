@@ -17,9 +17,8 @@ use tower_http::request_id::MakeRequestUuid;
 use tower_http::sensitive_headers::{
     SetSensitiveRequestHeadersLayer, SetSensitiveResponseHeadersLayer,
 };
-use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
+use tower_http::trace::TraceLayer;
 use tower_http::ServiceBuilderExt;
-use tracing::Level;
 use url::Url;
 
 use crate::config::Config;
@@ -82,15 +81,7 @@ impl App {
                     .layer(SetSensitiveRequestHeadersLayer::new(std::iter::once(
                         http::header::COOKIE,
                     )))
-                    .layer(
-                        TraceLayer::new_for_http()
-                            .make_span_with(
-                                DefaultMakeSpan::new().level(Level::INFO).include_headers(true),
-                            )
-                            .on_response(
-                                DefaultOnResponse::new().level(Level::INFO).include_headers(true),
-                            ),
-                    )
+                    .layer(TraceLayer::new_for_http())
                     .layer(SetSensitiveResponseHeadersLayer::new(std::iter::once(
                         http::header::SET_COOKIE,
                     )))
