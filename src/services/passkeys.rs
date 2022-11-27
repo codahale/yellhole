@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use constant_time_eq::constant_time_eq;
 use p256::ecdsa::signature::Verifier;
 use p256::ecdsa::{Signature, VerifyingKey};
@@ -20,6 +22,8 @@ pub struct PasskeyService {
 }
 
 impl PasskeyService {
+    pub const TTL: Duration = Duration::from_secs(5 * 60);
+
     pub fn new(db: SqlitePool, base_url: &Url) -> PasskeyService {
         let rp_id = base_url.host_str().unwrap().into();
         PasskeyService { db, rp_id, origin: base_url.clone() }

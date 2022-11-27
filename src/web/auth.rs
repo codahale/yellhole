@@ -14,7 +14,8 @@ use uuid::Uuid;
 use super::app::{AppError, AppState};
 use super::pages::Page;
 use crate::services::passkeys::{
-    AuthenticationChallenge, AuthenticationResponse, RegistrationChallenge, RegistrationResponse,
+    AuthenticationChallenge, AuthenticationResponse, PasskeyService, RegistrationChallenge,
+    RegistrationResponse,
 };
 use crate::services::sessions::SessionService;
 
@@ -95,8 +96,7 @@ async fn login_start(
     cookies: CookieJar,
 ) -> Result<(CookieJar, Json<AuthenticationChallenge>), AppError> {
     let (challenge_id, resp) = state.passkeys.start_authentication().await?;
-    let cookies =
-        cookies.add(cookie(&state, "challenge", challenge_id, Duration::from_secs(5 * 60)));
+    let cookies = cookies.add(cookie(&state, "challenge", challenge_id, PasskeyService::TTL));
     Ok((cookies, Json(resp)))
 }
 
