@@ -9,7 +9,7 @@ use crate::web::App;
 mod config;
 mod services;
 #[cfg(test)]
-mod test_server;
+mod test;
 mod web;
 
 #[tokio::main]

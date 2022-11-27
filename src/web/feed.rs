@@ -159,7 +159,7 @@ mod tests {
     use axum::http::{self, StatusCode};
     use sqlx::SqlitePool;
 
-    use crate::test_server::TestEnv;
+    use crate::test::TestEnv;
 
     use super::*;
 

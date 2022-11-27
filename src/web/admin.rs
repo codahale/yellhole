@@ -94,7 +94,7 @@ mod tests {
     use tokio::fs;
     use uuid::Uuid;
 
-    use crate::test_server::TestEnv;
+    use crate::test::TestEnv;
 
     use super::*;
 

@@ -135,7 +135,7 @@ mod tests {
     use spki::EncodePublicKey;
     use sqlx::SqlitePool;
 
-    use crate::test_server::TestEnv;
+    use crate::test::TestEnv;
 
     use super::*;
 

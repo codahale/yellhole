@@ -69,7 +69,7 @@ static STATIC_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/assets");
 mod tests {
     use sqlx::SqlitePool;
 
-    use crate::test_server::TestEnv;
+    use crate::test::TestEnv;
 
     use super::*;
 
