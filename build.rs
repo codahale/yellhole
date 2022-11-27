@@ -4,4 +4,7 @@ fn main() {
 
     // trigger recompilation when templates are changed
     println!("cargo:rerun-if-changed=templates");
+
+    // trigger recompilation when assets are changed
+    println!("cargo:rerun-if-changed=assets");
 }
