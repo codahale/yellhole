@@ -46,11 +46,11 @@ struct FeedPage {
 }
 
 impl FeedPage {
-    fn new(state: &AppState, notes: Vec<Note>, weeks: Vec<Range<NaiveDate>>) -> FeedPage {
+    fn new(state: AppState, notes: Vec<Note>, weeks: Vec<Range<NaiveDate>>) -> FeedPage {
         FeedPage {
-            author: state.author.clone(),
-            title: state.title.clone(),
-            base_url: state.base_url.clone(),
+            author: state.author,
+            title: state.title,
+            base_url: state.base_url,
             notes,
             weeks,
         }
@@ -85,33 +85,36 @@ struct IndexOpts {
     n: Option<u16>,
 }
 
-async fn index(state: State<AppState>, opts: Query<IndexOpts>) -> Result<Page<FeedPage>, AppError> {
+async fn index(
+    State(state): State<AppState>,
+    opts: Query<IndexOpts>,
+) -> Result<Page<FeedPage>, AppError> {
     let weeks = state.notes.weeks().await?;
     let notes = state.notes.most_recent(opts.n.unwrap_or(25)).await?;
-    Ok(Page(FeedPage::new(&state, notes, weeks)))
+    Ok(Page(FeedPage::new(state, notes, weeks)))
 }
 
 async fn week(
-    state: State<AppState>,
+    State(state): State<AppState>,
     start: Option<Path<NaiveDate>>,
 ) -> Result<Page<FeedPage>, AppError> {
     let weeks = state.notes.weeks().await?;
     let start = start.ok_or(AppError::NotFound)?.0;
     let notes = state.notes.date_range(start..(start + Days::new(7))).await?;
-    Ok(Page(FeedPage::new(&state, notes, weeks)))
+    Ok(Page(FeedPage::new(state, notes, weeks)))
 }
 
 async fn single(
-    state: State<AppState>,
+    State(state): State<AppState>,
     note_id: Option<Path<Uuid>>,
 ) -> Result<Page<FeedPage>, AppError> {
     let weeks = state.notes.weeks().await?;
     let note_id = note_id.ok_or(AppError::NotFound)?;
     let notes = vec![state.notes.by_id(&note_id).await?.ok_or(AppError::NotFound)?];
-    Ok(Page(FeedPage::new(&state, notes, weeks)))
+    Ok(Page(FeedPage::new(state, notes, weeks)))
 }
 
-async fn atom(state: State<AppState>) -> Result<Response, AppError> {
+async fn atom(State(state): State<AppState>) -> Result<Response, AppError> {
     let entries = state
         .notes
         .most_recent(20)
@@ -132,9 +135,9 @@ async fn atom(state: State<AppState>) -> Result<Response, AppError> {
 
     let feed = Feed {
         id: state.base_url.to_string(),
-        authors: vec![Person { name: state.author.clone(), ..Default::default() }],
+        authors: vec![Person { name: state.author, ..Default::default() }],
         base: Some(state.base_url.join("atom.xml").unwrap().to_string()),
-        title: Text { value: state.title.clone(), ..Default::default() },
+        title: Text { value: state.title, ..Default::default() },
         entries,
         links: vec![Link {
             href: state.base_url.join("atom.xml").unwrap().to_string(),
