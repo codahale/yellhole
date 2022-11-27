@@ -120,7 +120,7 @@ impl AppState {
         base_url: &Url,
         data_dir: impl AsRef<Path>,
     ) -> Result<(AppState, JoinHandle<Result<(), sqlx::Error>>), io::Error> {
-        let (sessions, session_expiry) = SessionService::new(db.clone(), base_url);
+        let (sessions, session_expiry) = SessionService::new(db.clone());
         let images = ImageService::new(db.clone(), &data_dir)?;
         let notes = NoteService::new(db.clone());
         let passkeys = PasskeyService::new(db, base_url);

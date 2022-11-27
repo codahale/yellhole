@@ -16,6 +16,7 @@ use super::pages::Page;
 use crate::services::passkeys::{
     AuthenticationChallenge, AuthenticationResponse, RegistrationChallenge, RegistrationResponse,
 };
+use crate::services::sessions::SessionService;
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -28,12 +29,12 @@ pub fn router() -> Router<AppState> {
 }
 
 pub async fn require_auth<B>(
-    State(state): State<AppState>,
+    state: State<AppState>,
     cookies: CookieJar,
     req: Request<B>,
     next: Next<B>,
 ) -> Response {
-    match state.sessions.is_authenticated(&cookies).await {
+    match is_authenticated(&state, &cookies).await {
         Ok(true) => next.run(req).await,
         _ => {
             tracing::warn!("unauthenticated request");
@@ -47,7 +48,7 @@ pub async fn require_auth<B>(
 struct RegisterPage {}
 
 async fn register(state: State<AppState>, cookies: CookieJar) -> Result<Response, AppError> {
-    if state.passkeys.any_registered().await? && !state.sessions.is_authenticated(&cookies).await? {
+    if state.passkeys.any_registered().await? && !is_authenticated(&state, &cookies).await? {
         return Ok(Redirect::to("/login").into_response());
     }
 
@@ -78,7 +79,7 @@ async fn register_finish(
 struct LoginPage {}
 
 async fn login(state: State<AppState>, cookies: CookieJar) -> Result<Response, AppError> {
-    if state.sessions.is_authenticated(&cookies).await? {
+    if is_authenticated(&state, &cookies).await? {
         return Ok(Redirect::to("/admin/new").into_response());
     }
 
@@ -94,16 +95,8 @@ async fn login_start(
     cookies: CookieJar,
 ) -> Result<(CookieJar, Json<AuthenticationChallenge>), AppError> {
     let (challenge_id, resp) = state.passkeys.start_authentication().await?;
-    let cookies = cookies.add(
-        Cookie::build("challenge", challenge_id.as_hyphenated().to_string())
-            .http_only(true)
-            .same_site(SameSite::Strict)
-            .max_age(Duration::from_secs(5 * 60).try_into().expect("invalid duration"))
-            .secure(state.base_url.scheme() == "https")
-            .path("/")
-            .finish(),
-    );
-
+    let cookies =
+        cookies.add(cookie(&state, "challenge", challenge_id, Duration::from_secs(5 * 60)));
     Ok((cookies, Json(resp)))
 }
 
@@ -118,9 +111,30 @@ async fn login_finish(
 
     let cookies = cookies.remove(Cookie::build("challenge", "").path("/").finish());
     if state.passkeys.finish_authentication(auth, &challenge_id).await? {
-        Ok((state.sessions.authenticate(cookies).await?, StatusCode::ACCEPTED))
+        let session_id = state.sessions.authenticate().await?;
+        Ok((
+            cookies.add(cookie(&state, "session", session_id, SessionService::TTL)),
+            StatusCode::ACCEPTED,
+        ))
     } else {
         Ok((cookies, StatusCode::BAD_REQUEST))
+    }
+}
+
+fn cookie<'c>(state: &AppState, name: &'c str, value: Uuid, max_age: Duration) -> Cookie<'c> {
+    Cookie::build(name, value.as_hyphenated().to_string())
+        .http_only(true)
+        .same_site(SameSite::Strict)
+        .max_age(max_age.try_into().expect("invalid duration"))
+        .secure(state.base_url.scheme() == "https")
+        .path("/")
+        .finish()
+}
+
+async fn is_authenticated(state: &AppState, cookies: &CookieJar) -> Result<bool, sqlx::Error> {
+    match cookies.get("session") {
+        Some(cookie) => state.sessions.is_authenticated(cookie.value()).await,
+        None => Ok(false),
     }
 }
 

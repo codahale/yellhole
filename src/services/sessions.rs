@@ -1,56 +1,39 @@
 use std::time::Duration;
 
-use axum_extra::extract::cookie::{Cookie, SameSite};
-use axum_extra::extract::CookieJar;
 use sqlx::SqlitePool;
 use tokio::task::JoinHandle;
 use tokio::{task, time};
-use url::Url;
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
 pub struct SessionService {
     db: SqlitePool,
-    secure: bool,
 }
 
 impl SessionService {
-    const TTL: Duration = Duration::from_secs(60 * 60 * 24 * 7);
+    pub const TTL: Duration = Duration::from_secs(60 * 60 * 24 * 7);
 
-    pub fn new(
-        db: SqlitePool,
-        base_url: &Url,
-    ) -> (SessionService, JoinHandle<Result<(), sqlx::Error>>) {
-        let service = SessionService { db, secure: base_url.scheme() == "https" };
+    pub fn new(db: SqlitePool) -> (SessionService, JoinHandle<Result<(), sqlx::Error>>) {
+        let service = SessionService { db };
         let expiry = task::spawn(service.clone().continuously_delete_expired());
         (service, expiry)
     }
 
     #[tracing::instrument(skip(self), err)]
-    pub async fn authenticate(&self, cookies: CookieJar) -> Result<CookieJar, sqlx::Error> {
-        let session_id = Uuid::new_v4().as_hyphenated().to_string();
-        let cookie = Cookie::build("session", session_id.clone())
-            .http_only(true)
-            .same_site(SameSite::Strict)
-            .max_age(Self::TTL.try_into().expect("invalid duration"))
-            .secure(self.secure)
-            .path("/")
-            .finish();
+    pub async fn authenticate(&self) -> Result<Uuid, sqlx::Error> {
+        let session_id = Uuid::new_v4();
+        {
+            let session_id = session_id.as_hyphenated().to_string();
+            sqlx::query!(r#"insert into session (session_id) values (?)"#, session_id)
+                .execute(&self.db)
+                .await?;
+        }
 
-        sqlx::query!(r#"insert into session (session_id) values (?)"#, session_id)
-            .execute(&self.db)
-            .await?;
-
-        Ok(cookies.add(cookie))
+        Ok(session_id)
     }
 
     #[tracing::instrument(skip_all, ret, err)]
-    pub async fn is_authenticated(&self, cookies: &CookieJar) -> Result<bool, sqlx::Error> {
-        let Some(cookie) = cookies.get("session") else {
-            return Ok(false);
-        };
-
-        let session_id = cookie.value();
+    pub async fn is_authenticated(&self, session_id: &str) -> Result<bool, sqlx::Error> {
         let authenticated = sqlx::query!(
             r#"
             select count(1) as n
