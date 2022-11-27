@@ -24,9 +24,9 @@ pub struct PasskeyService {
 impl PasskeyService {
     pub const TTL: Duration = Duration::from_secs(5 * 60);
 
-    pub fn new(db: SqlitePool, base_url: &Url) -> PasskeyService {
+    pub fn new(db: SqlitePool, base_url: Url) -> PasskeyService {
         let rp_id = base_url.host_str().unwrap().into();
-        PasskeyService { db, rp_id, origin: base_url.clone() }
+        PasskeyService { db, rp_id, origin: base_url }
     }
 
     #[tracing::instrument(skip(self), ret, err)]

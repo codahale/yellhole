@@ -23,7 +23,8 @@ impl TestEnv {
     pub fn new(db: SqlitePool) -> Result<TestEnv, anyhow::Error> {
         let temp_dir = TempDir::new("yellhole-test")?;
         let base_url = "http://example.com/".parse()?;
-        let (state, h) = AppState::new(db, "Luther Blissett", "Yellhole", &base_url, &temp_dir)?;
+        let (state, h) =
+            AppState::new(db, "Luther Blissett".into(), "Yellhole".into(), base_url, &temp_dir)?;
         h.abort();
         Ok(TestEnv { state, temp_dir })
     }

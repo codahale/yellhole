@@ -270,7 +270,7 @@ mod tests {
         authenticator_data.extend(&key_id);
 
         // Sign authenticator data and a hash of the collected client data.
-        let mut signed = authenticator_data.clone();
+        let mut signed = authenticator_data.to_vec();
         signed.extend(Sha256::new().chain_update(&cdj).finalize());
         let signature = signing_key.sign(&signed).to_der();
 
@@ -278,7 +278,7 @@ mod tests {
         let login_finish = ts
             .post("/login/finish")
             .json(&AuthenticationResponse {
-                raw_id: key_id.clone(),
+                raw_id: key_id,
                 authenticator_data,
                 client_data_json: cdj.as_bytes().to_vec(),
                 signature: signature.as_bytes().to_vec(),

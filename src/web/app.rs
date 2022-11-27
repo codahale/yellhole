@@ -64,9 +64,9 @@ impl App {
 
         let (state, expiry) = AppState::new(
             self.db,
-            &self.config.author,
-            &self.config.title,
-            &self.config.base_url,
+            self.config.author,
+            self.config.title,
+            self.config.base_url,
             &self.data_dir,
         )?;
         let app = Router::new()
@@ -115,25 +115,17 @@ pub struct AppState {
 impl AppState {
     pub fn new(
         db: SqlitePool,
-        author: &str,
-        title: &str,
-        base_url: &Url,
+        author: String,
+        title: String,
+        base_url: Url,
         data_dir: impl AsRef<Path>,
     ) -> Result<(AppState, JoinHandle<Result<(), sqlx::Error>>), io::Error> {
         let (sessions, session_expiry) = SessionService::new(db.clone());
         let images = ImageService::new(db.clone(), &data_dir)?;
         let notes = NoteService::new(db.clone());
-        let passkeys = PasskeyService::new(db, base_url);
+        let passkeys = PasskeyService::new(db, base_url.clone());
         Ok((
-            AppState {
-                author: author.into(),
-                title: title.into(),
-                notes,
-                passkeys,
-                base_url: base_url.clone(),
-                sessions,
-                images,
-            },
+            AppState { author, title, notes, passkeys, base_url, sessions, images },
             session_expiry,
         ))
     }
@@ -163,11 +155,11 @@ impl IntoResponse for AppError {
 
 fn handle_panic(err: Box<dyn Any + Send + 'static>) -> Response {
     let details = if let Some(s) = err.downcast_ref::<String>() {
-        s.clone()
+        s.as_str()
     } else if let Some(s) = err.downcast_ref::<&str>() {
-        s.to_string()
+        s
     } else {
-        "Unknown panic message".to_string()
+        "Unknown panic message"
     };
     tracing::error!(err = details, "panic in handler");
     ErrorPage::for_status(StatusCode::INTERNAL_SERVER_ERROR).into_response()
