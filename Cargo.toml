@@ -26,6 +26,7 @@ base64 = { version = "0.13.1", features = ["std"] }
 chrono = { version = "0.4.23", default-features = false, features = ["std", "serde"] }
 clap = { version = "4.0.27", features = ["derive", "env"] }
 constant_time_eq = "0.2.4"
+elegant-departure = { version = "0.2.0", features = ["tokio"] }
 futures = "0.3.25"
 hex = "0.4.3"
 include_dir = "0.7.3"

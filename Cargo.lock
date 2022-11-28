@@ -564,6 +564,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "elegant-departure"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "337b0d2577b8f0ecc77d155ad9f1a9140345f24c80e0ecbf2fe24e69fec3e9de"
+dependencies = [
+ "futures",
+ "lazy_static",
+ "pin-project-lite",
+ "tokio",
+ "tokio-util 0.6.10",
+]
+
+[[package]]
 name = "elliptic-curve"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -833,7 +846,7 @@ dependencies = [
  "indexmap",
  "slab",
  "tokio",
- "tokio-util",
+ "tokio-util 0.7.4",
  "tracing",
 ]
 
@@ -1740,7 +1753,7 @@ dependencies = [
  "serde_urlencoded",
  "tokio",
  "tokio-native-tls",
- "tokio-util",
+ "tokio-util 0.7.4",
  "tower-service",
  "url",
  "wasm-bindgen",
@@ -2306,6 +2319,20 @@ dependencies = [
 
 [[package]]
 name = "tokio-util"
+version = "0.6.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "36943ee01a6d67977dd3f84a5a1d2efeb4ada3a1ae771cadfaa535d9d9fc6507"
+dependencies = [
+ "bytes",
+ "futures-core",
+ "futures-sink",
+ "log",
+ "pin-project-lite",
+ "tokio",
+]
+
+[[package]]
+name = "tokio-util"
 version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0bb2e075f03b3d66d8d8785356224ba688d2906a371015e225beeb65ca92c740"
@@ -2362,7 +2389,7 @@ dependencies = [
  "percent-encoding",
  "pin-project-lite",
  "tokio",
- "tokio-util",
+ "tokio-util 0.7.4",
  "tower",
  "tower-layer",
  "tower-service",
@@ -2815,6 +2842,7 @@ dependencies = [
  "clap",
  "constant_time_eq",
  "ecdsa",
+ "elegant-departure",
  "futures",
  "hex",
  "include_dir",
@@ -2833,7 +2861,7 @@ dependencies = [
  "tempdir",
  "thiserror",
  "tokio",
- "tokio-util",
+ "tokio-util 0.7.4",
  "tower",
  "tower-http",
  "tracing",

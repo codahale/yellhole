@@ -7,7 +7,7 @@ use axum::response::{IntoResponse, Response};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use sqlx::SqlitePool;
 use thiserror::Error;
-use tokio::{signal, task};
+use tokio::task;
 use tower::ServiceBuilder;
 use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::request_id::MakeRequestUuid;
@@ -83,7 +83,7 @@ impl App {
 
         axum::Server::bind(addr)
             .serve(app.into_make_service())
-            .with_graceful_shutdown(shutdown_signal())
+            .with_graceful_shutdown(elegant_departure::tokio::depart().on_termination())
             .await?;
 
         expiry.await??;
@@ -153,34 +153,4 @@ fn handle_panic(err: Box<dyn Any + Send + 'static>) -> Response {
 #[tracing::instrument(err)]
 async fn not_found(uri: Uri) -> Result<(), AppError> {
     Err(AppError::NotFound)
-}
-
-async fn shutdown_signal() {
-    let ctrl_c = async {
-        if let Err(err) = signal::ctrl_c().await {
-            tracing::error!(%err, "unable to install ^C signal handler");
-        }
-    };
-
-    #[cfg(unix)]
-    let terminate = async {
-        match signal::unix::signal(signal::unix::SignalKind::terminate()) {
-            Ok(mut h) => {
-                h.recv().await;
-            }
-            Err(err) => {
-                tracing::error!(%err, "unable to install SIGTERM handler");
-            }
-        };
-    };
-
-    #[cfg(not(unix))]
-    let terminate = std::future::pending::<()>();
-
-    tokio::select! {
-        _ = ctrl_c => {},
-        _ = terminate => {},
-    }
-
-    tracing::info!("starting graceful shutdown");
 }
