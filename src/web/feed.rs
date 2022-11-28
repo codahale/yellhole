@@ -121,7 +121,7 @@ async fn atom(State(state): State<AppState>) -> Result<Response, AppError> {
         .await?
         .iter()
         .map(|n| Entry {
-            id: state.base_url.join(&format!("note/{}", n.note_id)).unwrap().to_string(),
+            id: filters::to_note_url(n, &state.base_url).unwrap().to_string(),
             title: Text { value: n.note_id.to_string(), ..Default::default() },
             content: Some(Content {
                 content_type: Some("html".into()),
