@@ -1,6 +1,7 @@
 use std::net::{SocketAddr, TcpListener};
 
 use axum::Router;
+use clap::Parser;
 use reqwest::redirect::Policy;
 use reqwest::{Client, ClientBuilder, RequestBuilder, Url};
 use sqlx::SqlitePool;
@@ -12,6 +13,7 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
 
+use crate::config::Config;
 use crate::web::AppState;
 
 pub struct TestEnv {
@@ -22,10 +24,11 @@ pub struct TestEnv {
 impl TestEnv {
     pub fn new(db: SqlitePool) -> Result<TestEnv, anyhow::Error> {
         let temp_dir = TempDir::new("yellhole-test")?;
-        let base_url = "http://example.com/".parse()?;
-        let (state, h) =
-            AppState::new(db, "Luther Blissett".into(), "Yellhole".into(), base_url, &temp_dir)?;
-        h.abort();
+        let config = Config::parse_from([
+            format!("--data-dir={}", temp_dir.path().to_str().unwrap()),
+            "--base-url=http://example.com".into(),
+        ]);
+        let state = AppState::new(db, config)?;
         Ok(TestEnv { state, temp_dir })
     }
 

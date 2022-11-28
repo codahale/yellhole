@@ -1,8 +1,7 @@
 use std::time::Duration;
 
 use sqlx::SqlitePool;
-use tokio::task::JoinHandle;
-use tokio::{task, time};
+use tokio::time;
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
@@ -13,10 +12,8 @@ pub struct SessionService {
 impl SessionService {
     pub const TTL: Duration = Duration::from_secs(60 * 60 * 24 * 7);
 
-    pub fn new(db: SqlitePool) -> (SessionService, JoinHandle<Result<(), sqlx::Error>>) {
-        let service = SessionService { db };
-        let expiry = task::spawn(service.clone().continuously_delete_expired());
-        (service, expiry)
+    pub fn new(db: SqlitePool) -> SessionService {
+        SessionService { db }
     }
 
     #[tracing::instrument(skip(self), err)]

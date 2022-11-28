@@ -1,5 +1,4 @@
 use std::any::Any;
-use std::path::{Path, PathBuf};
 use std::{fs, io};
 
 use axum::http::{self, StatusCode, Uri};
@@ -9,8 +8,7 @@ use axum::Router;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use sqlx::SqlitePool;
 use thiserror::Error;
-use tokio::signal;
-use tokio::task::JoinHandle;
+use tokio::{signal, task};
 use tower::ServiceBuilder;
 use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::request_id::MakeRequestUuid;
@@ -32,21 +30,20 @@ use super::pages::ErrorPage;
 #[derive(Debug)]
 pub struct App {
     db: SqlitePool,
-    data_dir: PathBuf,
     config: Config,
 }
 
 impl App {
-    pub async fn new(config: Config) -> Result<App, anyhow::Error> {
+    pub async fn new(mut config: Config) -> Result<App, anyhow::Error> {
         anyhow::ensure!(config.base_url.path() == "/", "base URL must not have a path");
         anyhow::ensure!(config.base_url.host().is_some(), "base URL must have a host");
 
         // Initialize the data directory.
-        let data_dir = config.data_dir.canonicalize()?;
-        fs::create_dir_all(&data_dir)?;
+        config.data_dir = config.data_dir.canonicalize()?;
+        fs::create_dir_all(&config.data_dir)?;
 
         // Connect to the DB.
-        let db_path = data_dir.join("yellhole.db");
+        let db_path = config.data_dir.join("yellhole.db");
         tracing::info!(?db_path, "opening database");
         let db_opts = SqliteConnectOptions::new().create_if_missing(true).filename(db_path);
         let db = SqlitePoolOptions::new().connect_with(db_opts).await?;
@@ -55,20 +52,15 @@ impl App {
         tracing::info!("running migrations");
         sqlx::migrate!().run(&db).await?;
 
-        Ok(App { db, data_dir, config })
+        Ok(App { db, config })
     }
 
     pub async fn serve(self) -> anyhow::Result<()> {
         let addr = &([0, 0, 0, 0], self.config.port).into();
         tracing::info!(%addr, base_url=%self.config.base_url, "starting server");
 
-        let (state, expiry) = AppState::new(
-            self.db,
-            self.config.author,
-            self.config.title,
-            self.config.base_url,
-            &self.data_dir,
-        )?;
+        let state = AppState::new(self.db, self.config)?;
+        let expiry = task::spawn(state.sessions.clone().continuously_delete_expired());
         let app = Router::new()
             .merge(admin::router())
             .route_layer(middleware::from_fn_with_state(state.clone(), auth::require_auth))
@@ -119,21 +111,14 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(
-        db: SqlitePool,
-        author: String,
-        title: String,
-        base_url: Url,
-        data_dir: impl AsRef<Path>,
-    ) -> Result<(AppState, JoinHandle<Result<(), sqlx::Error>>), io::Error> {
-        let (sessions, session_expiry) = SessionService::new(db.clone());
-        let images = ImageService::new(db.clone(), &data_dir)?;
+    pub fn new(db: SqlitePool, config: Config) -> Result<AppState, io::Error> {
+        let title = config.title;
         let notes = NoteService::new(db.clone());
-        let passkeys = PasskeyService::new(db, base_url.clone());
-        Ok((
-            AppState { author, title, notes, passkeys, base_url, sessions, images },
-            session_expiry,
-        ))
+        let passkeys = PasskeyService::new(db.clone(), config.base_url.clone());
+        let base_url = config.base_url;
+        let sessions = SessionService::new(db.clone());
+        let images = ImageService::new(db, &config.data_dir)?;
+        Ok(AppState { author: config.author, title, notes, passkeys, base_url, sessions, images })
     }
 }
 
