@@ -4,7 +4,6 @@ use std::{fs, io};
 use axum::http::{self, StatusCode, Uri};
 use axum::middleware::{self};
 use axum::response::{IntoResponse, Response};
-use axum::Router;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use sqlx::SqlitePool;
 use thiserror::Error;
@@ -61,8 +60,7 @@ impl App {
 
         let state = AppState::new(self.db, self.config)?;
         let expiry = task::spawn(state.sessions.clone().continuously_delete_expired());
-        let app = Router::new()
-            .merge(admin::router())
+        let app = admin::router()
             .route_layer(middleware::from_fn_with_state(state.clone(), auth::require_auth))
             .merge(auth::router())
             .merge(feed::router())
@@ -94,11 +92,6 @@ impl App {
     }
 }
 
-#[tracing::instrument(err)]
-async fn not_found(uri: Uri) -> Result<(), AppError> {
-    Err(AppError::NotFound)
-}
-
 #[derive(Debug, Clone)]
 pub struct AppState {
     pub author: String,
@@ -112,13 +105,14 @@ pub struct AppState {
 
 impl AppState {
     pub fn new(db: SqlitePool, config: Config) -> Result<AppState, io::Error> {
+        let author = config.author;
         let title = config.title;
         let notes = NoteService::new(db.clone());
         let passkeys = PasskeyService::new(db.clone(), config.base_url.clone());
         let base_url = config.base_url;
         let sessions = SessionService::new(db.clone());
         let images = ImageService::new(db, &config.data_dir)?;
-        Ok(AppState { author: config.author, title, notes, passkeys, base_url, sessions, images })
+        Ok(AppState { author, title, notes, passkeys, base_url, sessions, images })
     }
 }
 
@@ -154,6 +148,11 @@ fn handle_panic(err: Box<dyn Any + Send + 'static>) -> Response {
     };
     tracing::error!(err = details, "panic in handler");
     ErrorPage::for_status(StatusCode::INTERNAL_SERVER_ERROR).into_response()
+}
+
+#[tracing::instrument(err)]
+async fn not_found(uri: Uri) -> Result<(), AppError> {
+    Err(AppError::NotFound)
 }
 
 async fn shutdown_signal() {
