@@ -105,14 +105,15 @@ pub struct AppState {
 
 impl AppState {
     pub fn new(db: SqlitePool, config: Config) -> Result<AppState, io::Error> {
-        let author = config.author;
-        let title = config.title;
-        let notes = NoteService::new(db.clone());
-        let passkeys = PasskeyService::new(db.clone(), config.base_url.clone());
-        let base_url = config.base_url;
-        let sessions = SessionService::new(db.clone());
-        let images = ImageService::new(db, &config.data_dir)?;
-        Ok(AppState { author, title, notes, passkeys, base_url, sessions, images })
+        Ok(AppState {
+            author: config.author,
+            title: config.title,
+            notes: NoteService::new(db.clone()),
+            passkeys: PasskeyService::new(db.clone(), config.base_url.clone()),
+            base_url: config.base_url,
+            sessions: SessionService::new(db.clone()),
+            images: ImageService::new(db, &config.data_dir)?,
+        })
     }
 }
 
