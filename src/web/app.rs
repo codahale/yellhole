@@ -2,7 +2,7 @@ use std::any::Any;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
-use axum::http::{self, StatusCode};
+use axum::http::{self, StatusCode, Uri};
 use axum::middleware::{self};
 use axum::response::{IntoResponse, Response};
 use axum::Router;
@@ -75,6 +75,7 @@ impl App {
             .merge(auth::router())
             .merge(feed::router())
             .merge(asset::router(state.images.images_dir()))
+            .fallback(not_found)
             .layer(
                 ServiceBuilder::new()
                     .set_x_request_id(MakeRequestUuid)
@@ -99,6 +100,11 @@ impl App {
 
         Ok(())
     }
+}
+
+#[tracing::instrument(err)]
+async fn not_found(uri: Uri) -> Result<(), AppError> {
+    Err(AppError::NotFound)
 }
 
 #[derive(Debug, Clone)]
