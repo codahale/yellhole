@@ -45,6 +45,15 @@
             </ul>
         </details>
     </li>
+    <li>
+        <a href="{{base_url|to_atom_url}}">
+            <svg style="width: 30px; height: 30px" viewBox="0 0 800 800">
+                <path
+                    d="M493 652H392c0-134-111-244-244-244V307c189 0 345 156 345 345zm71 0c0-228-188-416-416-416V132c285 0 520 235 520 520z" />
+                <circle cx="219" cy="581" r="71" />
+            </svg>
+        </a>
+    </li>
 </ul>
 {% endblock %}
 
@@ -56,16 +65,18 @@
 {% endif %}
 {% for n in notes %}
 <article>
-    <div class="content">
-        {{ n.to_html() | safe }}
-    </div>
-    <footer>
-        <a href="{{n|to_note_url(base_url)}}">
-            <time datetime="{{n.created_at.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)}}">
-                {{n.created_at|to_local_tz}}
-            </time>
-        </a>
-    </footer>
+    <section>
+        <div class="content">
+            {{ n.to_html() | safe }}
+        </div>
+        <footer>
+            <a href="{{n|to_note_url(base_url)}}">
+                <time datetime="{{n.created_at.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)}}">
+                    {{n.created_at|to_local_tz}}
+                </time>
+            </a>
+        </footer>
+    </section>
 </article>
 {% endfor %}
 {% endblock %}

@@ -1,13 +1,18 @@
 {% extends "layout.html" %}
+
+{% block title %}Uh Oh{% endblock %}
+{% block description %}We need to talk.{% endblock %}
+
 {% block content %}
-<section>
-    <h2>Uh Oh</h2>
-    {% if status == StatusCode::NOT_FOUND %}
-    <p>Page not found. Dunno what to tell you.</p>
-    {% else if status == StatusCode::BAD_REQUEST %}
-    <p>That request was bad. Don't retry it.</p>
-    {% else %}
-    <p>Something went wrong. Maybe go for a walk about it?</p>
-    {% endif %}
-</section>
+<article>
+    <section style="text-align: center;">
+        {% if status == StatusCode::NOT_FOUND %}
+        <p>Page not found. Dunno what to tell you.</p>
+        {% else if status == StatusCode::BAD_REQUEST %}
+        <p>That request was bad. Don't retry it.</p>
+        {% else %}
+        <p>Something went wrong. Maybe go for a walk about it?</p>
+        {% endif %}
+    </section>
+</article>
 {% endblock %}
