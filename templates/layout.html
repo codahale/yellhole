@@ -1,30 +1,33 @@
 <!DOCTYPE html>
-<html lang="en" color-mode="user">
+<html lang="en">
 
 <head>
     <title>{% block title %}Yellhole{% endblock %}</title>
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
     <meta charset='utf-8'>
-    <link rel="stylesheet" href="/assets/css/mvp-1.12.css">
+    <link rel="stylesheet" href="/assets/css/pico.classless-1.5.6.min.css">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
     <link rel="manifest" href="/site.webmanifest">
     {% block head %}{% endblock %}
     <style type="text/css">
-        :root {
-            --width-card: var(--width-card-medium);
+        .content p img {
+            display: block;
+            margin: auto;
         }
 
-        nav {
-            margin-bottom: 0;
+        body>header {
+            padding-bottom: 0;
         }
 
-        blockquote {
-            border-left: 3px solid var(--color-text-secondary);
-            font-size: large;
-            padding: 0 1rem;
-            text-align: unset;
+        body>main {
+            max-width: 700px;
+            padding-top: 0;
+        }
+
+        hgroup h1 a {
+            color: var(--h1-color);
         }
     </style>
 </head>
@@ -32,8 +35,16 @@
 <body>
     <header>
         <nav>
-            <a href="/"><img src="/assets/img/logo.webp" alt="YH"></a>
-            <h1>{% block title %}Yellhole{% endblock %} <small>[obscurantist filth]</small></h1>
+            <ul>
+                <li>
+                    <hgroup>
+                        <h1>
+                            <a href="/">{% block title %}Yellhole{% endblock %}</a>
+                        </h1>
+                        <h2>Obscurantist filth.</h2>
+                    </hgroup>
+                </li>
+            </ul>
             {% block nav %}{% endblock %}
         </nav>
     </header>
@@ -41,7 +52,9 @@
         {% block content %}{% endblock %}
     </main>
     <footer>
-        {% block footer %}{% endblock %}
+        <small>
+            {% block footer %}{% endblock %}
+        </small>
     </footer>
 
     {% block tail %}{% endblock %}

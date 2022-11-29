@@ -30,16 +30,19 @@
 
 {% block nav %}
 <ul>
-    <li><a href="#">Archive</a>
-        <ul>
-            {% for d in weeks %}
-            <li>
-                <a href="{{d.start|to_weekly_url(base_url)}}">
-                    {{d.start}} to {{d.end}}
-                </a>
-            </li>
-            {% endfor %}
-        </ul>
+    <li>
+        <details role="list">
+            <summary aria-haspopup="listbox" role="link">Archives</summary>
+            <ul role="listbox">
+                {% for d in weeks %}
+                <li>
+                    <a href="{{d.start|to_weekly_url(base_url)}}">
+                        {{d.start}} to {{d.end}}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </details>
     </li>
 </ul>
 {% endblock %}
@@ -51,12 +54,18 @@
 </section>
 {% endif %}
 {% for n in notes %}
-<section>
-    <aside>
+<article>
+    <div class="content">
         {{ n.to_html() | safe }}
-        <p><small><a href="{{n|to_note_url(base_url)}}">{{n.created_at|to_local_tz}}</a></small></p>
-    </aside>
-</section>
+    </div>
+    <footer>
+        <a href="{{n|to_note_url(base_url)}}">
+            <time datetime="{{n.created_at}}">
+                {{n.created_at|to_local_tz}}
+            </time>
+        </a>
+    </footer>
+</article>
 {% endfor %}
 {% endblock %}
 
