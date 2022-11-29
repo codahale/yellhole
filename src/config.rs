@@ -5,7 +5,11 @@ use url::Url;
 
 #[derive(Debug, Clone, Parser)]
 pub struct Config {
-    /// The port on which to listen. Binds to 0.0.0.0.
+    /// The address on which to listen.
+    #[clap(long, default_value = "127.0.0.1", env("ADDR"))]
+    pub addr: String,
+
+    /// The port on which to listen.
     #[clap(long, default_value = "3000", env("PORT"))]
     pub port: u16,
 

@@ -55,7 +55,7 @@ impl App {
     }
 
     pub async fn serve(self) -> anyhow::Result<()> {
-        let addr = &([0, 0, 0, 0], self.config.port).into();
+        let addr = format!("{}:{}", self.config.addr, self.config.port).parse()?;
         tracing::info!(%addr, base_url=%self.config.base_url, "starting server");
 
         let state = AppState::new(self.db, self.config)?;
@@ -81,7 +81,7 @@ impl App {
             )
             .with_state(state);
 
-        axum::Server::bind(addr)
+        axum::Server::bind(&addr)
             .serve(app.into_make_service())
             .with_graceful_shutdown(elegant_departure::tokio::depart().on_termination())
             .await?;
