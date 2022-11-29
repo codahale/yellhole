@@ -60,7 +60,7 @@
     </div>
     <footer>
         <a href="{{n|to_note_url(base_url)}}">
-            <time datetime="{{n.created_at}}">
+            <time datetime="{{n.created_at.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)}}">
                 {{n.created_at|to_local_tz}}
             </time>
         </a>
