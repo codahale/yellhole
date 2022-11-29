@@ -96,6 +96,7 @@ impl App {
 pub struct AppState {
     pub author: String,
     pub title: String,
+    pub description: String,
     pub notes: NoteService,
     pub passkeys: PasskeyService,
     pub base_url: Url,
@@ -108,6 +109,7 @@ impl AppState {
         Ok(AppState {
             author: config.author,
             title: config.title,
+            description: config.description,
             notes: NoteService::new(db.clone()),
             passkeys: PasskeyService::new(db.clone(), config.base_url.clone()),
             base_url: config.base_url,

@@ -21,6 +21,10 @@ pub struct Config {
     #[clap(long, default_value = "Yellhole", env("TITLE"))]
     pub title: String,
 
+    /// The description of the Yellhole instance.
+    #[clap(long, default_value = "Obscurantist filth.", env("DESCRIPTION"))]
+    pub description: String,
+
     /// The name of the person posting this crap.
     #[clap(long, default_value = "Luther Blissett", env("AUTHOR"))]
     pub author: String,

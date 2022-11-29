@@ -40,6 +40,7 @@ pub fn router() -> Router<AppState> {
 struct FeedPage {
     author: String,
     title: String,
+    description: String,
     base_url: url::Url,
     notes: Vec<Note>,
     weeks: Vec<Range<NaiveDate>>,
@@ -50,6 +51,7 @@ impl FeedPage {
         FeedPage {
             author: state.author,
             title: state.title,
+            description: state.description,
             base_url: state.base_url,
             notes,
             weeks,
@@ -138,6 +140,7 @@ async fn atom(State(state): State<AppState>) -> Result<Response, AppError> {
         authors: vec![Person { name: state.author, ..Default::default() }],
         base: Some(state.base_url.join("atom.xml").unwrap().to_string()),
         title: Text { value: state.title, ..Default::default() },
+        subtitle: Some(Text { value: state.description, ..Default::default() }),
         entries,
         links: vec![Link {
             href: state.base_url.join("atom.xml").unwrap().to_string(),
