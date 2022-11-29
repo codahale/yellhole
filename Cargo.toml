@@ -24,7 +24,7 @@ axum = { version = "0.6.0", features = ["http2", "multipart"] }
 axum-extra = { version = "0.4.0", features = ["cookie"] }
 base64 = { version = "0.13.1", features = ["std"] }
 chrono = { version = "0.4.23", default-features = false, features = ["std", "serde"] }
-clap = { version = "4.0.27", features = ["derive", "env"] }
+clap = { version = "4.0.29", features = ["derive", "env"] }
 constant_time_eq = "0.2.4"
 elegant-departure = { version = "0.2.0", features = ["tokio"] }
 futures = "0.3.25"
