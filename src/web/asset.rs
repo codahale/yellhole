@@ -1,8 +1,9 @@
-use axum::extract::Path;
-use axum::http::{Request, StatusCode, Uri};
+use std::path::Path;
+
+use axum::http::{Request, StatusCode};
 use axum::middleware::Next;
-use axum::response::{IntoResponse, Response};
-use axum::routing::{get, get_service};
+use axum::response::Response;
+use axum::routing::get_service;
 use axum::{http, middleware, Router};
 use include_dir::{include_dir, Dir};
 use tokio::io;
@@ -13,16 +14,32 @@ use tower_http::set_header::SetResponseHeaderLayer;
 use super::app::AppState;
 use super::AppError;
 
-pub fn router(images_dir: impl AsRef<std::path::Path>) -> Router<AppState> {
-    Router::new()
-        .route("/android-chrome-192x192.png", get(static_asset))
-        .route("/android-chrome-512x512.png", get(static_asset))
-        .route("/apple-touch-icon.png", get(static_asset))
-        .route("/favicon-16x16.png", get(static_asset))
-        .route("/favicon-32x32.png", get(static_asset))
-        .route("/favicon.ico", get(static_asset))
-        .route("/site.webmanifest", get(static_asset))
-        .route("/assets/*path", get(static_path))
+pub fn router(
+    images_dir: impl AsRef<Path>,
+    temp_dir: impl AsRef<Path>,
+) -> io::Result<Router<AppState>> {
+    // Extract the assets from the compiled binary to the temp directory.
+    tracing::info!(dir=?temp_dir.as_ref(), "extracting assets to temp dir");
+    ASSET_DIR.extract(temp_dir.as_ref())?;
+
+    let assets = get_service(
+        ServiceBuilder::new()
+            .service(ServeDir::new(temp_dir.as_ref()).precompressed_br().precompressed_gzip()),
+    )
+    .handle_error(io_error);
+
+    Ok(Router::new()
+        // Serve particular asset files.
+        .route_service("/android-chrome-192x192.png", assets.clone())
+        .route_service("/android-chrome-512x512.png", assets.clone())
+        .route_service("/apple-touch-icon.png", assets.clone())
+        .route_service("/favicon-16x16.png", assets.clone())
+        .route_service("/favicon-32x32.png", assets.clone())
+        .route_service("/favicon.ico", assets.clone())
+        .route_service("/site.webmanifest", assets.clone())
+        // Serve general asset files.
+        .nest_service("/assets", assets)
+        // Serve images.
         .nest_service(
             "/images",
             get_service(ServiceBuilder::new().service(ServeDir::new(images_dir)))
@@ -32,21 +49,7 @@ pub fn router(images_dir: impl AsRef<std::path::Path>) -> Router<AppState> {
             http::header::CACHE_CONTROL,
             http::HeaderValue::from_static("max-age=31536000,immutable"),
         ))
-        .layer(middleware::from_fn(not_found))
-}
-
-#[tracing::instrument(err)]
-async fn static_asset(uri: Uri) -> Result<Response, StatusCode> {
-    static_path(Path(uri.to_string())).await
-}
-
-#[tracing::instrument(err)]
-async fn static_path(Path(path): Path<String>) -> Result<Response, StatusCode> {
-    let path = path.trim_start_matches('/');
-    let mime_type = mime_guess::from_path(path).first_or_octet_stream();
-    let content_type = http::HeaderValue::from_str(mime_type.as_ref()).expect("invalid header");
-    let file = STATIC_DIR.get_file(path).ok_or(StatusCode::NOT_FOUND)?;
-    Ok(([(http::header::CONTENT_TYPE, content_type)], file.contents()).into_response())
+        .layer(middleware::from_fn(not_found)))
 }
 
 #[tracing::instrument(level = "warn")]
@@ -63,7 +66,7 @@ async fn not_found<B>(req: Request<B>, next: Next<B>) -> Result<Response, AppErr
     }
 }
 
-static STATIC_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/assets");
+static ASSET_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/assets");
 
 #[cfg(test)]
 mod tests {
@@ -75,7 +78,9 @@ mod tests {
 
     #[sqlx::test]
     async fn static_asset(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestEnv::new(db)?.into_server(router("."))?;
+        let ts = TestEnv::new(db)?;
+        let app = router(".", ts.state.temp_dir.path())?;
+        let ts = ts.into_server(app)?;
 
         let resp = ts.get("/assets/css/pico-1.5.6.min.css").send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
@@ -89,7 +94,9 @@ mod tests {
 
     #[sqlx::test]
     async fn image(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestEnv::new(db)?.into_server(router("."))?;
+        let ts = TestEnv::new(db)?;
+        let app = router(".", ts.state.temp_dir.path())?;
+        let ts = ts.into_server(app)?;
 
         let resp = ts.get("/images/LICENSE").send().await?;
         assert_eq!(resp.status(), StatusCode::OK);

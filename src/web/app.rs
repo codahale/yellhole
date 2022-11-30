@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::sync::Arc;
 use std::{fs, io};
 
 use axum::http::{self, StatusCode, Uri};
@@ -6,6 +7,7 @@ use axum::middleware::{self};
 use axum::response::{IntoResponse, Response};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use sqlx::SqlitePool;
+use tempdir::TempDir;
 use thiserror::Error;
 use tokio::task;
 use tower::ServiceBuilder;
@@ -64,7 +66,7 @@ impl App {
             .route_layer(middleware::from_fn_with_state(state.clone(), auth::require_auth))
             .merge(auth::router())
             .merge(feed::router())
-            .merge(asset::router(state.images.images_dir()))
+            .merge(asset::router(state.images.images_dir(), state.temp_dir.path())?)
             .fallback(not_found)
             .layer(
                 ServiceBuilder::new()
@@ -102,6 +104,7 @@ pub struct AppState {
     pub base_url: Url,
     pub sessions: SessionService,
     pub images: ImageService,
+    pub temp_dir: Arc<TempDir>,
 }
 
 impl AppState {
@@ -115,6 +118,7 @@ impl AppState {
             base_url: config.base_url,
             sessions: SessionService::new(db.clone()),
             images: ImageService::new(db, &config.data_dir)?,
+            temp_dir: Arc::new(TempDir::new("yellhole-temp")?),
         })
     }
 }
