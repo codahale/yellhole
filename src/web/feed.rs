@@ -10,6 +10,7 @@ use axum::Router;
 use chrono::{Days, FixedOffset, NaiveDate, Utc};
 use serde::Deserialize;
 use tower_http::set_header::SetResponseHeaderLayer;
+use url::Url;
 use uuid::Uuid;
 
 use super::app::{AppError, AppState};
@@ -41,7 +42,7 @@ struct FeedPage {
     author: String,
     title: String,
     description: String,
-    base_url: url::Url,
+    base_url: Url,
     notes: Vec<Note>,
     weeks: Vec<Range<NaiveDate>>,
 }
@@ -60,25 +61,32 @@ impl FeedPage {
 }
 
 mod filters {
+    use askama::{Error::Custom, Result};
     use chrono::{DateTime, Local, NaiveDate, Utc};
     use url::Url;
 
     use crate::services::notes::Note;
 
-    pub fn to_local_tz(t: &DateTime<Utc>) -> askama::Result<DateTime<Local>> {
+    pub fn to_local_tz(t: &DateTime<Utc>) -> Result<DateTime<Local>> {
         Ok(t.with_timezone(&Local))
     }
 
-    pub fn to_note_url(note: &Note, base_url: &Url) -> askama::Result<Url> {
-        Ok(base_url.join("note/").unwrap().join(&note.note_id.to_string()).unwrap())
+    pub fn to_note_url(note: &Note, base_url: &Url) -> Result<Url> {
+        base_url
+            .join("note/")
+            .and_then(|u| u.join(&note.note_id.to_string()))
+            .map_err(|e| Custom(Box::new(e)))
     }
 
-    pub fn to_atom_url(base_url: &Url) -> askama::Result<Url> {
-        Ok(base_url.join("atom.xml").unwrap())
+    pub fn to_atom_url(base_url: &Url) -> Result<Url> {
+        base_url.join("atom.xml").map_err(|e| Custom(Box::new(e)))
     }
 
-    pub fn to_weekly_url(week: &NaiveDate, base_url: &Url) -> askama::Result<Url> {
-        Ok(base_url.join("notes/").unwrap().join(&week.to_string()).unwrap())
+    pub fn to_weekly_url(week: &NaiveDate, base_url: &Url) -> Result<Url> {
+        base_url
+            .join("notes/")
+            .and_then(|u| u.join(&week.to_string()))
+            .map_err(|e| Custom(Box::new(e)))
     }
 }
 
