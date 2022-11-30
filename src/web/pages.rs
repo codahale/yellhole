@@ -2,6 +2,8 @@ use askama::Template;
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse, Response};
 
+use crate::web::AppState;
+
 #[derive(Debug)]
 pub struct Page<T: Template>(pub T);
 

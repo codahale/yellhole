@@ -108,6 +108,8 @@ pub struct AppState {
 }
 
 impl AppState {
+    pub const GIT_COMMIT: &str = env!("VERGEN_GIT_SHA");
+
     pub fn new(db: SqlitePool, config: Config) -> Result<AppState, io::Error> {
         Ok(AppState {
             author: config.author,
