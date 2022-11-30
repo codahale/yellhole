@@ -201,7 +201,7 @@ mod tests {
         let feed = Feed::read_from(Cursor::new(&resp.bytes().await?))?;
         assert_eq!(
             feed.entries[0].content().unwrap().value().unwrap(),
-            "<p>It's a me, <em>Mario</em>.</p>\n"
+            "<p>It’s a me, <em>Mario</em>.</p>\n"
         );
 
         Ok(())

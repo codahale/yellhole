@@ -1,7 +1,7 @@
 use std::ops::Range;
 
 use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone, Utc};
-use pulldown_cmark::{Event, Parser, Tag};
+use pulldown_cmark::{Event, Options, Parser, Tag};
 use sqlx::SqlitePool;
 use url::Url;
 use uuid::fmt::Hyphenated;
@@ -105,12 +105,12 @@ pub struct Note {
 impl Note {
     pub fn to_html(&self) -> String {
         let mut out = String::with_capacity(256);
-        pulldown_cmark::html::push_html(&mut out, Parser::new(&self.body));
+        pulldown_cmark::html::push_html(&mut out, parse_md(&self.body));
         out
     }
 
     pub fn images(&self, base_url: &Url) -> Vec<Url> {
-        Parser::new(&self.body)
+        parse_md(&self.body)
             .flat_map(|e| match e {
                 Event::Start(Tag::Image(_, url, _)) => base_url.join(url.as_ref()).ok(),
                 _ => None,
@@ -119,13 +119,17 @@ impl Note {
     }
 
     pub fn description(&self) -> String {
-        Parser::new(&self.body).fold(String::with_capacity(256), |mut d, e| {
+        parse_md(&self.body).fold(String::with_capacity(256), |mut d, e| {
             if let Event::Text(s) = e {
                 d.push_str(s.as_ref());
             }
             d
         })
     }
+}
+
+fn parse_md(md: &str) -> Parser {
+    Parser::new_ext(md, Options::ENABLE_SMART_PUNCTUATION | Options::ENABLE_STRIKETHROUGH)
 }
 
 fn local_date_to_utc(d: &NaiveDate) -> DateTime<Utc> {
@@ -142,11 +146,11 @@ mod tests {
     fn body_to_html() {
         let note = Note {
             note_id: Uuid::new_v4().hyphenated(),
-            body: r#"It's _electric_!"#.into(),
+            body: r#"It's ~~not~~ _electric_!"#.into(),
             created_at: Utc::now(),
         };
 
-        assert_eq!(note.to_html(), "<p>It's <em>electric</em>!</p>\n");
+        assert_eq!(note.to_html(), "<p>It’s <del>not</del> <em>electric</em>!</p>\n");
     }
 
     #[test]
@@ -157,6 +161,6 @@ mod tests {
             created_at: Utc::now(),
         };
 
-        assert_eq!(note.description(), r#"It's electric!"#);
+        assert_eq!(note.description(), r#"It’s electric!"#);
     }
 }
