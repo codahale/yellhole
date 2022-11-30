@@ -13,14 +13,19 @@
             <textarea cols="40" rows="5" id="body" name="body" placeholder="It'sa me, _Mario_."
                 oninput="updatePost()"></textarea>
             <button id="post" type="submit" disabled>Post</button>
-            <details open>
-                <summary>Recent Images</summary>
-                <div>
+            <details role="list" id="images">
+                <summary aria-haspopup="listbox" role="button" class="secondary">
+                    Recent Images
+                </summary>
+                <ul role="listbox">
                     {% for image in images %}
-                    <img src="{{ image.thumbnail_src() }}" onclick="insertImage('{{ image.main_src() }}')"
-                        title="{{ image.original_filename }}">
+                    <li>
+                        <a href="#" onclick="insertImage('{{ image.main_src() }}')">
+                            <img src="{{ image.thumbnail_src() }}" title="{{ image.original_filename }}">
+                        </a>
+                    </li>
                     {% endfor %}
-                </div>
+                </ul>
             </details>
         </form>
     </section>
@@ -73,6 +78,7 @@
     }
 
     function insertImage(imageSrc) {
+        const dt = document.getElementById('images');
         const el = document.getElementById('body');
         const start = el.selectionStart;
         const end = el.selectionEnd;
@@ -83,6 +89,7 @@
         el.value = (before + newText + after);
         el.selectionStart = el.selectionEnd = start + 2;
         updatePost();
+        dt.open = false;
         el.focus();
     }
 </script>

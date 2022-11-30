@@ -5,7 +5,7 @@
     <title>{% block title %}Yellhole{% endblock %}</title>
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
     <meta charset='utf-8'>
-    <link rel="stylesheet" href="/assets/css/pico.classless-1.5.6.min.css">
+    <link rel="stylesheet" href="/assets/css/pico-1.5.6.min.css">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
@@ -22,7 +22,7 @@
         }
 
         body>main {
-            max-width: 700px;
+            max-width: 700px !important;
             padding-top: 0;
         }
 
@@ -38,7 +38,7 @@
 </head>
 
 <body>
-    <header>
+    <header class="container">
         <nav>
             <ul>
                 <li>
@@ -53,10 +53,10 @@
             {% block nav %}{% endblock %}
         </nav>
     </header>
-    <main>
+    <main class="container">
         {% block content %}{% endblock %}
     </main>
-    <footer>
+    <footer class="container">
         <small>
             {% block footer %}{% endblock %}
         </small>
