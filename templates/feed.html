@@ -65,18 +65,16 @@
 {% endif %}
 {% for n in notes %}
 <article>
-    <section>
-        <div class="content">
-            {{ n.to_html() | safe }}
-        </div>
-        <footer>
-            <a href="{{n|to_note_url(base_url)}}">
-                <time datetime="{{n.created_at.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)}}">
-                    {{n.created_at|to_local_tz}}
-                </time>
-            </a>
-        </footer>
-    </section>
+    <div class="content">
+        {{ n.to_html() | safe }}
+    </div>
+    <footer>
+        <a href="{{n|to_note_url(base_url)}}">
+            <time datetime="{{n.created_at.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)}}">
+                {{n.created_at|to_local_tz}}
+            </time>
+        </a>
+    </footer>
 </article>
 {% endfor %}
 {% endblock %}
