@@ -82,11 +82,16 @@ mod tests {
         let app = router(".", ts.state.temp_dir.path())?;
         let ts = ts.into_server(app)?;
 
-        let resp = ts.get("/assets/css/pico-1.5.6.min.css").send().await?;
+        let resp =
+            ts.get("/assets/css/pico-1.5.6.min.css").header("Accept-Encoding", "br").send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
         assert_eq!(
             resp.headers().get(http::header::CONTENT_TYPE),
             Some(&http::HeaderValue::from_static("text/css")),
+        );
+        assert_eq!(
+            resp.headers().get(http::header::CONTENT_ENCODING),
+            Some(&http::HeaderValue::from_static("br")),
         );
 
         Ok(())
