@@ -77,7 +77,7 @@ mod tests {
     async fn static_asset(db: SqlitePool) -> Result<(), anyhow::Error> {
         let ts = TestEnv::new(db)?.into_server(router("."))?;
 
-        let resp = ts.get("/assets/css/pico.classless-1.5.6.min.css").send().await?;
+        let resp = ts.get("/assets/css/pico-1.5.6.min.css").send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
         assert_eq!(
             resp.headers().get(http::header::CONTENT_TYPE),
