@@ -8,7 +8,7 @@ ADDR = "0.0.0.0"
 PORT = "8080"
 DATA_DIR = "/data"
 AUTHOR = "Coda Hale"
-RUST_LOG = "info,sqlx=warn"
+RUST_LOG = "info,sqlx=warn,tower_http=debug"
 BASE_URL = "https://www.yellhole.com"
 
 [mounts]
