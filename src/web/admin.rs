@@ -5,6 +5,7 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
 use axum::{Form, Router};
+use mime::Mime;
 use serde::Deserialize;
 use tower::ServiceBuilder;
 use tower_http::limit::RequestBodyLimitLayer;
@@ -56,9 +57,7 @@ pub async fn upload_images(
     mut multipart: Multipart,
 ) -> Result<Redirect, AppError> {
     while let Some(field) = multipart.next_field().await.context("multipart error")? {
-        if let Some(content_type) =
-            field.content_type().and_then(|ct| ct.parse::<mime::Mime>().ok())
-        {
+        if let Some(content_type) = field.content_type().and_then(|s| s.parse::<Mime>().ok()) {
             if content_type.type_() == mime::IMAGE {
                 let original_filename = field.file_name().unwrap_or("none").to_string();
                 state.images.add(&original_filename, &content_type, field).await?;
