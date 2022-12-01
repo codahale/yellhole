@@ -184,7 +184,7 @@ mod tests {
         Ok(())
     }
 
-    #[sqlx::test(fixtures("fake_passkey"))]
+    #[sqlx::test(fixtures("passkeys"))]
     async fn registered_register_page(db: SqlitePool) -> Result<(), anyhow::Error> {
         let env = TestEnv::new(db)?;
         let app = app(&env.state);
@@ -200,7 +200,7 @@ mod tests {
         Ok(())
     }
 
-    #[sqlx::test(fixtures("fake_passkey"))]
+    #[sqlx::test(fixtures("passkeys"))]
     async fn registered_login_page(db: SqlitePool) -> Result<(), anyhow::Error> {
         let env = TestEnv::new(db)?;
         let app = app(&env.state);
