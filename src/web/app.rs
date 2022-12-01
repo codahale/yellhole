@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::net::SocketAddr;
 use std::sync::Arc;
 use std::{fs, io};
 
@@ -56,7 +57,7 @@ impl App {
     }
 
     pub async fn serve(self) -> anyhow::Result<()> {
-        let addr = format!("{}:{}", self.config.addr, self.config.port).parse()?;
+        let addr = SocketAddr::new(self.config.addr, self.config.port);
         tracing::info!(%addr, base_url=%self.config.base_url, "starting server");
 
         let state = AppState::new(self.db, self.config)?;
@@ -66,6 +67,7 @@ impl App {
             .merge(auth::router())
             .merge(feed::router())
             .merge(asset::router(&state.images, &state.assets)?)
+            .with_state(state)
             .fallback(not_found)
             .layer(
                 ServiceBuilder::new()
@@ -79,8 +81,7 @@ impl App {
                     )))
                     .propagate_x_request_id()
                     .layer(CatchPanicLayer::custom(handle_panic)),
-            )
-            .with_state(state);
+            );
 
         axum::Server::bind(&addr)
             .serve(app.into_make_service())

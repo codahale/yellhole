@@ -1,3 +1,4 @@
+use std::net::IpAddr;
 use std::path::PathBuf;
 
 use clap::Parser;
@@ -7,7 +8,7 @@ use url::Url;
 pub struct Config {
     /// The address on which to listen.
     #[clap(long, default_value = "127.0.0.1", env("ADDR"))]
-    pub addr: String,
+    pub addr: IpAddr,
 
     /// The port on which to listen.
     #[clap(long, default_value = "3000", env("PORT"))]
