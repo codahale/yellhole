@@ -20,7 +20,7 @@ use crate::web::AppState;
 
 pub struct TestEnv {
     pub state: AppState,
-    temp_dir: TempDir,
+    pub temp_dir: TempDir,
 }
 
 impl TestEnv {

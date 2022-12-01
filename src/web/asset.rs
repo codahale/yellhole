@@ -1,30 +1,23 @@
-use std::path::Path;
-
 use axum::http::{Request, StatusCode};
 use axum::middleware::Next;
 use axum::response::Response;
 use axum::routing::get_service;
 use axum::{http, middleware, Router};
-use include_dir::{include_dir, Dir};
 use tokio::io;
 use tower::ServiceBuilder;
 use tower_http::services::ServeDir;
 use tower_http::set_header::SetResponseHeaderLayer;
 
+use crate::services::assets::AssetService;
+use crate::services::images::ImageService;
+
 use super::app::AppState;
 use super::AppError;
 
-pub fn router(
-    images_dir: impl AsRef<Path>,
-    temp_dir: impl AsRef<Path>,
-) -> io::Result<Router<AppState>> {
-    // Extract the assets from the compiled binary to the temp directory.
-    tracing::info!(dir=?temp_dir.as_ref(), "extracting assets to temp dir");
-    ASSET_DIR.extract(temp_dir.as_ref())?;
-
+pub fn router(images: &ImageService, assets: &AssetService) -> io::Result<Router<AppState>> {
     let assets = get_service(
         ServiceBuilder::new()
-            .service(ServeDir::new(temp_dir.as_ref()).precompressed_br().precompressed_gzip()),
+            .service(ServeDir::new(assets.assets_dir()).precompressed_br().precompressed_gzip()),
     )
     .handle_error(io_error);
 
@@ -42,7 +35,7 @@ pub fn router(
         // Serve images.
         .nest_service(
             "/images",
-            get_service(ServiceBuilder::new().service(ServeDir::new(images_dir)))
+            get_service(ServiceBuilder::new().service(ServeDir::new(images.images_dir())))
                 .handle_error(io_error),
         )
         .layer(SetResponseHeaderLayer::overriding(
@@ -66,10 +59,10 @@ async fn not_found<B>(req: Request<B>, next: Next<B>) -> Result<Response, AppErr
     }
 }
 
-static ASSET_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/assets");
-
 #[cfg(test)]
 mod tests {
+    use std::fs;
+
     use sqlx::SqlitePool;
 
     use crate::test::TestEnv;
@@ -79,7 +72,7 @@ mod tests {
     #[sqlx::test]
     async fn static_asset(db: SqlitePool) -> Result<(), anyhow::Error> {
         let ts = TestEnv::new(db)?;
-        let app = router(".", ts.state.temp_dir.path())?;
+        let app = router(&ts.state.images, &ts.state.assets)?;
         let ts = ts.into_server(app)?;
 
         let resp =
@@ -100,10 +93,11 @@ mod tests {
     #[sqlx::test]
     async fn image(db: SqlitePool) -> Result<(), anyhow::Error> {
         let ts = TestEnv::new(db)?;
-        let app = router(".", ts.state.temp_dir.path())?;
+        fs::copy("./yellhole.webp", ts.state.images.images_dir().join("yellhole.webp")).unwrap();
+        let app = router(&ts.state.images, &ts.state.assets)?;
         let ts = ts.into_server(app)?;
 
-        let resp = ts.get("/images/LICENSE").send().await?;
+        let resp = ts.get("/images/yellhole.webp").send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
 
         Ok(())
