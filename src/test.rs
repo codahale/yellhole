@@ -1,3 +1,5 @@
+#![cfg(test)]
+
 use std::net::{SocketAddr, TcpListener};
 
 use axum::Router;

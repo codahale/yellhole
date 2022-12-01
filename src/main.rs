@@ -8,7 +8,6 @@ use crate::web::App;
 
 mod config;
 mod services;
-#[cfg(test)]
 mod test;
 mod web;
 
