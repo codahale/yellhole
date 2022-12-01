@@ -1,4 +1,5 @@
 use std::ops::Range;
+use std::sync::Arc;
 
 use askama::Template;
 use atom_syndication::{Content, Entry, Feed, FixedDateTime, Link, Person, Text};
@@ -10,11 +11,11 @@ use axum::Router;
 use chrono::{Days, FixedOffset, NaiveDate, Utc};
 use serde::Deserialize;
 use tower_http::set_header::SetResponseHeaderLayer;
-use url::Url;
 use uuid::Uuid;
 
 use super::app::{AppError, AppState};
 use super::pages::Page;
+use crate::config::Config;
 use crate::services::notes::Note;
 
 pub fn router() -> Router<AppState> {
@@ -36,24 +37,14 @@ pub fn router() -> Router<AppState> {
 #[derive(Debug, Template)]
 #[template(path = "feed.html")]
 struct FeedPage {
-    author: String,
-    title: String,
-    description: String,
-    base_url: Url,
+    config: Arc<Config>,
     notes: Vec<Note>,
     weeks: Vec<Range<NaiveDate>>,
 }
 
 impl FeedPage {
     fn new(state: AppState, notes: Vec<Note>, weeks: Vec<Range<NaiveDate>>) -> FeedPage {
-        FeedPage {
-            author: state.author,
-            title: state.title,
-            description: state.description,
-            base_url: state.base_url,
-            notes,
-            weeks,
-        }
+        FeedPage { config: state.config, notes, weeks }
     }
 }
 
@@ -128,7 +119,7 @@ async fn atom(State(state): State<AppState>) -> Result<Response, AppError> {
         .await?
         .iter()
         .map(|n| Entry {
-            id: filters::to_note_url(n, &state.base_url).unwrap().to_string(),
+            id: filters::to_note_url(n, &state.config.base_url).unwrap().to_string(),
             title: Text { value: n.note_id.to_string(), ..Default::default() },
             content: Some(Content {
                 content_type: Some("html".into()),
@@ -141,14 +132,14 @@ async fn atom(State(state): State<AppState>) -> Result<Response, AppError> {
         .collect();
 
     let feed = Feed {
-        id: state.base_url.to_string(),
-        authors: vec![Person { name: state.author, ..Default::default() }],
-        base: Some(state.base_url.join("atom.xml").unwrap().to_string()),
-        title: Text { value: state.title, ..Default::default() },
-        subtitle: Some(Text { value: state.description, ..Default::default() }),
+        id: state.config.base_url.to_string(),
+        authors: vec![Person { name: state.config.author.clone(), ..Default::default() }],
+        base: Some(filters::to_atom_url(&state.config.base_url).unwrap().to_string()),
+        title: Text { value: state.config.title.clone(), ..Default::default() },
+        subtitle: Some(Text { value: state.config.description.clone(), ..Default::default() }),
         entries,
         links: vec![Link {
-            href: state.base_url.join("atom.xml").unwrap().to_string(),
+            href: filters::to_atom_url(&state.config.base_url).unwrap().to_string(),
             rel: "self".into(),
             ..Default::default()
         }],

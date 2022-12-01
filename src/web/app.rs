@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::sync::Arc;
 use std::{fs, io};
 
 use axum::http::{self, StatusCode, Uri};
@@ -16,7 +17,6 @@ use tower_http::sensitive_headers::{
 };
 use tower_http::trace::TraceLayer;
 use tower_http::ServiceBuilderExt;
-use url::Url;
 
 use crate::config::Config;
 use crate::services::assets::AssetService;
@@ -95,31 +95,27 @@ impl App {
 
 #[derive(Debug, Clone)]
 pub struct AppState {
-    pub author: String,
-    pub title: String,
-    pub description: String,
+    pub config: Arc<Config>,
+    pub assets: AssetService,
+    pub images: ImageService,
     pub notes: NoteService,
     pub passkeys: PasskeyService,
-    pub base_url: Url,
     pub sessions: SessionService,
-    pub images: ImageService,
-    pub assets: AssetService,
 }
 
 impl AppState {
     pub const GIT_COMMIT: &str = env!("VERGEN_GIT_SHA");
 
     pub fn new(db: SqlitePool, config: Config) -> Result<AppState, io::Error> {
+        let images = ImageService::new(db.clone(), &config.data_dir)?;
+        let passkeys = PasskeyService::new(db.clone(), config.base_url.clone());
         Ok(AppState {
-            author: config.author,
-            title: config.title,
-            description: config.description,
-            notes: NoteService::new(db.clone()),
-            passkeys: PasskeyService::new(db.clone(), config.base_url.clone()),
-            base_url: config.base_url,
-            sessions: SessionService::new(db.clone()),
-            images: ImageService::new(db, &config.data_dir)?,
+            config: Arc::new(config),
             assets: AssetService::new()?,
+            images,
+            notes: NoteService::new(db.clone()),
+            passkeys,
+            sessions: SessionService::new(db),
         })
     }
 }

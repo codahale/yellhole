@@ -59,7 +59,10 @@ async fn register(state: State<AppState>, cookies: CookieJar) -> Result<Response
 async fn register_start(state: State<AppState>) -> Result<Json<RegistrationChallenge>, AppError> {
     Ok(state
         .passkeys
-        .start_registration(&state.author, Uuid::default().as_hyphenated().to_string().as_bytes())
+        .start_registration(
+            &state.config.author,
+            Uuid::default().as_hyphenated().to_string().as_bytes(),
+        )
         .await
         .map(Json)?)
 }
@@ -126,7 +129,7 @@ fn cookie<'c>(state: &AppState, name: &'c str, value: Uuid, max_age: Duration) -
         .http_only(true)
         .same_site(SameSite::Strict)
         .max_age(max_age.try_into().expect("invalid duration"))
-        .secure(state.base_url.scheme() == "https")
+        .secure(state.config.base_url.scheme() == "https")
         .path("/")
         .finish()
 }

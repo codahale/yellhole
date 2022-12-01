@@ -1,32 +1,32 @@
 {% extends "layout.html" %}
 
-{% block title %}{{title}}{% endblock %}
-{% block description %}{{description}}{% endblock %}
+{% block title %}{{config.title}}{% endblock %}
+{% block description %}{{config.description}}{% endblock %}
 
 {% block head %}
 {%- if notes.len() == 1 -%}
 {%- for note in notes -%}
 <meta name="description" content="{{note.description()}}">
 
-<meta property="og:url" content="{{note|to_note_url(base_url)}}">
+<meta property="og:url" content="{{note|to_note_url(config.base_url)}}">
 <meta property="og:type" content="website">
-<meta property="og:title" content="{{title}}">
+<meta property="og:title" content="{{config.title}}">
 <meta property="og:description" content="{{note.description()}}">
 
 <meta name="twitter:card" content="summary_large_image">
-<meta property="twitter:domain" content="{{base_url.host().unwrap()}}">
-<meta property="twitter:url" content="{{note|to_note_url(base_url)}}">
-<meta name="twitter:title" content="{{title}}">
+<meta property="twitter:domain" content="{{config.base_url.host().unwrap()}}">
+<meta property="twitter:url" content="{{note|to_note_url(config.base_url)}}">
+<meta name="twitter:title" content="{{config.title}}">
 <meta name="twitter:description" content="{{note.description()}}">
 
-{% for img in note.images(base_url) %}
+{% for img in note.images(config.base_url) %}
 <meta property="og:image" content="{{img}}">
 <meta name="twitter:image" content="{{img}}">
 {% endfor %}
 {%- endfor -%}
 {%- endif -%}
 
-<link href="{{base_url|to_atom_url}}" rel="alternate" title="Atom" type="application/atom+xml" />
+<link href="{{config.base_url|to_atom_url}}" rel="alternate" title="Atom" type="application/atom+xml" />
 {% endblock %}
 
 {% block nav %}
@@ -37,7 +37,7 @@
             <ul role="listbox">
                 {% for d in weeks %}
                 <li>
-                    <a href="{{d.start|to_weekly_url(base_url)}}">
+                    <a href="{{d.start|to_weekly_url(config.base_url)}}">
                         {{d.start}} to {{d.end}}
                     </a>
                 </li>
@@ -46,7 +46,7 @@
         </details>
     </li>
     <li>
-        <a href="{{base_url|to_atom_url}}">
+        <a href="{{config.base_url|to_atom_url}}">
             <svg style="width: 30px; height: 30px" viewBox="0 0 800 800">
                 <path
                     d="M493 652H392c0-134-111-244-244-244V307c189 0 345 156 345 345zm71 0c0-228-188-416-416-416V132c285 0 520 235 520 520z" />
@@ -69,7 +69,7 @@
         {{ n.to_html() | safe }}
     </div>
     <footer>
-        <a href="{{n|to_note_url(base_url)}}">
+        <a href="{{n|to_note_url(config.base_url)}}">
             <time datetime="{{n.created_at.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)}}">
                 {{n.created_at|to_local_tz}}
             </time>
@@ -81,6 +81,6 @@
 
 {% block footer %}
 <p>
-    <small>Copyright &copy; 2022 {{author}}</small>
+    <small>Copyright &copy; 2022 {{config.author}}</small>
 </p>
 {% endblock %}
