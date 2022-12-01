@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use clap::Parser;
 use url::Url;
 
-#[derive(Debug, Clone, Parser)]
+#[derive(Debug, Parser)]
 pub struct Config {
     /// The address on which to listen.
     #[clap(long, default_value = "127.0.0.1", env("ADDR"))]
