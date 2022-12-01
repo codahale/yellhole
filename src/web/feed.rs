@@ -18,22 +18,19 @@ use super::pages::Page;
 use crate::services::notes::Note;
 
 pub fn router() -> Router<AppState> {
-    let immutable = Router::new().route("/note/:note_id", get(single)).layer(
-        SetResponseHeaderLayer::overriding(
+    Router::new()
+        .route("/note/:note_id", get(single))
+        .layer(SetResponseHeaderLayer::overriding(
             http::header::CACHE_CONTROL,
             http::HeaderValue::from_static("max-age=31536000,immutable"),
-        ),
-    );
-
-    Router::new()
+        ))
         .route("/", get(index))
         .route("/atom.xml", get(atom))
         .route("/notes/:start", get(week))
-        .layer(SetResponseHeaderLayer::overriding(
+        .layer(SetResponseHeaderLayer::if_not_present(
             http::header::CACHE_CONTROL,
             http::HeaderValue::from_static("max-age=300"),
         ))
-        .merge(immutable)
 }
 
 #[derive(Debug, Template)]
