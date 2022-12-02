@@ -31,7 +31,7 @@ impl SessionService {
 
     #[tracing::instrument(skip_all, ret, err)]
     pub async fn is_authenticated(&self, session_id: &str) -> Result<bool, sqlx::Error> {
-        let authenticated = sqlx::query!(
+        Ok(sqlx::query!(
             r#"
             select count(1) as n
             from session
@@ -40,9 +40,7 @@ impl SessionService {
         )
         .fetch_one(&self.db)
         .await?
-        .n > 0;
-
-        Ok(authenticated)
+        .n > 0)
     }
 
     pub async fn continuously_delete_expired(self) -> Result<(), sqlx::Error> {
