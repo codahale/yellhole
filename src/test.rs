@@ -65,6 +65,7 @@ impl TestEnv {
         Ok(server)
     }
 }
+
 pub struct TestServer {
     url: Url,
     client: Client,
