@@ -52,7 +52,7 @@ async fn create_note(
     Ok(Redirect::to(&format!("/note/{note_id}")))
 }
 
-pub async fn upload_images(
+async fn upload_images(
     state: State<AppState>,
     mut multipart: Multipart,
 ) -> Result<Redirect, AppError> {
