@@ -58,11 +58,13 @@
 {% endblock %}
 
 {% block content %}
+
 {% if notes.is_empty() %}
-<section>
+<article>
     <aside>Nothing here yet.</aside>
-</section>
+</article>
 {% endif %}
+
 {% for n in notes %}
 <article>
     <div class="content">
@@ -77,6 +79,7 @@
     </footer>
 </article>
 {% endfor %}
+
 {% endblock %}
 
 {% block footer %}
