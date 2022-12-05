@@ -218,6 +218,7 @@ pub struct RegistrationResponse {
     #[serde_as(as = "PickFirst<(Base64, Base64<UrlSafe, Unpadded>)>")]
     pub public_key: Vec<u8>,
 }
+
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AuthenticationChallenge {
