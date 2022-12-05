@@ -25,6 +25,8 @@ Yellhole is a lightweight tumblelog which can run on e.g. [fly.io](https://fly.i
 cargo install --locked yellhole
 ```
 
+(I mean, at some point you might be able to do this but I haven't packaged it yet.)
+
 Requires SQLite and a TLS stack as build dependencies.
 
 Requires ImageMagick as system dependency (specifically, `convert` must be in `$PATH`).
