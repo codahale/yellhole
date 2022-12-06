@@ -157,10 +157,13 @@ mod tests {
     use super::*;
 
     #[sqlx::test]
-    async fn fresh_login_page(db: SqlitePool) -> Result<(), anyhow::Error> {
+    async fn fresh_pages(db: SqlitePool) -> Result<(), anyhow::Error> {
         let env = TestEnv::new(db)?;
         let app = app(&env.state);
         let ts = env.into_server(app)?;
+
+        let resp = ts.get("/register").send().await?;
+        assert_eq!(resp.status(), StatusCode::OK);
 
         let resp = ts.get("/login").send().await?;
         assert_eq!(resp.status(), StatusCode::SEE_OTHER);
@@ -172,20 +175,8 @@ mod tests {
         Ok(())
     }
 
-    #[sqlx::test]
-    async fn fresh_register_page(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let env = TestEnv::new(db)?;
-        let app = app(&env.state);
-        let ts = env.into_server(app)?;
-
-        let resp = ts.get("/register").send().await?;
-        assert_eq!(resp.status(), StatusCode::OK);
-
-        Ok(())
-    }
-
     #[sqlx::test(fixtures("passkeys"))]
-    async fn registered_register_page(db: SqlitePool) -> Result<(), anyhow::Error> {
+    async fn registered_pages(db: SqlitePool) -> Result<(), anyhow::Error> {
         let env = TestEnv::new(db)?;
         let app = app(&env.state);
         let ts = env.into_server(app)?;
@@ -196,15 +187,6 @@ mod tests {
             resp.headers().get(http::header::LOCATION),
             Some(&http::HeaderValue::from_static("/login"))
         );
-
-        Ok(())
-    }
-
-    #[sqlx::test(fixtures("passkeys"))]
-    async fn registered_login_page(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let env = TestEnv::new(db)?;
-        let app = app(&env.state);
-        let ts = env.into_server(app)?;
 
         let resp = ts.get("/login").send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
