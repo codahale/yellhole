@@ -63,7 +63,7 @@ impl PasskeyService {
 
         // Decode and validate the client data.
         let cdj = &resp.client_data_json;
-        if CollectedClientData::validate(cdj, &self.origin, "webauthn.create", None).is_err() {
+        if CollectedClientData::validate(cdj, &self.origin, "webauthn.create").is_err() {
             return Ok(false);
         }
 
@@ -130,10 +130,10 @@ impl PasskeyService {
             return Ok(false)
         };
 
-        // Validate the collected client data.
-        let cdj = &resp.client_data_json;
-        if CollectedClientData::validate(cdj, &self.origin, "webauthn.get", Some(&challenge))
-            .is_err()
+        // Validate the collected client data and check the challenge.
+        if !CollectedClientData::validate(&resp.client_data_json, &self.origin, "webauthn.get")
+            .map(|c| constant_time_eq(&c.unwrap_or_default(), &challenge))
+            .unwrap_or(false)
         {
             return Ok(false);
         }
@@ -270,24 +270,12 @@ struct CollectedClientData {
 }
 
 impl CollectedClientData {
-    fn validate(
-        json: &[u8],
-        origin: &Url,
-        action: &str,
-        challenge: Option<&[u8]>,
-    ) -> Result<(), anyhow::Error> {
+    fn validate(json: &[u8], origin: &Url, action: &str) -> Result<Option<Vec<u8>>, anyhow::Error> {
         let cdj = serde_json::from_slice::<CollectedClientData>(json)?;
         anyhow::ensure!(cdj.type_ == action, "invalid type: {}", cdj.type_);
         anyhow::ensure!(!cdj.cross_origin.unwrap_or(false), "cross-origin webauthn request");
         anyhow::ensure!(&cdj.origin == origin, "invalid origin: {}", cdj.origin);
-        if let Some(challenge) = challenge {
-            anyhow::ensure!(
-                constant_time_eq(challenge, &cdj.challenge.unwrap_or_default()),
-                "invalid challenge"
-            );
-        }
-
-        Ok(())
+        Ok(cdj.challenge)
     }
 }
 
