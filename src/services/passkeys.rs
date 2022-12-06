@@ -135,6 +135,7 @@ impl PasskeyService {
             .map(|c| constant_time_eq(&c.unwrap_or_default(), &challenge))
             .unwrap_or(false)
         {
+            tracing::warn!(cdj=?resp.client_data_json, "invalid signed challenge");
             return Ok(false);
         }
 
