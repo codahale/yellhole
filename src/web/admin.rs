@@ -45,7 +45,7 @@ async fn new_page(state: State<AppState>) -> Result<Page<NewPage>, AppError> {
 #[derive(Debug, Deserialize)]
 struct NewNote {
     body: String,
-    action: String,
+    preview: bool,
 }
 
 #[derive(Debug, Template)]
@@ -58,7 +58,7 @@ async fn create_note(
     state: State<AppState>,
     Form(new_note): Form<NewNote>,
 ) -> Result<Response, AppError> {
-    if new_note.action.to_lowercase() == "preview" {
+    if new_note.preview {
         let note = Note {
             note_id: Uuid::new_v4().hyphenated(),
             body: new_note.body,
@@ -135,7 +135,7 @@ mod tests {
 
         let resp = ts
             .post("/admin/new-note")
-            .form(&[("body", "This is a note."), ("action", "Create")])
+            .form(&[("body", "This is a note."), ("preview", "false")])
             .send()
             .await?;
         assert_eq!(resp.status(), StatusCode::SEE_OTHER);
