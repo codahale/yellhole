@@ -5,13 +5,16 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
 use axum::{Form, Router};
+use chrono::Utc;
 use mime::Mime;
 use serde::Deserialize;
 use tower::ServiceBuilder;
 use tower_http::limit::RequestBodyLimitLayer;
 use url::Url;
+use uuid::Uuid;
 
 use crate::services::images::Image;
+use crate::services::notes::Note;
 
 use super::app::{AppError, AppState};
 use super::pages::Page;
@@ -42,14 +45,30 @@ async fn new_page(state: State<AppState>) -> Result<Page<NewPage>, AppError> {
 #[derive(Debug, Deserialize)]
 struct NewNote {
     body: String,
+    action: String,
+}
+
+#[derive(Debug, Template)]
+#[template(path = "preview.html")]
+struct PreviewPage {
+    note: Note,
 }
 
 async fn create_note(
     state: State<AppState>,
     Form(new_note): Form<NewNote>,
-) -> Result<Redirect, AppError> {
-    let note_id = state.notes.create(&new_note.body).await?;
-    Ok(Redirect::to(&format!("/note/{note_id}")))
+) -> Result<Response, AppError> {
+    if new_note.action.to_lowercase() == "preview" {
+        let note = Note {
+            note_id: Uuid::new_v4().hyphenated(),
+            body: new_note.body,
+            created_at: Utc::now(),
+        };
+        Ok(Page(PreviewPage { note }).into_response())
+    } else {
+        let note_id = state.notes.create(&new_note.body).await?;
+        Ok(Redirect::to(&format!("/note/{note_id}")).into_response())
+    }
 }
 
 async fn upload_images(

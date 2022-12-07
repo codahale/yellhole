@@ -12,7 +12,8 @@
             </header>
             <textarea cols="40" rows="5" id="body" name="body" placeholder="It'sa me, _Mario_."
                 oninput="updatePost()"></textarea>
-            <button id="post" type="submit" disabled>Post</button>
+            <input id="post" type="submit" name="action" value="Create" disabled>
+            <input id="preview" type="submit" name="action" value="Preview" disabled>
             <details role="list" id="images">
                 <summary aria-haspopup="listbox" role="button" class="secondary">
                     Recent Images
@@ -61,8 +62,9 @@
 <script type="text/javascript">
     function updatePost() {
         const el = document.getElementById('body');
-        const btn = document.getElementById('post');
-        btn.disabled = el.value.length == 0;
+        const btn1 = document.getElementById('post');
+        const btn2 = document.getElementById('preview');
+        btn1.disabled = btn2.disabled = el.value.length == 0;
     }
 
     function updateUpload() {

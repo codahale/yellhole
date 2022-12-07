@@ -1,0 +1,12 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<article>
+    <div class="content">
+        {{ note.to_html() | safe }}
+    </div>
+    <footer>
+        <a href="#">etc</a>
+    </footer>
+</article>
+{% endblock %}
