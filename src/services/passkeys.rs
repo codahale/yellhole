@@ -271,6 +271,7 @@ struct CollectedClientData {
 }
 
 impl CollectedClientData {
+    #[tracing::instrument(skip_all, err)]
     fn validate(json: &[u8], origin: &Url, action: &str) -> Result<Option<Vec<u8>>, anyhow::Error> {
         let cdj = serde_json::from_slice::<CollectedClientData>(json)?;
         anyhow::ensure!(cdj.type_ == action, "invalid type: {}", cdj.type_);
