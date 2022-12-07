@@ -133,7 +133,11 @@ mod tests {
     async fn creating_a_note(db: SqlitePool) -> Result<(), anyhow::Error> {
         let ts = TestEnv::new(db)?.into_server(router())?;
 
-        let resp = ts.post("/admin/new-note").form(&[("body", "This is a note.")]).send().await?;
+        let resp = ts
+            .post("/admin/new-note")
+            .form(&[("body", "This is a note."), ("action", "Create")])
+            .send()
+            .await?;
         assert_eq!(resp.status(), StatusCode::SEE_OTHER);
         let location = resp.headers().get(http::header::LOCATION).expect("missing header");
         let note_id = location.to_str()?.split('/').last().expect("bad URI").parse::<Uuid>()?;
