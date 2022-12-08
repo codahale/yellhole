@@ -106,6 +106,7 @@ impl ImageService {
 
         // Start the request to download the image.
         let image = reqwest::get(image_url).await.context("error downloading image")?;
+        anyhow::ensure!(image.status().is_success(), "error response: {}", image.status());
 
         // Get the image's content type.
         let content_type = image
