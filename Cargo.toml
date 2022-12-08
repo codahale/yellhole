@@ -35,13 +35,13 @@ mime_guess = "2.0.4"
 p256 = "0.11.1"
 pulldown-cmark = { version = "0.9.2", default-features = false, features = ["simd"] }
 rand = { version = "0.8.5", features = ["min_const_gen"] }
-reqwest = { version = "0.11.13", features = ["stream"] }
+reqwest = { version = "0.11.13", features = ["stream", "rustls-tls"], default-features = false }
 serde = { version = "1.0.149", features = ["derive"] }
 serde_json = "1.0.89"
 serde_with = { version = "2.1.0", features = ["base64"] }
 sha2 = "0.10.6"
 spki = { version = "0.6.0", features = ["std", "alloc"] }
-sqlx = { version = "0.6.2", features = ["runtime-tokio-native-tls", "sqlite", "chrono", "uuid", "offline"] }
+sqlx = { version = "0.6.2", features = ["runtime-tokio-rustls", "sqlite", "chrono", "uuid", "offline"] }
 tempdir = "0.3.7"
 thiserror = "1.0.37"
 tokio = { version = "1.23.0", features = ["full"] }
@@ -64,7 +64,7 @@ uuid = { version = "1.2.2", features = ["serde", "std", "v4"] }
 
 [dev-dependencies]
 ecdsa = { version = "0.14.8", features = ["alloc"] }
-reqwest = { version = "0.11.13", features = ["json", "cookies", "multipart"] }
+reqwest = { version = "0.11.13", features = ["json", "cookies", "multipart"], default-features = false }
 
 [workspace]
 members = ["xtask"]
