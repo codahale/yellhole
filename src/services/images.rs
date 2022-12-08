@@ -100,7 +100,7 @@ impl ImageService {
         Ok(image_id)
     }
 
-    #[tracing::instrument(skip(self), fields(image_url=%image_url) ret(Display), err)]
+    #[tracing::instrument(skip(self), fields(image_url=%image_url), ret(Display), err)]
     pub async fn download(&self, image_url: Url) -> Result<Hyphenated, anyhow::Error> {
         let original_filename = image_url.to_string();
 
