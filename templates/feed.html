@@ -13,13 +13,20 @@
 <meta property="og:title" content="{{config.title}}">
 <meta property="og:description" content="{{note.description()}}">
 
-<meta name="twitter:card" content="summary_large_image">
 <meta property="twitter:domain" content="{{config.base_url.host().unwrap()}}">
 <meta property="twitter:url" content="{{note|to_note_url(config.base_url)}}">
 <meta name="twitter:title" content="{{config.title}}">
 <meta name="twitter:description" content="{{note.description()}}">
 
-{% for img in note.images(config.base_url) %}
+{% let images = note.images(config.base_url) %}
+
+{% if images.is_empty() %}
+<meta name="twitter:card" content="summary">
+{% else %}
+<meta name="twitter:card" content="summary_large_image">
+{% endif %}
+
+{% for img in images %}
 <meta property="og:image" content="{{img}}">
 <meta name="twitter:image" content="{{img}}">
 {% endfor %}
