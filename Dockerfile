@@ -14,7 +14,6 @@ RUN USER=root cargo init --bin .
 RUN USER=root cargo new --bin xtask 
 COPY Cargo.toml /app
 COPY Cargo.lock /app
-COPY build.rs /app
 COPY xtask/Cargo.toml /app/xtask
 RUN cargo build --release
 
