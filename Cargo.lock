@@ -2829,7 +2829,6 @@ dependencies = [
  "atom_syndication",
  "axum",
  "axum-extra",
- "base64",
  "chrono",
  "clap",
  "constant_time_eq",
