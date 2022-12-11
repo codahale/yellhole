@@ -152,6 +152,7 @@ mod tests {
     use spki::EncodePublicKey;
     use sqlx::SqlitePool;
 
+    use crate::services::passkeys::CollectedClientData;
     use crate::test::TestEnv;
 
     use super::*;
@@ -223,15 +224,15 @@ mod tests {
         authenticator_data.extend(&key_id);
 
         // Register our public key.
+        let client_data_json = serde_json::to_vec(&CollectedClientData {
+            challenge: None,
+            origin: "http://example.com".parse()?,
+            type_: "webauthn.create".into(),
+            cross_origin: Some(false),
+        })?;
         let reg_finish = ts
             .post("/register/finish")
-            .json(&RegistrationResponse {
-                authenticator_data,
-                client_data_json: r#"{"type":"webauthn.create","origin":"http://example.com"}"#
-                    .as_bytes()
-                    .to_vec(),
-                public_key,
-            })
+            .json(&RegistrationResponse { authenticator_data, client_data_json, public_key })
             .send()
             .await?;
         assert_eq!(reg_finish.status(), StatusCode::CREATED);
@@ -242,10 +243,12 @@ mod tests {
         assert!(login_start.passkey_ids.contains(&key_id));
 
         // Generate the collected client data and authenticator data.
-        let cdj = format!(
-            "{{\"type\":\"webauthn.get\",\"origin\":\"http://example.com\",\"challenge\": {:?}}}",
-            base64::encode(login_start.challenge)
-        );
+        let client_data_json = serde_json::to_vec(&CollectedClientData {
+            challenge: Some(login_start.challenge.to_vec()),
+            origin: "http://example.com".parse()?,
+            type_: "webauthn.get".into(),
+            cross_origin: Some(false),
+        })?;
 
         let mut authenticator_data = Vec::new();
         authenticator_data.extend(Sha256::new().chain_update(&login_start.rp_id).finalize());
@@ -256,17 +259,17 @@ mod tests {
 
         // Sign authenticator data and a hash of the collected client data.
         let mut signed = authenticator_data.to_vec();
-        signed.extend(Sha256::new().chain_update(&cdj).finalize());
-        let signature = signing_key.sign(&signed).to_der();
+        signed.extend(Sha256::new().chain_update(&client_data_json).finalize());
+        let signature = signing_key.sign(&signed).to_der().as_bytes().to_vec();
 
         // Send our signature to authenticate.
         let login_finish = ts
             .post("/login/finish")
             .json(&AuthenticationResponse {
                 raw_id: key_id,
+                client_data_json,
                 authenticator_data,
-                client_data_json: cdj.as_bytes().to_vec(),
-                signature: signature.as_bytes().to_vec(),
+                signature,
             })
             .send()
             .await?;

@@ -256,18 +256,18 @@ pub struct AuthenticationResponse {
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize)]
-struct CollectedClientData {
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CollectedClientData {
     #[serde_as(as = "Option<PickFirst<(Base64, Base64<UrlSafe, Unpadded>)>>")]
-    challenge: Option<Vec<u8>>,
+    pub challenge: Option<Vec<u8>>,
 
-    origin: Url,
+    pub origin: Url,
 
     #[serde(rename = "type")]
-    type_: String,
+    pub type_: String,
 
     #[serde(rename = "crossOrigin")]
-    cross_origin: Option<bool>,
+    pub cross_origin: Option<bool>,
 }
 
 impl CollectedClientData {
