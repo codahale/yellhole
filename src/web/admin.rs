@@ -95,13 +95,12 @@ async fn download_image(
     state: State<AppState>,
     Form(image): Form<DownloadImage>,
 ) -> Result<Response, AppError> {
-    let Ok(url) = image.url.parse::<Url>() else {
-        return Ok(StatusCode::BAD_REQUEST.into_response());
-    };
-
-    state.images.download(url).await?;
-
-    Ok(Redirect::to("/admin/new").into_response())
+    if let Ok(url) = image.url.parse::<Url>() {
+        state.images.download(url).await?;
+        Ok(Redirect::to("/admin/new").into_response())
+    } else {
+        Ok(StatusCode::BAD_REQUEST.into_response())
+    }
 }
 
 #[cfg(test)]
