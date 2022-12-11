@@ -3,6 +3,10 @@
 {% block title %}Yellhole Admin{% endblock %}
 {% block description %}Welcome to the hole.{% endblock %}
 
+{% block head %}
+<script src="/assets/js/auth.js?{{AppState::GIT_COMMIT}}"></script>
+{% endblock %}
+
 {% block content %}
 <section>
     <button id="register" disabled onclick="register()">Register Passkey</button>
@@ -10,5 +14,7 @@
 {% endblock %}
 
 {% block tail %}
-<script src="/assets/js/register.js?{{AppState::GIT_COMMIT}}"></script>
+<script type="text/javascript" defer>
+    setup('register');
+</script>
 {% endblock %}

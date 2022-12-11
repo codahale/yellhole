@@ -3,10 +3,16 @@
 {% block title %}Yellhole Admin{% endblock %}
 {% block description %}Speak frenemy and enter.{% endblock %}
 
+{% block head %}
+<script src="/assets/js/auth.js?{{AppState::GIT_COMMIT}}"></script>
+{% endblock %}
+
 {% block content %}
 <button id="login" disabled onclick="login()">Log In With Passkey</button>
 {% endblock %}
 
 {% block tail %}
-<script src="/assets/js/login.js?{{AppState::GIT_COMMIT}}"></script>
+<script type="text/javascript" defer>
+    setup('login');
+</script>
 {% endblock %}
