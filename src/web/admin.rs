@@ -106,10 +106,14 @@ async fn download_image(
 
 #[cfg(test)]
 mod tests {
+    use std::io;
+
     use axum::http;
+    use axum::routing::get_service;
     use reqwest::multipart;
     use sqlx::SqlitePool;
     use tokio::fs;
+    use tower_http::services::ServeFile;
     use uuid::Uuid;
 
     use crate::test::TestEnv;
@@ -169,11 +173,24 @@ mod tests {
 
     #[sqlx::test]
     async fn downloading_an_image(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestEnv::new(db)?.into_server(router())?;
+        async fn io_error(_: io::Error) -> StatusCode {
+            StatusCode::INTERNAL_SERVER_ERROR
+        }
+
+        fn app() -> Router<AppState> {
+            Router::new()
+                .route_service(
+                    "/logo.webp",
+                    get_service(ServeFile::new("yellhole.webp")).handle_error(io_error),
+                )
+                .merge(router())
+        }
+
+        let ts = TestEnv::new(db)?.into_server(app())?;
 
         let resp = ts
             .post("/admin/download-image")
-            .form(&[("url", "https://crates.io/assets/Cargo-Logo-Small.png")])
+            .form(&[("url", ts.url.join("/logo.webp")?.to_string())])
             .send()
             .await?;
         assert_eq!(resp.status(), StatusCode::SEE_OTHER);

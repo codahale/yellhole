@@ -67,7 +67,7 @@ impl TestEnv {
 }
 
 pub struct TestServer {
-    url: Url,
+    pub url: Url,
     client: Client,
     _temp_dir: TempDir,
     pub state: AppState,
