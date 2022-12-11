@@ -60,6 +60,7 @@ tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 url = { version = "2.3.1", features = ["serde"] }
 uuid = { version = "1.2.2", features = ["serde", "std", "v4"] }
+webpki-roots = "0.22.6"
 
 [dev-dependencies]
 ecdsa = { version = "0.14.8", features = ["alloc"] }
