@@ -13,14 +13,6 @@ document.addEventListener('DOMContentLoaded', (_) => {
     });
 });
 
-function url_b64(s) {
-  return s.replace(/_/g, '/').replace(/-/g, '+');
-}
-
-function atob_url(a) {
-  return atob(url_b64(a));
-}
-
 async function login() {
   const startResp = await fetch('/login/start', {
     method: 'POST'
