@@ -139,12 +139,19 @@ impl Note {
 
     /// Returns a plain-text version of the note.
     pub fn description(&self) -> String {
-        parse_md(&self.body).fold(String::with_capacity(256), |mut d, e| {
-            if let Event::Text(s) = e {
-                d.push_str(s.as_ref());
-            }
-            d
-        })
+        parse_md(&self.body)
+            .fold(String::with_capacity(256), |mut d, e| {
+                match e {
+                    Event::Text(s) => d.push_str(s.as_ref()),
+                    Event::SoftBreak | Event::HardBreak | Event::Start(Tag::Paragraph) => {
+                        d.push(' ')
+                    }
+                    _ => {}
+                }
+                d
+            })
+            .trim()
+            .into()
     }
 }
 
@@ -177,10 +184,10 @@ mod tests {
     fn body_to_description() {
         let note = Note {
             note_id: Uuid::new_v4().hyphenated(),
-            body: r#"It's _electric_!"#.into(),
+            body: "It's _electric_!\n\nBoogie woogie woogie.".into(),
             created_at: Utc::now(),
         };
 
-        assert_eq!(note.description(), r#"It’s electric!"#);
+        assert_eq!(note.description(), r#"It’s electric! Boogie woogie woogie."#);
     }
 }
