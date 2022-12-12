@@ -112,7 +112,13 @@ impl Note {
     pub fn images(&self, base_url: &Url) -> Vec<Url> {
         parse_md(&self.body)
             .flat_map(|e| match e {
-                Event::Start(Tag::Image(_, url, _)) => base_url.join(url.as_ref()).ok(),
+                Event::Start(Tag::Image(_, url, _)) => {
+                    if url.starts_with("http://") || url.starts_with("https://") {
+                        url.parse().ok()
+                    } else {
+                        base_url.join(url.as_ref()).ok()
+                    }
+                }
                 _ => None,
             })
             .collect()
