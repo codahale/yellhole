@@ -17,6 +17,7 @@ use url::Url;
 use uuid::fmt::Hyphenated;
 use uuid::Uuid;
 
+/// A service for adding news images.
 #[derive(Debug, Clone)]
 pub struct ImageService {
     db: SqlitePool,
@@ -24,6 +25,7 @@ pub struct ImageService {
 }
 
 impl ImageService {
+    /// Create a new [`ImageService`] using the given database and data directory.
     pub fn new(db: SqlitePool, data_dir: impl AsRef<Path>) -> Result<ImageService, io::Error> {
         let data_dir = data_dir.as_ref().to_path_buf();
         fs::create_dir_all(data_dir.join(IMAGES_DIR))?;
@@ -100,6 +102,7 @@ impl ImageService {
         Ok(image_id)
     }
 
+    /// Downloads the image at the given URL and adds it via [`add`].
     #[tracing::instrument(skip(self), fields(image_url=%image_url), ret(Display), err)]
     pub async fn download(&self, image_url: Url) -> Result<Hyphenated, anyhow::Error> {
         let original_filename = image_url.to_string();
@@ -120,6 +123,7 @@ impl ImageService {
         self.add(&original_filename, &content_type, image.bytes_stream()).await
     }
 
+    /// Returns the directory containing the processed images.
     pub fn images_dir(&self) -> PathBuf {
         self.data_dir.join(IMAGES_DIR)
     }

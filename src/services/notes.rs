@@ -7,16 +7,19 @@ use url::Url;
 use uuid::fmt::Hyphenated;
 use uuid::Uuid;
 
+/// A service for creating and viewing [`Note`]s.
 #[derive(Debug, Clone)]
 pub struct NoteService {
     db: SqlitePool,
 }
 
 impl NoteService {
+    /// Create a new [`NoteService`] using the given database.
     pub fn new(db: SqlitePool) -> NoteService {
         NoteService { db }
     }
 
+    /// Create a new [`Note`], returning the new note's ID.
     #[tracing::instrument(skip(self, body), ret(Display), err)]
     pub async fn create(&self, body: &str) -> Result<Hyphenated, sqlx::Error> {
         let note_id = Uuid::new_v4().hyphenated();
@@ -26,6 +29,7 @@ impl NoteService {
         Ok(note_id)
     }
 
+    /// Find a [`Note`] by ID.
     #[tracing::instrument(skip(self), err)]
     pub async fn by_id(&self, note_id: &Uuid) -> Result<Option<Note>, sqlx::Error> {
         let note_id = note_id.as_hyphenated();
@@ -42,6 +46,7 @@ impl NoteService {
         .await
     }
 
+    /// Find the `n` most recent [`Note`]s in reverse chronological order.
     #[tracing::instrument(skip(self), err)]
     pub async fn most_recent(&self, n: u16) -> Result<Vec<Note>, sqlx::Error> {
         sqlx::query_as!(
@@ -58,6 +63,7 @@ impl NoteService {
         .await
     }
 
+    /// Return a vec of all week-long date ranges in which notes were created.
     #[tracing::instrument(skip(self), err)]
     pub async fn weeks(&self) -> Result<Vec<Range<NaiveDate>>, sqlx::Error> {
         Ok(sqlx::query!(
@@ -75,6 +81,7 @@ impl NoteService {
         .collect())
     }
 
+    /// Return all [`Note`]s which were created in the given date range.
     #[tracing::instrument(skip(self), err)]
     pub async fn date_range(&self, range: Range<NaiveDate>) -> Result<Vec<Note>, sqlx::Error> {
         let start = local_date_to_utc(&range.start);
@@ -95,20 +102,26 @@ impl NoteService {
     }
 }
 
+/// A shitpost with a Markdown body.
 #[derive(Debug)]
 pub struct Note {
+    /// The note's unique ID.
     pub note_id: Hyphenated,
+    // The note's Markdown body.
     pub body: String,
+    /// The date and time at which the note was created.
     pub created_at: DateTime<Utc>,
 }
 
 impl Note {
+    /// Returns the note's body as HTML.
     pub fn to_html(&self) -> String {
         let mut out = String::with_capacity(256);
         pulldown_cmark::html::push_html(&mut out, parse_md(&self.body));
         out
     }
 
+    /// Return a vec of the URLs of all images in the note.
     pub fn images(&self, base_url: &Url) -> Vec<Url> {
         parse_md(&self.body)
             .flat_map(|e| match e {
@@ -124,6 +137,7 @@ impl Note {
             .collect()
     }
 
+    /// Returns a plain-text version of the note.
     pub fn description(&self) -> String {
         parse_md(&self.body).fold(String::with_capacity(256), |mut d, e| {
             if let Event::Text(s) = e {
