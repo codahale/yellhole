@@ -139,19 +139,20 @@ impl Note {
 
     /// Returns a plain-text version of the note.
     pub fn description(&self) -> String {
-        parse_md(&self.body)
-            .fold(String::with_capacity(256), |mut d, e| {
-                match e {
-                    Event::Text(s) => d.push_str(s.as_ref()),
-                    Event::SoftBreak | Event::HardBreak | Event::Start(Tag::Paragraph) => {
-                        d.push(' ')
-                    }
-                    _ => {}
-                }
-                d
-            })
-            .trim()
-            .into()
+        let mut out = String::with_capacity(256);
+        for e in parse_md(&self.body) {
+            match e {
+                Event::Text(s)
+                | Event::Start(Tag::Image(_, _, s))
+                | Event::Start(Tag::Link(_, _, s)) => out.push_str(s.as_ref()),
+                Event::SoftBreak
+                | Event::HardBreak
+                | Event::Start(Tag::Paragraph)
+                | Event::Rule => out.push(' '),
+                _ => {}
+            }
+        }
+        out.trim().into()
     }
 }
 
