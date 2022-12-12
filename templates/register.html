@@ -9,12 +9,6 @@
 
 {% block content %}
 <section>
-    <button id="register" disabled onclick="register()">Register Passkey</button>
+    <button id="register" data-passkey-only="true" disabled onclick="register()">Register Passkey</button>
 </section>
-{% endblock %}
-
-{% block tail %}
-<script type="text/javascript" defer>
-    setup('register');
-</script>
 {% endblock %}

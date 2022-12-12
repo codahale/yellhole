@@ -1,19 +1,19 @@
-function setup(buttonId) {
-  document.addEventListener('DOMContentLoaded', (_) => {
-    if (!window.PublicKeyCredential || !PublicKeyCredential.isConditionalMediationAvailable) {
-      return;
-    }
+document.addEventListener('DOMContentLoaded', (_) => {
+  if (!window.PublicKeyCredential || !PublicKeyCredential.isConditionalMediationAvailable) {
+    return;
+  }
 
-    Promise.all([
-      PublicKeyCredential.isConditionalMediationAvailable(),
-      PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()])
-      .then((values) => {
-        if (values.every(x => x === true)) {
-          document.getElementById(buttonId).disabled = false;
-        }
-      });
-  });
-}
+  Promise.all([
+    PublicKeyCredential.isConditionalMediationAvailable(),
+    PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()])
+    .then((values) => {
+      if (values.every(x => x === true)) {
+        document.querySelectorAll('button[data-passkey-only="true"]').forEach(e => {
+          e.disabled = false;
+        });
+      }
+    });
+});
 
 async function register() {
   const startResp = await fetch('/register/start', {

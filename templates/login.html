@@ -8,11 +8,5 @@
 {% endblock %}
 
 {% block content %}
-<button id="login" disabled onclick="login()">Log In With Passkey</button>
-{% endblock %}
-
-{% block tail %}
-<script type="text/javascript" defer>
-    setup('login');
-</script>
+<button id="login" data-passkey-only="true" disabled onclick="login()">Log In With Passkey</button>
 {% endblock %}
