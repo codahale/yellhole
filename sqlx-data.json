@@ -122,24 +122,6 @@
     },
     "query": "\n            select\n              image_id as \"image_id: Hyphenated\",\n              original_filename,\n              created_at as \"created_at: DateTime<Utc>\"\n            from image\n            order by created_at desc\n            limit ?\n            "
   },
-  "574323077237b135b0690125ac950c135bd90a64e2bf94d667060079cdda9f29": {
-    "describe": {
-      "columns": [
-        {
-          "name": "n",
-          "ordinal": 0,
-          "type_info": "Int"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Right": 0
-      }
-    },
-    "query": "select count(passkey_id) as n from passkey"
-  },
   "60260000def8637a662bdc0e758497b8ca92ab28b36fb6bd8d1f918a5ee31b1d": {
     "describe": {
       "columns": [],
@@ -257,6 +239,24 @@
       }
     },
     "query": "\n            delete from challenge\n            where challenge_id = ? and created_at > datetime('now', '-5 minutes')\n            returning bytes"
+  },
+  "a71a9ed6a68067cbb9b8bb7eff0e11298ef40243f56ba7fbbfb9aae763576c88": {
+    "describe": {
+      "columns": [
+        {
+          "name": "has_passkey: bool",
+          "ordinal": 0,
+          "type_info": "Int"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 0
+      }
+    },
+    "query": "select count(passkey_id) > 0 as \"has_passkey: bool\" from passkey"
   },
   "ada3985d164523ba34f03976cb0d15e46fa0fc66c10ac4114440e2e7a097a08d": {
     "describe": {

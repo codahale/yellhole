@@ -31,10 +31,10 @@ impl PasskeyService {
 
     #[tracing::instrument(skip(self), ret, err)]
     pub async fn any_registered(&self) -> Result<bool, sqlx::Error> {
-        sqlx::query!(r"select count(passkey_id) as n from passkey")
+        sqlx::query!(r#"select count(passkey_id) > 0 as "has_passkey: bool" from passkey"#)
             .fetch_one(&self.db)
             .await
-            .map(|r| r.n > 0)
+            .map(|r| r.has_passkey)
     }
 
     #[tracing::instrument(skip(self), err)]
