@@ -14,8 +14,8 @@ use uuid::Uuid;
 use super::app::{AppError, AppState};
 use super::pages::Page;
 use crate::services::passkeys::{
-    AuthenticationChallenge, AuthenticationResponse, PasskeyService, RegistrationChallenge,
-    RegistrationResponse,
+    AuthenticationChallenge, AuthenticationResponse, PasskeyError, PasskeyService,
+    RegistrationChallenge, RegistrationResponse,
 };
 use crate::services::sessions::SessionService;
 
@@ -71,10 +71,10 @@ async fn register_finish(
     state: State<AppState>,
     Json(resp): Json<RegistrationResponse>,
 ) -> Result<Response, AppError> {
-    if state.passkeys.finish_registration(resp).await? {
-        Ok(StatusCode::CREATED.into_response())
-    } else {
-        Ok(StatusCode::BAD_REQUEST.into_response())
+    match state.passkeys.finish_registration(resp).await {
+        Ok(()) => Ok(StatusCode::CREATED.into_response()),
+        Err(PasskeyError::DatabaseError(err)) => Err(AppError::QueryFailure(err)),
+        Err(_) => Ok(StatusCode::BAD_REQUEST.into_response()),
     }
 }
 
@@ -113,14 +113,14 @@ async fn login_finish(
     };
 
     let cookies = cookies.remove(Cookie::build("challenge", "").path("/").finish());
-    if state.passkeys.finish_authentication(auth, &challenge_id).await? {
-        let session_id = state.sessions.authenticate().await?;
-        Ok((
-            cookies.add(cookie(&state, "session", session_id, SessionService::TTL)),
-            StatusCode::ACCEPTED,
-        ))
-    } else {
-        Ok((cookies, StatusCode::BAD_REQUEST))
+    match state.passkeys.finish_authentication(auth, &challenge_id).await {
+        Ok(()) => {
+            let session_id = state.sessions.authenticate().await?;
+            let cookies = cookies.add(cookie(&state, "session", session_id, SessionService::TTL));
+            Ok((cookies, StatusCode::ACCEPTED))
+        }
+        Err(PasskeyError::DatabaseError(err)) => Err(AppError::QueryFailure(err)),
+        Err(_) => Ok((cookies, StatusCode::BAD_REQUEST)),
     }
 }
 

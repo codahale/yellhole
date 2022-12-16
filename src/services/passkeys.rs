@@ -11,9 +11,11 @@ use serde_with::formats::Unpadded;
 use serde_with::{serde_as, PickFirst};
 use sha2::{Digest, Sha256};
 use sqlx::SqlitePool;
+use thiserror::Error;
 use url::Url;
 use uuid::Uuid;
 
+/// A service for handling passkey registration and authentication.
 #[derive(Debug, Clone)]
 pub struct PasskeyService {
     db: SqlitePool,
@@ -22,13 +24,16 @@ pub struct PasskeyService {
 }
 
 impl PasskeyService {
+    /// The time-to-live for passkey challenges.
     pub const TTL: Duration = Duration::from_secs(5 * 60);
 
+    /// Creates a new [`PasskeyService`] with the given database and base URL.
     pub fn new(db: SqlitePool, base_url: Url) -> PasskeyService {
         let rp_id = base_url.host_str().unwrap().into();
         PasskeyService { db, rp_id, origin: base_url }
     }
 
+    /// Returns `true` if any passkeys are registered.
     #[tracing::instrument(skip(self), ret, err)]
     pub async fn any_registered(&self) -> Result<bool, sqlx::Error> {
         sqlx::query!(r#"select count(passkey_id) > 0 as "has_passkey: bool" from passkey"#)
@@ -37,6 +42,7 @@ impl PasskeyService {
             .map(|r| r.has_passkey)
     }
 
+    /// Starts a passkey registration flow for the given username/user ID.
     #[tracing::instrument(skip(self), err)]
     pub async fn start_registration(
         &self,
@@ -51,25 +57,26 @@ impl PasskeyService {
         })
     }
 
-    #[tracing::instrument(skip_all, ret, err)]
+    /// Finishes a passkey registration flow.
+    #[tracing::instrument(skip_all, err)]
     pub async fn finish_registration(
         &self,
         resp: RegistrationResponse,
-    ) -> Result<bool, sqlx::Error> {
+    ) -> Result<(), PasskeyError> {
         // Try decoding the P-256 public key from its DER encoding.
         if VerifyingKey::from_public_key_der(&resp.public_key).is_err() {
-            return Ok(false);
+            return Err(PasskeyError::InvalidPublicKey);
         }
 
         // Decode and validate the client data.
         let cdj = &resp.client_data_json;
         if CollectedClientData::validate(cdj, &self.origin, "webauthn.create").is_err() {
-            return Ok(false);
+            return Err(PasskeyError::InvalidClientData);
         }
 
         // Decode and validate the authenticator data.
         let Ok(passkey_id) = parse_authenticator_data(&resp.authenticator_data, &self.rp_id) else {
-            return Ok(false);
+            return Err(PasskeyError::InvalidAuthenticatorData);
         };
 
         // Insert the passkey ID and DER-encoded public key into the database.
@@ -81,9 +88,10 @@ impl PasskeyService {
         .execute(&self.db)
         .await?;
 
-        Ok(true)
+        Ok(())
     }
 
+    /// Starts a passkey authentication flow.
     #[tracing::instrument(skip(self), err)]
     pub async fn start_authentication(
         &self,
@@ -95,6 +103,7 @@ impl PasskeyService {
         let challenge_id = Uuid::new_v4();
         let challenge = thread_rng().gen::<[u8; 32]>();
         {
+            // Convert to basic types for sqlx.
             let challenge_id = challenge_id.as_hyphenated().to_string();
             let challenge = challenge.to_vec();
             sqlx::query!(
@@ -110,12 +119,14 @@ impl PasskeyService {
         Ok((challenge_id, AuthenticationChallenge { rp_id, challenge, passkey_ids }))
     }
 
-    #[tracing::instrument(skip(self, resp), ret, err)]
+    /// Finishes a passkey authentication flow.
+    #[tracing::instrument(skip(self, resp), err)]
     pub async fn finish_authentication(
         &self,
         resp: AuthenticationResponse,
         challenge_id: &Uuid,
-    ) -> Result<bool, sqlx::Error> {
+    ) -> Result<(), PasskeyError> {
+        // Get and remove the challenge value from the database.
         let challenge_id = challenge_id.as_hyphenated().to_string();
         let Some(challenge) = sqlx::query!(
             r#"
@@ -127,7 +138,7 @@ impl PasskeyService {
         .fetch_optional(&self.db)
         .await?
         .and_then(|r| r.bytes) else {
-            return Ok(false)
+            return Err(PasskeyError::InvalidChallengeId);
         };
 
         // Validate the collected client data and check the challenge.
@@ -136,13 +147,13 @@ impl PasskeyService {
             .unwrap_or(false)
         {
             tracing::warn!(cdj=?resp.client_data_json, "invalid signed challenge");
-            return Ok(false);
+            return Err(PasskeyError::InvalidClientData);
         }
 
         // Decode and validate the authenticator data.
         if parse_authenticator_data(&resp.authenticator_data, &self.rp_id).is_err() {
             tracing::warn!(ad=?resp.authenticator_data, "invalid authenticator data");
-            return Ok(false);
+            return Err(PasskeyError::InvalidAuthenticatorData);
         }
 
         // Find the passkey by ID.
@@ -152,13 +163,13 @@ impl PasskeyService {
                 .await?
                 .map(|r| r.public_key_spki) else {
             tracing::warn!(passkey_id=?resp.raw_id, "unable to find passkey");
-            return Ok(false);
+            return Err(PasskeyError::InvalidPasskeyId);
         };
 
         // Decode the public key.
         let Ok(public_key) = VerifyingKey::from_public_key_der(&public_key_spki) else {
             tracing::warn!(passkey_id=?resp.raw_id, "unable to decode public key");
-            return Ok(false);
+            return Err(PasskeyError::InvalidPublicKey);
         };
 
         // Re-calculate the signed material.
@@ -169,11 +180,16 @@ impl PasskeyService {
         // Decode the signature.
         let Ok(signature) = Signature::from_der(resp.signature.as_slice()) else {
             tracing::warn!(passkey_id=?resp.raw_id, "unable to decode signature");
-            return Ok(false);
+            return Err(PasskeyError::InvalidSignature);
         };
 
         // Verify the signature.
-        Ok(public_key.verify(&signed, &signature).is_ok())
+        if public_key.verify(&signed, &signature).is_err() {
+            tracing::warn!(passkey_id=?resp.raw_id, "invalid signature");
+            return Err(PasskeyError::InvalidSignature);
+        }
+
+        Ok(())
     }
 
     #[tracing::instrument(skip(self), err)]
@@ -185,6 +201,30 @@ impl PasskeyService {
             .map(|r| r.passkey_id)
             .collect::<Vec<Vec<u8>>>())
     }
+}
+
+#[derive(Debug, Error)]
+pub enum PasskeyError {
+    #[error("invalid signature")]
+    InvalidSignature,
+
+    #[error("invalid passkey ID")]
+    InvalidPasskeyId,
+
+    #[error("invalid challenge ID")]
+    InvalidChallengeId,
+
+    #[error("invalid public key")]
+    InvalidPublicKey,
+
+    #[error("invalid client data")]
+    InvalidClientData,
+
+    #[error("invalid authenticator data")]
+    InvalidAuthenticatorData,
+
+    #[error(transparent)]
+    DatabaseError(#[from] sqlx::Error),
 }
 
 #[serde_as]
