@@ -222,6 +222,24 @@
     },
     "query": "\n            delete from challenge\n            where challenge_id = ? and created_at > datetime('now', '-5 minutes')\n            returning bytes"
   },
+  "a58377cccdfdb1c3c1463e91d9c6c439aeb3a1b82d68f7e47288e3f862cc5662": {
+    "describe": {
+      "columns": [
+        {
+          "name": "authenticated: bool",
+          "ordinal": 0,
+          "type_info": "Int"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "\n            select count(1) > 0 as \"authenticated: bool\"\n            from session\n            where session_id = ? and created_at > datetime('now', '-7 days')\n            "
+  },
   "a71a9ed6a68067cbb9b8bb7eff0e11298ef40243f56ba7fbbfb9aae763576c88": {
     "describe": {
       "columns": [
@@ -275,23 +293,5 @@
       }
     },
     "query": "select passkey_id from passkey"
-  },
-  "cd654dbb587bbd0c844812199ef2ac1f3a248ce4a1fc49f6537323e87cfa51c5": {
-    "describe": {
-      "columns": [
-        {
-          "name": "authenticated: bool",
-          "ordinal": 0,
-          "type_info": "Int"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Right": 1
-      }
-    },
-    "query": "\n            select count(1) > 0 as \"authenticated: bool\"\n            from session\n            where session_id = ? and created_at > datetime('now', '-7 days')"
   }
 }

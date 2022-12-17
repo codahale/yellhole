@@ -40,7 +40,8 @@ impl SessionService {
             r#"
             select count(1) > 0 as "authenticated: bool"
             from session
-            where session_id = ? and created_at > datetime('now', '-7 days')"#,
+            where session_id = ? and created_at > datetime('now', '-7 days')
+            "#,
             session_id,
         )
         .fetch_one(&self.db)
