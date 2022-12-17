@@ -28,6 +28,8 @@ use crate::services::sessions::SessionService;
 use crate::web::{admin, asset, auth, feed};
 
 use super::pages::ErrorPage;
+
+/// The Yellhole application.
 #[derive(Debug)]
 pub struct App {
     db: SqlitePool,
@@ -35,6 +37,7 @@ pub struct App {
 }
 
 impl App {
+    /// Create a new [`App`] from the given config.
     pub async fn new(mut config: Config) -> Result<App, anyhow::Error> {
         anyhow::ensure!(config.base_url.path() == "/", "base URL must not have a path");
         anyhow::ensure!(config.base_url.host().is_some(), "base URL must have a host");
@@ -56,12 +59,18 @@ impl App {
         Ok(App { db, config })
     }
 
+    /// Listen for HTTP requests.
     pub async fn serve(self) -> anyhow::Result<()> {
         let addr = SocketAddr::new(self.config.addr, self.config.port);
         tracing::info!(%addr, base_url=%self.config.base_url, "starting server");
 
+        // Create a new application state.
         let state = AppState::new(self.db, self.config)?;
+
+        // Spawn a background task for deleting expired sessions.
         let expiry = task::spawn(state.sessions.clone().continuously_delete_expired());
+
+        // Create a full stack of routers, state, and middleware.
         let app = admin::router()
             .route_layer(middleware::from_fn_with_state(state.clone(), auth::require_auth))
             .merge(auth::router())
@@ -79,17 +88,20 @@ impl App {
                     .layer(CatchPanicLayer::custom(handle_panic)),
             );
 
+        // Listen for requests, handling a graceful shutdown.
         axum::Server::bind(&addr)
             .serve(app.into_make_service())
             .with_graceful_shutdown(elegant_departure::tokio::depart().on_termination())
             .await?;
 
+        // Wait for background task to exit.
         expiry.await??;
 
         Ok(())
     }
 }
 
+/// The shared state of a running Yellhole instance.
 #[derive(Debug, Clone)]
 pub struct AppState {
     pub config: Arc<Config>,
@@ -101,8 +113,10 @@ pub struct AppState {
 }
 
 impl AppState {
+    /// The git commit hash of the build version, injected by vergen via build.rs.
     pub const GIT_COMMIT: &str = env!("VERGEN_GIT_SHA");
 
+    /// Create a new [`AppState`] with the given database and config.
     pub fn new(db: SqlitePool, config: Config) -> Result<AppState, io::Error> {
         let images = ImageService::new(db.clone(), &config.data_dir)?;
         let passkeys = PasskeyService::new(db.clone(), config.base_url.clone());
@@ -117,14 +131,18 @@ impl AppState {
     }
 }
 
+/// A common error type for application errors which map to responses.
 #[derive(Debug, Error)]
 pub enum AppError {
+    /// The most generic error type. Returns a 500.
     #[error(transparent)]
     Generic(#[from] anyhow::Error),
 
+    /// Any failure of an interaction with the database. Returns a 500.
     #[error(transparent)]
     QueryFailure(#[from] sqlx::Error),
 
+    /// When a page doesn't exist. Returns a 404.
     #[error("resource not found")]
     NotFound,
 }
@@ -139,6 +157,7 @@ impl IntoResponse for AppError {
     }
 }
 
+/// Given a recovered panic value from a handler, log it as an error and return a 500.
 fn handle_panic(err: Box<dyn Any + Send + 'static>) -> Response {
     let details = if let Some(s) = err.downcast_ref::<String>() {
         s.as_str()
@@ -151,7 +170,8 @@ fn handle_panic(err: Box<dyn Any + Send + 'static>) -> Response {
     ErrorPage::for_status(StatusCode::INTERNAL_SERVER_ERROR).into_response()
 }
 
+/// Map all unknown URIs to 404 errors.
 #[tracing::instrument(err)]
-async fn not_found(uri: Uri) -> Result<(), AppError> {
+async fn not_found(_uri: Uri) -> Result<(), AppError> {
     Err(AppError::NotFound)
 }
