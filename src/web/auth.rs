@@ -11,13 +11,12 @@ use axum_extra::extract::cookie::{Cookie, SameSite};
 use axum_extra::extract::CookieJar;
 use uuid::Uuid;
 
-use super::app::{AppError, AppState};
-use super::pages::Page;
 use crate::services::passkeys::{
     AuthenticationChallenge, AuthenticationResponse, PasskeyError, PasskeyService,
     RegistrationChallenge, RegistrationResponse,
 };
 use crate::services::sessions::SessionService;
+use crate::web::app::{AppError, AppState, Page};
 
 pub fn router() -> Router<AppState> {
     Router::new()

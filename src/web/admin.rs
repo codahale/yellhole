@@ -15,9 +15,7 @@ use uuid::Uuid;
 
 use crate::services::images::Image;
 use crate::services::notes::Note;
-
-use super::app::{AppError, AppState};
-use super::pages::Page;
+use crate::web::app::{AppError, AppState, Page};
 
 pub fn router() -> Router<AppState> {
     Router::new()

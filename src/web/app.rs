@@ -3,9 +3,10 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::{fs, io};
 
+use askama::Template;
 use axum::http::{self, StatusCode, Uri};
 use axum::middleware::{self};
-use axum::response::{IntoResponse, Response};
+use axum::response::{Html, IntoResponse, Response};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use sqlx::SqlitePool;
 use thiserror::Error;
@@ -26,8 +27,6 @@ use crate::services::notes::NoteService;
 use crate::services::passkeys::PasskeyService;
 use crate::services::sessions::SessionService;
 use crate::web::{admin, asset, auth, feed};
-
-use super::pages::ErrorPage;
 
 /// The Yellhole application.
 #[derive(Debug)]
@@ -154,6 +153,27 @@ impl IntoResponse for AppError {
             AppError::NotFound => StatusCode::NOT_FOUND,
         };
         ErrorPage::for_status(status).into_response()
+    }
+}
+
+#[derive(Debug)]
+pub struct Page<T: Template>(pub T);
+
+impl<T: Template> IntoResponse for Page<T> {
+    fn into_response(self) -> Response {
+        Html(self.0.render().expect("error rendering template")).into_response()
+    }
+}
+
+#[derive(Debug, Template)]
+#[template(path = "error.html")]
+pub struct ErrorPage {
+    status: StatusCode,
+}
+
+impl ErrorPage {
+    pub fn for_status(status: StatusCode) -> Response {
+        (status, Page(ErrorPage { status })).into_response()
     }
 }
 

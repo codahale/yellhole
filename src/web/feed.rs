@@ -13,10 +13,9 @@ use serde::Deserialize;
 use tower_http::set_header::SetResponseHeaderLayer;
 use uuid::Uuid;
 
-use super::app::{AppError, AppState};
-use super::pages::Page;
 use crate::config::Config;
 use crate::services::notes::Note;
+use crate::web::app::{AppError, AppState, Page};
 
 pub fn router() -> Router<AppState> {
     Router::new()
