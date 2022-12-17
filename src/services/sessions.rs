@@ -33,14 +33,14 @@ impl SessionService {
     pub async fn is_authenticated(&self, session_id: &str) -> Result<bool, sqlx::Error> {
         Ok(sqlx::query!(
             r#"
-            select count(1) as n
+            select count(1) > 0 as "authenticated: bool"
             from session
             where session_id = ? and created_at > datetime('now', '-7 days')"#,
             session_id,
         )
         .fetch_one(&self.db)
         .await?
-        .n > 0)
+        .authenticated)
     }
 
     pub async fn continuously_delete_expired(self) -> Result<(), sqlx::Error> {

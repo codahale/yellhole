@@ -1,23 +1,5 @@
 {
   "db": "SQLite",
-  "1d22f0da36f99015d28a5ba829411c82383973d152a2754e27beced0f6075426": {
-    "describe": {
-      "columns": [
-        {
-          "name": "n",
-          "ordinal": 0,
-          "type_info": "Int"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Right": 1
-      }
-    },
-    "query": "\n            select count(1) as n\n            from session\n            where session_id = ? and created_at > datetime('now', '-7 days')"
-  },
   "2263eb28429a2586141c6991762e5716720ed5897e443f99340740e18246e740": {
     "describe": {
       "columns": [
@@ -293,5 +275,23 @@
       }
     },
     "query": "select passkey_id from passkey"
+  },
+  "cd654dbb587bbd0c844812199ef2ac1f3a248ce4a1fc49f6537323e87cfa51c5": {
+    "describe": {
+      "columns": [
+        {
+          "name": "authenticated: bool",
+          "ordinal": 0,
+          "type_info": "Int"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "\n            select count(1) > 0 as \"authenticated: bool\"\n            from session\n            where session_id = ? and created_at > datetime('now', '-7 days')"
   }
 }
