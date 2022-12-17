@@ -72,13 +72,9 @@ impl App {
             .layer(
                 ServiceBuilder::new()
                     .set_x_request_id(MakeRequestUuid)
-                    .layer(SetSensitiveRequestHeadersLayer::new(std::iter::once(
-                        http::header::COOKIE,
-                    )))
+                    .layer(SetSensitiveRequestHeadersLayer::new([http::header::COOKIE]))
                     .layer(TraceLayer::new_for_http())
-                    .layer(SetSensitiveResponseHeadersLayer::new(std::iter::once(
-                        http::header::SET_COOKIE,
-                    )))
+                    .layer(SetSensitiveResponseHeadersLayer::new([http::header::SET_COOKIE]))
                     .propagate_x_request_id()
                     .layer(CatchPanicLayer::custom(handle_panic)),
             );
