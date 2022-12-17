@@ -115,7 +115,7 @@ async fn login_finish(
     let cookies = cookies.remove(Cookie::build("challenge", "").path("/").finish());
     match state.passkeys.finish_authentication(auth, &challenge_id).await {
         Ok(()) => {
-            let session_id = state.sessions.authenticate().await?;
+            let session_id = state.sessions.create().await?;
             let cookies = cookies.add(cookie(&state, "session", session_id, SessionService::TTL));
             Ok((cookies, StatusCode::ACCEPTED))
         }
@@ -136,7 +136,7 @@ fn cookie<'c>(state: &AppState, name: &'c str, value: Uuid, max_age: Duration) -
 
 async fn is_authenticated(state: &AppState, cookies: &CookieJar) -> Result<bool, sqlx::Error> {
     match cookies.get("session") {
-        Some(cookie) => state.sessions.is_authenticated(cookie.value()).await,
+        Some(cookie) => state.sessions.exists(cookie.value()).await,
         None => Ok(false),
     }
 }

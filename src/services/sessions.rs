@@ -4,20 +4,24 @@ use sqlx::SqlitePool;
 use tokio::time;
 use uuid::Uuid;
 
+/// A service which manages authenticated sessions.
 #[derive(Debug, Clone)]
 pub struct SessionService {
     db: SqlitePool,
 }
 
 impl SessionService {
+    /// The duration of an authenticated session.
     pub const TTL: Duration = Duration::from_secs(60 * 60 * 24 * 7);
 
+    /// Creates a new [`SessionService`] with the given database.
     pub fn new(db: SqlitePool) -> SessionService {
         SessionService { db }
     }
 
+    /// Creates an authenticated session and returns its ID.
     #[tracing::instrument(skip(self), err)]
-    pub async fn authenticate(&self) -> Result<Uuid, sqlx::Error> {
+    pub async fn create(&self) -> Result<Uuid, sqlx::Error> {
         let session_id = Uuid::new_v4();
         {
             let session_id = session_id.as_hyphenated().to_string();
@@ -29,8 +33,9 @@ impl SessionService {
         Ok(session_id)
     }
 
+    /// Returns `true` if a session with the given ID exists.
     #[tracing::instrument(skip_all, ret, err)]
-    pub async fn is_authenticated(&self, session_id: &str) -> Result<bool, sqlx::Error> {
+    pub async fn exists(&self, session_id: &str) -> Result<bool, sqlx::Error> {
         Ok(sqlx::query!(
             r#"
             select count(1) > 0 as "authenticated: bool"
@@ -43,6 +48,7 @@ impl SessionService {
         .authenticated)
     }
 
+    /// Runs an infinite asynchronous loop, deleting expired sessions every 10 minutes.
     pub async fn continuously_delete_expired(self) -> Result<(), sqlx::Error> {
         let mut interval = time::interval(Duration::from_secs(10 * 60));
         interval.tick().await; // skip immediate tick
