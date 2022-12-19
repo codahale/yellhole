@@ -132,7 +132,8 @@ impl PasskeyService {
             r#"
             delete from challenge
             where challenge_id = ? and created_at > datetime('now', '-5 minutes')
-            returning bytes"#,
+            returning bytes
+            "#,
             challenge_id
         )
         .fetch_optional(&self.db)

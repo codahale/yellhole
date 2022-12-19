@@ -72,7 +72,8 @@ impl NoteService {
               date(local, 'weekday 0', '-7 days') as "start!: NaiveDate",
               date(local, 'weekday 0') as "end!: NaiveDate"
             from (select datetime(created_at, 'localtime') as local from note)
-            group by 1 order by 1 desc"#,
+            group by 1 order by 1 desc
+            "#,
         )
         .fetch_all(&self.db)
         .await?

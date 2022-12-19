@@ -1,29 +1,5 @@
 {
   "db": "SQLite",
-  "2263eb28429a2586141c6991762e5716720ed5897e443f99340740e18246e740": {
-    "describe": {
-      "columns": [
-        {
-          "name": "start!: NaiveDate",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "end!: NaiveDate",
-          "ordinal": 1,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        null,
-        null
-      ],
-      "parameters": {
-        "Right": 0
-      }
-    },
-    "query": "\n            select\n              date(local, 'weekday 0', '-7 days') as \"start!: NaiveDate\",\n              date(local, 'weekday 0') as \"end!: NaiveDate\"\n            from (select datetime(created_at, 'localtime') as local from note)\n            group by 1 order by 1 desc"
-  },
   "274c213afcb4ee3d877ebfdaf0370b60a9e617bef3d972d6906f8392798a85e6": {
     "describe": {
       "columns": [],
@@ -73,6 +49,24 @@
       }
     },
     "query": "\n            select note_id as \"note_id: Hyphenated\", body, created_at as \"created_at: DateTime<Utc>\"\n            from note\n            where note_id = ?\n            "
+  },
+  "3ffe38259321159bf1263bd68ff3b0b13efd54e7934f16b7a979797103249670": {
+    "describe": {
+      "columns": [
+        {
+          "name": "bytes",
+          "ordinal": 0,
+          "type_info": "Blob"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "\n            delete from challenge\n            where challenge_id = ? and created_at > datetime('now', '-5 minutes')\n            returning bytes\n            "
   },
   "527ef1f01418915bc0ec36fd4ad725646d38f8b6b60ab4a85ceef01c3f86b0e3": {
     "describe": {
@@ -204,23 +198,29 @@
     },
     "query": "\n            select note_id as \"note_id: Hyphenated\", body, created_at as \"created_at: DateTime<Utc>\"\n            from note\n            order by created_at desc\n            limit ?\n            "
   },
-  "939f0d17d30efe318bc20de0219b2f424226b53228b9a1a926082d4c39cbbc61": {
+  "8fb4bc336bcf6255cb5176fc93fc209684c608c47b4635e9cf6fe1d80e2a5ee6": {
     "describe": {
       "columns": [
         {
-          "name": "bytes",
+          "name": "start!: NaiveDate",
           "ordinal": 0,
-          "type_info": "Blob"
+          "type_info": "Text"
+        },
+        {
+          "name": "end!: NaiveDate",
+          "ordinal": 1,
+          "type_info": "Text"
         }
       ],
       "nullable": [
-        true
+        null,
+        null
       ],
       "parameters": {
-        "Right": 1
+        "Right": 0
       }
     },
-    "query": "\n            delete from challenge\n            where challenge_id = ? and created_at > datetime('now', '-5 minutes')\n            returning bytes"
+    "query": "\n            select\n              date(local, 'weekday 0', '-7 days') as \"start!: NaiveDate\",\n              date(local, 'weekday 0') as \"end!: NaiveDate\"\n            from (select datetime(created_at, 'localtime') as local from note)\n            group by 1 order by 1 desc\n            "
   },
   "a58377cccdfdb1c3c1463e91d9c6c439aeb3a1b82d68f7e47288e3f862cc5662": {
     "describe": {
