@@ -161,7 +161,10 @@ pub struct Page<T: Template>(pub T);
 
 impl<T: Template> IntoResponse for Page<T> {
     fn into_response(self) -> Response {
-        Html(self.0.render().expect("error rendering template")).into_response()
+        let html = self.0.render().expect("error rendering template");
+        let cfg = minify_html_onepass::Cfg { minify_js: true, minify_css: true };
+        let html = minify_html_onepass::copy(html.as_bytes(), &cfg).expect("error minifying HTML");
+        Html(html).into_response()
     }
 }
 
