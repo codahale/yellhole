@@ -91,7 +91,7 @@ impl ImageService {
         // Add image to the database.
         let content_type = content_type.to_string();
         sqlx::query!(
-            r"insert into image (image_id, original_filename, content_type) values (?, ?, ?)",
+            r#"insert into image (image_id, original_filename, content_type) values (?, ?, ?)"#,
             image_id,
             original_filename,
             content_type

@@ -81,7 +81,7 @@ impl PasskeyService {
 
         // Insert the passkey ID and DER-encoded public key into the database.
         sqlx::query!(
-            r"insert into passkey (passkey_id, public_key_spki) values (?, ?)",
+            r#"insert into passkey (passkey_id, public_key_spki) values (?, ?)"#,
             passkey_id,
             resp.public_key,
         )
@@ -159,7 +159,7 @@ impl PasskeyService {
 
         // Find the passkey by ID.
         let Some(public_key_spki) =
-            sqlx::query!(r"select public_key_spki from passkey where passkey_id = ?", resp.raw_id)
+            sqlx::query!(r#"select public_key_spki from passkey where passkey_id = ?"#, resp.raw_id)
                 .fetch_optional(&self.db)
                 .await?
                 .map(|r| r.public_key_spki) else {
@@ -195,7 +195,7 @@ impl PasskeyService {
 
     #[tracing::instrument(skip(self), err)]
     async fn passkey_ids(&self) -> Result<Vec<Vec<u8>>, sqlx::Error> {
-        Ok(sqlx::query!(r"select passkey_id from passkey")
+        Ok(sqlx::query!(r#"select passkey_id from passkey"#)
             .fetch_all(&self.db)
             .await?
             .into_iter()
