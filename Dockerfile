@@ -1,6 +1,6 @@
 # Create a Rust builder with stable Rust. Disable static linking of musl because it segfaults.
 FROM alpine:3.17 AS rust-base
-RUN apk --no-cache add build-base rustup
+RUN apk --no-cache add build-base rustup git
 RUN rustup-init -y
 ENV RUSTFLAGS="-C target-feature=-crt-static"
 ENV PATH="/root/.cargo/bin:$PATH" 
@@ -14,6 +14,7 @@ RUN USER=root cargo new --bin xtask
 COPY Cargo.toml /app
 COPY Cargo.lock /app
 COPY xtask/Cargo.toml /app/xtask
+RUN git config --global --add safe.directory /app
 RUN cargo build --release
 
 # Build our app in release mode.
