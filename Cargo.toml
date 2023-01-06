@@ -44,7 +44,7 @@ spki = { version = "0.6.0", features = ["std", "alloc"] }
 sqlx = { version = "0.6.2", features = ["runtime-tokio-rustls", "sqlite", "chrono", "uuid", "offline"] }
 tempdir = "0.3.7"
 thiserror = "1.0.38"
-tokio = { version = "1.24.0", features = ["full"] }
+tokio = { version = "1.24.1", features = ["full"] }
 tokio-util = "0.7.4"
 tower = "0.4.13"
 tower-http = { version = "0.3.5", features = [
