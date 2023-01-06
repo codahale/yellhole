@@ -1314,9 +1314,9 @@ dependencies = [
 
 [[package]]
 name = "minify-html-onepass"
-version = "0.10.6"
+version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02ac48e35194d04d196fc74ee904d4fc19a06208f0abda9c8cb79bde162fdcd1"
+checksum = "8bb42a29e6e801dbc1fa57ad5f7a9aebc18bac270f9ff6945f78e06be7a6efb6"
 dependencies = [
  "aho-corasick",
  "css-minify",
@@ -1328,9 +1328,9 @@ dependencies = [
 
 [[package]]
 name = "minify-js"
-version = "0.2.9"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fe033709f5a1159736cf7e22748518ffb75af26f3a6264d52ecc8bb38c68c36"
+checksum = "58a1566cb31504e32f009f6c47ad83f7eeb91d00e8e9845314f1d0b2202ef595"
 dependencies = [
  "lazy_static",
  "parse-js",
@@ -1500,9 +1500,9 @@ dependencies = [
 
 [[package]]
 name = "parse-js"
-version = "0.3.1"
+version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "66bb85ec60d22b9e6d4adac1e3dbdaf3903a4485f476c5f4dd7ed1285cbf4dad"
+checksum = "30534759e6ad87aa144c396544747e1c25b1020bd133356fd758c8facec764e5"
 dependencies = [
  "aho-corasick",
  "lazy_static",
