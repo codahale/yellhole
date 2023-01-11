@@ -117,16 +117,20 @@ async fn atom(State(state): State<AppState>) -> Result<Response, AppError> {
         .most_recent(20)
         .await?
         .iter()
-        .map(|n| Entry {
-            id: filters::to_note_url(n, &state.config.base_url).unwrap().to_string(),
-            title: Text { value: n.note_id.to_string(), ..Default::default() },
-            content: Some(Content {
-                content_type: Some("html".into()),
-                value: Some(n.to_html()),
+        .map(|n| {
+            let url = filters::to_note_url(n, &state.config.base_url).unwrap().to_string();
+            Entry {
+                id: url.clone(),
+                title: Text { value: n.note_id.to_string(), ..Default::default() },
+                links: vec![Link { href: url, ..Default::default() }],
+                content: Some(Content {
+                    content_type: Some("html".into()),
+                    value: Some(n.to_html()),
+                    ..Default::default()
+                }),
+                updated: n.created_at.with_timezone(&FixedOffset::east_opt(0).unwrap()),
                 ..Default::default()
-            }),
-            updated: n.created_at.with_timezone(&FixedOffset::east_opt(0).unwrap()),
-            ..Default::default()
+            }
         })
         .collect();
 
@@ -139,7 +143,6 @@ async fn atom(State(state): State<AppState>) -> Result<Response, AppError> {
         entries,
         links: vec![Link {
             href: filters::to_atom_url(&state.config.base_url).unwrap().to_string(),
-            rel: "self".into(),
             ..Default::default()
         }],
         updated: FixedDateTime::from_utc(Utc::now().naive_utc(), FixedOffset::east_opt(0).unwrap()),
