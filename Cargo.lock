@@ -2934,6 +2934,7 @@ dependencies = [
  "chrono",
  "clap",
  "constant_time_eq",
+ "ecdsa",
  "elegant-departure",
  "futures",
  "hex",

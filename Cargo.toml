@@ -25,6 +25,7 @@ axum-extra = { version = "0.4.2", features = ["cookie"] }
 chrono = { version = "0.4.23", default-features = false, features = ["std", "serde"] }
 clap = { version = "4.1.1", features = ["derive", "env"] }
 constant_time_eq = "0.2.4"
+ecdsa = { version = "0.15.0", features = ["verifying", "std"] }
 elegant-departure = { version = "0.2.0", features = ["tokio"] }
 futures = "0.3.25"
 hex = "0.4.3"
@@ -64,6 +65,7 @@ uuid = { version = "1.2.2", features = ["serde", "std", "v4"] }
 webpki-roots = "0.22.6"
 
 [dev-dependencies]
+ecdsa = { version = "0.15.0", features = ["signing"] }
 reqwest = { version = "0.11.13", features = ["json", "cookies", "multipart"], default-features = false }
 
 [workspace]

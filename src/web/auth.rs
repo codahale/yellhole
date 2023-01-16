@@ -143,9 +143,9 @@ async fn is_authenticated(state: &AppState, cookies: &CookieJar) -> Result<bool,
 #[cfg(test)]
 mod tests {
     use axum::{http, middleware};
+    use ecdsa::{Signature, SigningKey};
     use p256::ecdsa::signature::Signer;
-    use p256::ecdsa::SigningKey;
-    use p256::PublicKey;
+    use p256::{NistP256, PublicKey};
     use rand::thread_rng;
     use sha2::{Digest, Sha256};
     use spki::EncodePublicKey;
@@ -259,7 +259,11 @@ mod tests {
         // Sign authenticator data and a hash of the collected client data.
         let mut signed = authenticator_data.to_vec();
         signed.extend(Sha256::new().chain_update(&client_data_json).finalize());
-        let signature = signing_key.sign(&signed).to_der().as_bytes().to_vec();
+        let signature =
+            <SigningKey<NistP256> as Signer<Signature<NistP256>>>::sign(&signing_key, &signed)
+                .to_der()
+                .as_bytes()
+                .to_vec();
 
         // Send our signature to authenticate.
         let login_finish = ts
