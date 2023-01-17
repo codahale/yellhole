@@ -23,10 +23,10 @@ WORKDIR /app
 COPY ./ /app
 RUN cargo build --release
 
-# Create a deployable image from base Alpine with ImageMagick and SQLite (for admin stuff), set to
-# my time zone, with just the compiled binary.
+# Create a deployable image from base Alpine with ffmpeg, ImageMagick, and SQLite (for admin stuff),
+# set to # my time zone, with just the compiled binary.
 FROM alpine:3.17
-RUN apk --no-cache add imagemagick sqlite tzdata && \
+RUN apk --no-cache add ffmpeg imagemagick sqlite tzdata && \
     cp /usr/share/zoneinfo/America/Denver /etc/localtime && \
     echo "America/Denver" > /etc/timezone && \
     apk del tzdata
