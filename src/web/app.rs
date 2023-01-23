@@ -112,8 +112,8 @@ pub struct AppState {
 }
 
 impl AppState {
-    /// The git commit hash of the build version, injected by vergen via build.rs.
-    pub const GIT_COMMIT: &str = env!("VERGEN_GIT_SHA");
+    /// The timestamp of the build, injected by vergen via build.rs.
+    pub const BUILD_TIMESTAMP: &str = env!("VERGEN_BUILD_TIMESTAMP");
 
     /// Create a new [`AppState`] with the given database and config.
     pub fn new(db: SqlitePool, config: Config) -> Result<AppState, io::Error> {
