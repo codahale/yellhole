@@ -329,12 +329,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cec318a675afcb6a1ea1d4340e2d377e56e47c266f28043ceccbf4412ddfdd3b"
 
 [[package]]
-name = "constant_time_eq"
-version = "0.2.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3ad85c1f65dc7b37604eb0e89748faf0b9653065f2a8ef69f96a687ec1e9279"
-
-[[package]]
 name = "convert_case"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2890,7 +2884,6 @@ dependencies = [
  "axum-extra",
  "chrono",
  "clap",
- "constant_time_eq",
  "ecdsa",
  "elegant-departure",
  "futures",
@@ -2909,6 +2902,7 @@ dependencies = [
  "sha2",
  "spki",
  "sqlx",
+ "subtle",
  "tempdir",
  "thiserror",
  "tokio",

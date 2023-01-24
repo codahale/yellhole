@@ -1,6 +1,5 @@
 use std::time::Duration;
 
-use constant_time_eq::constant_time_eq;
 use p256::ecdsa::signature::Verifier;
 use p256::ecdsa::{Signature, VerifyingKey};
 use p256::pkcs8::DecodePublicKey;
@@ -11,6 +10,7 @@ use serde_with::formats::Unpadded;
 use serde_with::{serde_as, PickFirst};
 use sha2::{Digest, Sha256};
 use sqlx::SqlitePool;
+use subtle::ConstantTimeEq;
 use thiserror::Error;
 use url::Url;
 use uuid::Uuid;
@@ -144,7 +144,7 @@ impl PasskeyService {
 
         // Validate the collected client data and check the challenge.
         if !CollectedClientData::validate(&resp.client_data_json, &self.origin, "webauthn.get")
-            .map(|c| constant_time_eq(&c.unwrap_or_default(), &challenge))
+            .map(|c| challenge.ct_eq(&c.unwrap_or_default()).into())
             .unwrap_or(false)
         {
             tracing::warn!(cdj=?resp.client_data_json, "invalid signed challenge");
@@ -325,7 +325,7 @@ impl CollectedClientData {
 #[tracing::instrument(skip_all, err)]
 fn parse_authenticator_data(ad: &[u8], rp_id: &str) -> Result<Option<Vec<u8>>, anyhow::Error> {
     let rp_hash = Sha256::new().chain_update(rp_id.as_bytes()).finalize();
-    anyhow::ensure!(constant_time_eq(&rp_hash, &ad[..32]), "invalid RP ID hash");
+    anyhow::ensure!(bool::from(rp_hash.ct_eq(&ad[..32])), "invalid RP ID hash");
     anyhow::ensure!(ad[32] & 1 != 0, "user presence flag not set");
     if ad.len() > 55 {
         let cred_id_len = u16::from_be_bytes(ad[53..55].try_into().unwrap()) as usize;
