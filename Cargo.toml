@@ -23,7 +23,7 @@ atom_syndication = { version = "0.12.0", default-features = false }
 axum = { version = "0.6.3", features = ["http2", "multipart"] }
 axum-extra = { version = "0.4.2", features = ["cookie"] }
 chrono = { version = "0.4.23", default-features = false, features = ["std", "serde"] }
-clap = { version = "4.1.2", features = ["derive", "env"] }
+clap = { version = "4.1.3", features = ["derive", "env"] }
 elegant-departure = { version = "0.2.0", features = ["tokio"] }
 futures = "0.3.25"
 hex = "0.4.3"
