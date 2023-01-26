@@ -20,6 +20,7 @@ impl SessionService {
     }
 
     /// Creates an authenticated session and returns its ID.
+    #[must_use]
     #[tracing::instrument(skip(self), err)]
     pub async fn create(&self) -> Result<Uuid, sqlx::Error> {
         let session_id = Uuid::new_v4();
@@ -34,6 +35,7 @@ impl SessionService {
     }
 
     /// Returns `true` if a session with the given ID exists.
+    #[must_use]
     #[tracing::instrument(skip_all, ret, err)]
     pub async fn exists(&self, session_id: &str) -> Result<bool, sqlx::Error> {
         Ok(sqlx::query!(
@@ -59,6 +61,7 @@ impl SessionService {
         }
     }
 
+    #[must_use]
     #[tracing::instrument(skip(self), ret, err)]
     async fn delete_expired(&self) -> Result<u64, sqlx::Error> {
         Ok(sqlx::query!(r#"delete from session where created_at < datetime('now', '-7 days')"#)

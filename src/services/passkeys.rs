@@ -34,6 +34,7 @@ impl PasskeyService {
     }
 
     /// Returns `true` if any passkeys are registered.
+    #[must_use]
     #[tracing::instrument(skip(self), ret, err)]
     pub async fn any_registered(&self) -> Result<bool, sqlx::Error> {
         sqlx::query!(r#"select count(passkey_id) > 0 as "has_passkey: bool" from passkey"#)
@@ -43,6 +44,7 @@ impl PasskeyService {
     }
 
     /// Starts a passkey registration flow for the given username/user ID.
+    #[must_use]
     #[tracing::instrument(skip(self), err)]
     pub async fn start_registration(
         &self,
@@ -58,6 +60,7 @@ impl PasskeyService {
     }
 
     /// Finishes a passkey registration flow.
+    #[must_use]
     #[tracing::instrument(skip_all, err)]
     pub async fn finish_registration(
         &self,
@@ -92,6 +95,7 @@ impl PasskeyService {
     }
 
     /// Starts a passkey authentication flow.
+    #[must_use]
     #[tracing::instrument(skip(self), err)]
     pub async fn start_authentication(
         &self,
@@ -120,6 +124,7 @@ impl PasskeyService {
     }
 
     /// Finishes a passkey authentication flow.
+    #[must_use]
     #[tracing::instrument(skip(self, resp), err)]
     pub async fn finish_authentication(
         &self,
@@ -193,6 +198,7 @@ impl PasskeyService {
         Ok(())
     }
 
+    #[must_use]
     #[tracing::instrument(skip(self), err)]
     async fn passkey_ids(&self) -> Result<Vec<Vec<u8>>, sqlx::Error> {
         Ok(sqlx::query!(r#"select passkey_id from passkey"#)

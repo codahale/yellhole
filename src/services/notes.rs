@@ -20,6 +20,7 @@ impl NoteService {
     }
 
     /// Create a new [`Note`], returning the new note's ID.
+    #[must_use]
     #[tracing::instrument(skip(self, body), ret(Display), err)]
     pub async fn create(&self, body: &str) -> Result<Hyphenated, sqlx::Error> {
         let note_id = Uuid::new_v4().hyphenated();
@@ -30,6 +31,7 @@ impl NoteService {
     }
 
     /// Find a [`Note`] by ID.
+    #[must_use]
     #[tracing::instrument(skip(self), err)]
     pub async fn by_id(&self, note_id: &Uuid) -> Result<Option<Note>, sqlx::Error> {
         let note_id = note_id.as_hyphenated();
@@ -47,6 +49,7 @@ impl NoteService {
     }
 
     /// Find the `n` most recent [`Note`]s in reverse chronological order.
+    #[must_use]
     #[tracing::instrument(skip(self), err)]
     pub async fn most_recent(&self, n: u16) -> Result<Vec<Note>, sqlx::Error> {
         sqlx::query_as!(
@@ -64,6 +67,7 @@ impl NoteService {
     }
 
     /// Return a vec of all week-long date ranges in which notes were created.
+    #[must_use]
     #[tracing::instrument(skip(self), err)]
     pub async fn weeks(&self) -> Result<Vec<Range<NaiveDate>>, sqlx::Error> {
         Ok(sqlx::query!(
@@ -83,6 +87,7 @@ impl NoteService {
     }
 
     /// Return all [`Note`]s which were created in the given date range.
+    #[must_use]
     #[tracing::instrument(skip(self), err)]
     pub async fn date_range(&self, range: Range<NaiveDate>) -> Result<Vec<Note>, sqlx::Error> {
         let start = local_date_to_utc(&range.start);
