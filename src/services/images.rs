@@ -150,12 +150,12 @@ impl Image {
 
 /// The canonical filename of the main version of an image.
 fn main_filename(image_id: &Hyphenated) -> String {
-    format!("{}.main.webp", image_id)
+    format!("{image_id}.main.webp")
 }
 
 /// The canonical filename of the thumbnail version of an image.
 fn thumbnail_filename(image_id: &Hyphenated) -> String {
-    format!("{}.thumb.webp", image_id)
+    format!("{image_id}.thumb.webp")
 }
 
 #[tracing::instrument(skip(stream), err)]
