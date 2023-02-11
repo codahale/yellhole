@@ -883,7 +883,7 @@ dependencies = [
  "indexmap",
  "slab",
  "tokio",
- "tokio-util 0.7.5",
+ "tokio-util 0.7.6",
  "tracing",
 ]
 
@@ -1763,7 +1763,7 @@ dependencies = [
  "serde_urlencoded",
  "tokio",
  "tokio-rustls",
- "tokio-util 0.7.5",
+ "tokio-util 0.7.6",
  "tower-service",
  "url",
  "wasm-bindgen",
@@ -2374,9 +2374,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-util"
-version = "0.7.5"
+version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e267c18a719545b481171952a79f8c25c80361463ba44bc7fa9eba7c742ef4f"
+checksum = "bc6a3b08b64e6dfad376fa2432c7b1f01522e37a623c3050bc95db2d3ff21583"
 dependencies = [
  "bytes",
  "futures-core",
@@ -2430,7 +2430,7 @@ dependencies = [
  "percent-encoding",
  "pin-project-lite",
  "tokio",
- "tokio-util 0.7.5",
+ "tokio-util 0.7.6",
  "tower",
  "tower-layer",
  "tower-service",
@@ -2936,7 +2936,7 @@ dependencies = [
  "tempdir",
  "thiserror",
  "tokio",
- "tokio-util 0.7.5",
+ "tokio-util 0.7.6",
  "tower",
  "tower-http",
  "tracing",
