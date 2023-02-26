@@ -143,7 +143,7 @@ impl PasskeyService {
         )
         .fetch_optional(&self.db)
         .await?
-        .and_then(|r| r.bytes) else {
+        .map(|r| r.bytes) else {
             return Err(PasskeyError::InvalidChallengeId);
         };
 
