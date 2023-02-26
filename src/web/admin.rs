@@ -103,8 +103,6 @@ async fn download_image(
 
 #[cfg(test)]
 mod tests {
-    use std::io;
-
     use axum::http;
     use axum::routing::get_service;
     use reqwest::multipart;
@@ -170,16 +168,9 @@ mod tests {
 
     #[sqlx::test]
     async fn downloading_an_image(db: SqlitePool) -> Result<(), anyhow::Error> {
-        async fn io_error(_: io::Error) -> StatusCode {
-            StatusCode::INTERNAL_SERVER_ERROR
-        }
-
         fn app() -> Router<AppState> {
             Router::new()
-                .route_service(
-                    "/logo.webp",
-                    get_service(ServeFile::new("yellhole.webp")).handle_error(io_error),
-                )
+                .route_service("/logo.webp", get_service(ServeFile::new("yellhole.webp")))
                 .merge(router())
         }
 

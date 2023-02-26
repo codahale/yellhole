@@ -18,8 +18,7 @@ pub fn router(images: &ImageService, assets: &AssetService) -> io::Result<Router
     let assets = get_service(
         ServiceBuilder::new()
             .service(ServeDir::new(assets.assets_dir()).precompressed_br().precompressed_gzip()),
-    )
-    .handle_error(io_error);
+    );
 
     Ok(Router::new()
         // Serve particular asset files.
@@ -35,8 +34,7 @@ pub fn router(images: &ImageService, assets: &AssetService) -> io::Result<Router
         // Serve images.
         .nest_service(
             "/images",
-            get_service(ServiceBuilder::new().service(ServeDir::new(images.images_dir())))
-                .handle_error(io_error),
+            get_service(ServiceBuilder::new().service(ServeDir::new(images.images_dir()))),
         )
         .layer(SetResponseHeaderLayer::overriding(
             http::header::CACHE_CONTROL,
