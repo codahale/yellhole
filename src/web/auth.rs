@@ -145,10 +145,10 @@ mod tests {
     use axum::{http, middleware};
     use p256::ecdsa::signature::Signer;
     use p256::ecdsa::{Signature, SigningKey};
+    use p256::pkcs8::EncodePublicKey;
     use p256::PublicKey;
     use rand::thread_rng;
     use sha2::{Digest, Sha256};
-    use spki::EncodePublicKey;
     use sqlx::SqlitePool;
 
     use crate::services::passkeys::CollectedClientData;
@@ -206,8 +206,10 @@ mod tests {
 
         // Generate a P-256 ECDSA key pair.
         let signing_key = SigningKey::random(&mut thread_rng());
-        let public_key =
-            PublicKey::from(signing_key.verifying_key()).to_public_key_der()?.into_vec();
+        let public_key = PublicKey::from(signing_key.verifying_key())
+            .to_public_key_der()
+            .map_err(|e| anyhow::anyhow!("{}", e))? // elliptic-curves/std doesn't activate pkcs8/std
+            .into_vec();
         let key_id = Sha256::new().chain_update(&public_key).finalize().to_vec();
 
         // Start the registration process.
