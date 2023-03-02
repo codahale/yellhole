@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "select count(passkey_id) > 0 as \"has_passkey: bool\" from passkey",
+  "describe": {
+    "columns": [
+      {
+        "name": "has_passkey: bool",
+        "ordinal": 0,
+        "type_info": "Int"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "a71a9ed6a68067cbb9b8bb7eff0e11298ef40243f56ba7fbbfb9aae763576c88"
+}

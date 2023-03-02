@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            select note_id as \"note_id: Hyphenated\", body, created_at as \"created_at: DateTime<Utc>\"\n            from note\n            order by created_at desc\n            limit ?\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "note_id: Hyphenated",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "body",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at: DateTime<Utc>",
+        "ordinal": 2,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "8b94da7b7bd3bdcedcf9bf4b4ad7900cc1578db20726233e24f94753138e94b7"
+}

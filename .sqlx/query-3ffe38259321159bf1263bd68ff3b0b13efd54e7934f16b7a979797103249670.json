@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            delete from challenge\n            where challenge_id = ? and created_at > datetime('now', '-5 minutes')\n            returning bytes\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "bytes",
+        "ordinal": 0,
+        "type_info": "Blob"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "3ffe38259321159bf1263bd68ff3b0b13efd54e7934f16b7a979797103249670"
+}

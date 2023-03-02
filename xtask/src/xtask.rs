@@ -89,7 +89,7 @@ fn db_migrate(sh: &Shell) -> Result<(), anyhow::Error> {
 }
 
 fn db_prepare(sh: &Shell) -> Result<(), anyhow::Error> {
-    cmd!(sh, "rm -f sqlx-data.json").run()?;
+    cmd!(sh, "rm -rf .sqlx").run()?;
     cmd!(sh, "cargo sqlx prepare -- --tests").env("DATABASE_URL", DB_URL).run()?;
     Ok(())
 }

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "insert into challenge (challenge_id, bytes) values (?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "60260000def8637a662bdc0e758497b8ca92ab28b36fb6bd8d1f918a5ee31b1d"
+}

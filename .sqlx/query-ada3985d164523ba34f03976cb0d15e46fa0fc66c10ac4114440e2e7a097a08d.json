@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "select public_key_spki from passkey where passkey_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "public_key_spki",
+        "ordinal": 0,
+        "type_info": "Blob"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ada3985d164523ba34f03976cb0d15e46fa0fc66c10ac4114440e2e7a097a08d"
+}
