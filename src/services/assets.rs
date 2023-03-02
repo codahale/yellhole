@@ -3,7 +3,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use include_dir::{include_dir, Dir};
-use tempdir::TempDir;
+use tempfile::TempDir;
 
 /// A service which extracts static assets into a temporary directory.
 #[derive(Debug, Clone)]
@@ -14,7 +14,7 @@ pub struct AssetService {
 impl AssetService {
     /// Creates a new `AssetService`, extracts static assets into a temporary directory.
     pub fn new() -> io::Result<AssetService> {
-        let dir = TempDir::new("yellhole-assets")?;
+        let dir = TempDir::new()?;
         ASSET_DIR.extract(dir.path())?;
         Ok(AssetService { dir: Arc::new(dir) })
     }

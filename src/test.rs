@@ -7,7 +7,7 @@ use clap::Parser;
 use reqwest::redirect::Policy;
 use reqwest::{Client, ClientBuilder, RequestBuilder, Url};
 use sqlx::SqlitePool;
-use tempdir::TempDir;
+use tempfile::TempDir;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
 use tracing::Level;
 use tracing_subscriber::fmt::format::FmtSpan;
@@ -25,7 +25,7 @@ pub struct TestEnv {
 
 impl TestEnv {
     pub fn new(db: SqlitePool) -> Result<TestEnv, anyhow::Error> {
-        let temp_dir = TempDir::new("yellhole-test")?;
+        let temp_dir = TempDir::new()?;
         let config = Config::parse_from([
             format!("--data-dir={}", temp_dir.path().to_str().unwrap()),
             "--base-url=http://example.com".into(),

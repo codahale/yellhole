@@ -41,7 +41,7 @@ serde_with = { version = "2.2.0", features = ["base64"] }
 sha2 = "0.10.6"
 sqlx = { version = "0.6.2", features = ["runtime-tokio-rustls", "sqlite", "chrono", "uuid", "offline"] }
 subtle = "2.4.1"
-tempdir = "0.3.7"
+tempfile = "3.4.0"
 thiserror = "1.0.38"
 tokio = { version = "1.26.0", features = ["full"] }
 tokio-util = "0.7.7"
