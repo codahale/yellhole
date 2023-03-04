@@ -208,7 +208,7 @@ mod tests {
         let signing_key = SigningKey::random(&mut thread_rng());
         let public_key = PublicKey::from(signing_key.verifying_key())
             .to_public_key_der()
-            .map_err(|e| anyhow::anyhow!("{}", e))? // elliptic-curves/std doesn't activate pkcs8/std
+            .map_err(|e| anyhow::anyhow!("{}", e))? // TODO delete this once elliptic-curve 0.13.2 drops
             .into_vec();
         let key_id = Sha256::new().chain_update(&public_key).finalize().to_vec();
 
