@@ -42,7 +42,7 @@ sha2 = "0.10.6"
 sqlx = { version = "0.6.2", features = ["runtime-tokio-rustls", "sqlite", "chrono", "uuid", "offline"] }
 subtle = "2.4.1"
 tempfile = "3.4.0"
-thiserror = "1.0.38"
+thiserror = "1.0.39"
 tokio = { version = "1.26.0", features = ["full"] }
 tokio-util = "0.7.7"
 tower = "0.4.13"
