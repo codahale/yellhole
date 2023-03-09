@@ -206,10 +206,8 @@ mod tests {
 
         // Generate a P-256 ECDSA key pair.
         let signing_key = SigningKey::random(&mut thread_rng());
-        let public_key = PublicKey::from(signing_key.verifying_key())
-            .to_public_key_der()
-            .map_err(|e| anyhow::anyhow!("{}", e))? // TODO delete this once elliptic-curve 0.13.2 drops
-            .into_vec();
+        let public_key =
+            PublicKey::from(signing_key.verifying_key()).to_public_key_der()?.into_vec();
         let key_id = Sha256::new().chain_update(&public_key).finalize().to_vec();
 
         // Start the registration process.
