@@ -2883,7 +2883,6 @@ dependencies = [
  "serde_with",
  "sha2",
  "sqlx",
- "subtle",
  "tempfile",
  "thiserror",
  "tokio",

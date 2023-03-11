@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use p256::ecdsa::signature::Verifier;
 use p256::ecdsa::{Signature, VerifyingKey};
+use p256::elliptic_curve::subtle::ConstantTimeEq;
 use p256::pkcs8::DecodePublicKey;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
@@ -10,7 +11,6 @@ use serde_with::formats::Unpadded;
 use serde_with::{serde_as, PickFirst};
 use sha2::{Digest, Sha256};
 use sqlx::SqlitePool;
-use subtle::ConstantTimeEq;
 use thiserror::Error;
 use url::Url;
 use uuid::Uuid;
