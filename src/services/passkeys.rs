@@ -37,10 +37,9 @@ impl PasskeyService {
     #[must_use]
     #[tracing::instrument(skip(self), ret, err)]
     pub async fn any_registered(&self) -> Result<bool, sqlx::Error> {
-        sqlx::query!(r#"select count(passkey_id) > 0 as "has_passkey: bool" from passkey"#)
+        sqlx::query_scalar!(r#"select count(passkey_id) > 0 as "has_passkey: bool" from passkey"#)
             .fetch_one(&self.db)
             .await
-            .map(|r| r.has_passkey)
     }
 
     /// Starts a passkey registration flow for the given username/user ID.
@@ -133,7 +132,7 @@ impl PasskeyService {
     ) -> Result<(), PasskeyError> {
         // Get and remove the challenge value from the database.
         let challenge_id = challenge_id.as_hyphenated().to_string();
-        let Some(challenge) = sqlx::query!(
+        let Some(challenge) = sqlx::query_scalar!(
             r#"
             delete from challenge
             where challenge_id = ? and created_at > datetime('now', '-5 minutes')
@@ -142,8 +141,7 @@ impl PasskeyService {
             challenge_id
         )
         .fetch_optional(&self.db)
-        .await?
-        .map(|r| r.bytes) else {
+        .await? else {
             return Err(PasskeyError::InvalidChallengeId);
         };
 
@@ -164,10 +162,12 @@ impl PasskeyService {
 
         // Find the passkey by ID.
         let Some(public_key_spki) =
-            sqlx::query!(r#"select public_key_spki from passkey where passkey_id = ?"#, resp.raw_id)
-                .fetch_optional(&self.db)
-                .await?
-                .map(|r| r.public_key_spki) else {
+            sqlx::query_scalar!(
+                r#"select public_key_spki from passkey where passkey_id = ?"#,
+                resp.raw_id,
+            )
+            .fetch_optional(&self.db)
+            .await? else {
             tracing::warn!(passkey_id=?resp.raw_id, "unable to find passkey");
             return Err(PasskeyError::InvalidPasskeyId);
         };
@@ -201,11 +201,10 @@ impl PasskeyService {
     #[must_use]
     #[tracing::instrument(skip(self), err)]
     async fn passkey_ids(&self) -> Result<Vec<Vec<u8>>, sqlx::Error> {
-        Ok(sqlx::query!(r#"select passkey_id from passkey"#)
+        Ok(sqlx::query_scalar!(r#"select passkey_id from passkey"#)
             .fetch_all(&self.db)
             .await?
             .into_iter()
-            .map(|r| r.passkey_id)
             .collect::<Vec<Vec<u8>>>())
     }
 }
