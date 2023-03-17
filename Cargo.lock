@@ -2197,8 +2197,8 @@ dependencies = [
 
 [[package]]
 name = "sqlx"
-version = "0.7.0-alpha.1"
-source = "git+https://github.com/launchbadge/sqlx#bce16a5c1d6f84cd2319626c84e508f93aca9c9b"
+version = "0.7.0-alpha.2"
+source = "git+https://github.com/launchbadge/sqlx#15458fa9d6f46a3c55fe39c166174e7ed65fa5b4"
 dependencies = [
  "sqlx-core",
  "sqlx-macros",
@@ -2209,8 +2209,8 @@ dependencies = [
 
 [[package]]
 name = "sqlx-core"
-version = "0.7.0-alpha.1"
-source = "git+https://github.com/launchbadge/sqlx#bce16a5c1d6f84cd2319626c84e508f93aca9c9b"
+version = "0.7.0-alpha.2"
+source = "git+https://github.com/launchbadge/sqlx#15458fa9d6f46a3c55fe39c166174e7ed65fa5b4"
 dependencies = [
  "ahash",
  "atoi",
@@ -2254,8 +2254,8 @@ dependencies = [
 
 [[package]]
 name = "sqlx-macros"
-version = "0.7.0-alpha.1"
-source = "git+https://github.com/launchbadge/sqlx#bce16a5c1d6f84cd2319626c84e508f93aca9c9b"
+version = "0.7.0-alpha.2"
+source = "git+https://github.com/launchbadge/sqlx#15458fa9d6f46a3c55fe39c166174e7ed65fa5b4"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2266,8 +2266,8 @@ dependencies = [
 
 [[package]]
 name = "sqlx-macros-core"
-version = "0.7.0-alpha.1"
-source = "git+https://github.com/launchbadge/sqlx#bce16a5c1d6f84cd2319626c84e508f93aca9c9b"
+version = "0.7.0-alpha.2"
+source = "git+https://github.com/launchbadge/sqlx#15458fa9d6f46a3c55fe39c166174e7ed65fa5b4"
 dependencies = [
  "dotenvy",
  "either",
@@ -2291,8 +2291,8 @@ dependencies = [
 
 [[package]]
 name = "sqlx-mysql"
-version = "0.7.0-alpha.1"
-source = "git+https://github.com/launchbadge/sqlx#bce16a5c1d6f84cd2319626c84e508f93aca9c9b"
+version = "0.7.0-alpha.2"
+source = "git+https://github.com/launchbadge/sqlx#15458fa9d6f46a3c55fe39c166174e7ed65fa5b4"
 dependencies = [
  "atoi",
  "base64 0.21.0",
@@ -2335,8 +2335,8 @@ dependencies = [
 
 [[package]]
 name = "sqlx-postgres"
-version = "0.7.0-alpha.1"
-source = "git+https://github.com/launchbadge/sqlx#bce16a5c1d6f84cd2319626c84e508f93aca9c9b"
+version = "0.7.0-alpha.2"
+source = "git+https://github.com/launchbadge/sqlx#15458fa9d6f46a3c55fe39c166174e7ed65fa5b4"
 dependencies = [
  "atoi",
  "base64 0.21.0",
@@ -2374,8 +2374,8 @@ dependencies = [
 
 [[package]]
 name = "sqlx-sqlite"
-version = "0.7.0-alpha.1"
-source = "git+https://github.com/launchbadge/sqlx#bce16a5c1d6f84cd2319626c84e508f93aca9c9b"
+version = "0.7.0-alpha.2"
+source = "git+https://github.com/launchbadge/sqlx#15458fa9d6f46a3c55fe39c166174e7ed65fa5b4"
 dependencies = [
  "atoi",
  "bitflags",
