@@ -3144,7 +3144,6 @@ dependencies = [
  "serde_with",
  "sha2",
  "sqlx",
- "sqlx-core",
  "tempfile",
  "thiserror",
  "tokio",
