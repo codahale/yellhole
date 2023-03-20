@@ -28,7 +28,7 @@ elegant-departure = { version = "0.2.1", features = ["tokio"] }
 futures = "0.3.27"
 hex = "0.4.3"
 include_dir = "0.7.3"
-mime = "0.3.16"
+mime = "0.3.17"
 mime_guess = "2.0.4"
 minify-html-onepass = "0.10.8"
 p256 = "0.13.0"
