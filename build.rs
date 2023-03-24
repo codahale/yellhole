@@ -8,5 +8,5 @@ fn main() {
     // trigger recompilation when assets are changed
     println!("cargo:rerun-if-changed=assets");
 
-    vergen::vergen(vergen::Config::default()).unwrap()
+    vergen::EmitBuilder::builder().build_timestamp().emit().unwrap();
 }
