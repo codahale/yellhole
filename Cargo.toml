@@ -69,4 +69,4 @@ reqwest = { version = "0.11.15", features = ["json", "cookies", "multipart"], de
 members = ["xtask"]
 
 [build-dependencies]
-vergen = { version = "7.5.1", default-features = false, features = ["build"] }
+vergen = { version = "8.0.0", default-features = false, features = ["build"] }
