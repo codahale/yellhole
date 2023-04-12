@@ -20,7 +20,7 @@ include = [
 anyhow = "1.0.70"
 askama = "0.12.0"
 atom_syndication = { version = "0.12.1", default-features = false }
-axum = { version = "0.6.12", features = ["http2", "multipart"] }
+axum = { version = "0.6.14", features = ["http2", "multipart"] }
 axum-extra = { version = "0.7.2", features = ["cookie"] }
 chrono = { version = "0.4.24", default-features = false, features = ["std", "serde"] }
 clap = { version = "4.2.1", features = ["derive", "env"] }
