@@ -1371,9 +1371,9 @@ dependencies = [
 
 [[package]]
 name = "minify-html-onepass"
-version = "0.10.8"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c89548d0be6d3c7295335473fbe5c021fde64de738e01312301c90b9f1dd8476"
+checksum = "9900724f0fd87b52c26130040e1eaa834eacf73ffba26ea326e85a71c2325740"
 dependencies = [
  "aho-corasick",
  "css-minify",
