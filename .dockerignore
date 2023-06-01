@@ -1,5 +1,6 @@
 target
 data
 .dockerignore
+.git
 LICENSE
 README.md
