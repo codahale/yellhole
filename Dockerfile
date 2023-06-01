@@ -9,7 +9,6 @@ ENV PATH="/root/.cargo/bin:$PATH"
 FROM rust-base AS rust-builder
 WORKDIR /app
 COPY ./ /app
-ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 RUN cargo build --release
 
 # Create a deployable image from base Alpine with ImageMagick, and SQLite (for admin stuff), set to
