@@ -36,7 +36,7 @@ pulldown-cmark = { version = "0.9.3", default-features = false, features = ["sim
 rand = { version = "0.8.5", features = ["min_const_gen"] }
 reqwest = { version = "0.11.18", features = ["stream", "rustls-tls"], default-features = false }
 serde = { version = "1.0.164", features = ["derive"] }
-serde_json = "1.0.96"
+serde_json = "1.0.97"
 serde_with = { version = "3.0.0", features = ["base64"] }
 sha2 = "0.10.7"
 sqlx = { version = "0.7.0-alpha.3", features = ["runtime-tokio-rustls", "sqlite", "chrono", "uuid"] }
