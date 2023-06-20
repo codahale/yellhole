@@ -45,7 +45,7 @@ thiserror = "1.0.40"
 tokio = { version = "1.28.2", features = ["full"] }
 tokio-util = "0.7.8"
 tower = "0.4.13"
-tower-http = { version = "0.4.0", features = [
+tower-http = { version = "0.4.1", features = [
     "add-extension",
     "catch-panic",
     "fs",
