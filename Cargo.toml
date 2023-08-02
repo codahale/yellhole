@@ -21,7 +21,7 @@ anyhow = "1.0.72"
 askama = "0.12.0"
 atom_syndication = { version = "0.12.1", default-features = false }
 axum = { version = "0.6.19", features = ["http2", "multipart"] }
-axum-extra = { version = "0.7.5", features = ["cookie"] }
+axum-extra = { version = "0.7.6", features = ["cookie"] }
 chrono = { version = "0.4.26", default-features = false, features = ["std", "serde"] }
 clap = { version = "4.3.19", features = ["derive", "env"] }
 elegant-departure = { version = "0.2.1", features = ["tokio"] }
