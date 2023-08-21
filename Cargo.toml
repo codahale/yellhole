@@ -37,7 +37,7 @@ rand = { version = "0.8.5", features = ["min_const_gen"] }
 reqwest = { version = "0.11.18", features = ["stream", "rustls-tls"], default-features = false }
 serde = { version = "1.0.185", features = ["derive"] }
 serde_json = "1.0.105"
-serde_with = { version = "3.2.0", features = ["base64"] }
+serde_with = { version = "3.3.0", features = ["base64"] }
 sha2 = "0.10.7"
 sqlx = { version = "0.7.1", features = ["runtime-tokio-rustls", "sqlite", "chrono", "uuid"] }
 tempfile = "3.7.1"
