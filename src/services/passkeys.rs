@@ -141,7 +141,8 @@ impl PasskeyService {
             challenge_id
         )
         .fetch_optional(&self.db)
-        .await? else {
+        .await?
+        else {
             return Err(PasskeyError::InvalidChallengeId);
         };
 
@@ -161,13 +162,13 @@ impl PasskeyService {
         }
 
         // Find the passkey by ID.
-        let Some(public_key_spki) =
-            sqlx::query_scalar!(
-                r#"select public_key_spki from passkey where passkey_id = ?"#,
-                resp.raw_id,
-            )
-            .fetch_optional(&self.db)
-            .await? else {
+        let Some(public_key_spki) = sqlx::query_scalar!(
+            r#"select public_key_spki from passkey where passkey_id = ?"#,
+            resp.raw_id,
+        )
+        .fetch_optional(&self.db)
+        .await?
+        else {
             tracing::warn!(passkey_id=?resp.raw_id, "unable to find passkey");
             return Err(PasskeyError::InvalidPasskeyId);
         };
