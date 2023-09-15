@@ -2,13 +2,13 @@ use std::ops::Range;
 use std::sync::Arc;
 
 use askama::Template;
-use atom_syndication::{Content, Entry, Feed, FixedDateTime, Link, Person, Text};
+use atom_syndication::{Content, Entry, Feed, Link, Person, Text};
 use axum::extract::{Path, Query, State};
 use axum::http;
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::Router;
-use chrono::{Days, FixedOffset, NaiveDate, Utc};
+use chrono::{DateTime, Days, FixedOffset, NaiveDate, Utc};
 use serde::Deserialize;
 use tower_http::set_header::SetResponseHeaderLayer;
 use uuid::Uuid;
@@ -145,7 +145,10 @@ async fn atom(State(state): State<AppState>) -> Result<Response, AppError> {
             href: filters::to_atom_url(&state.config.base_url).unwrap().to_string(),
             ..Default::default()
         }],
-        updated: FixedDateTime::from_utc(Utc::now().naive_utc(), FixedOffset::east_opt(0).unwrap()),
+        updated: DateTime::from_naive_utc_and_offset(
+            Utc::now().naive_utc(),
+            FixedOffset::east_opt(0).unwrap(),
+        ),
         ..Default::default()
     };
 
