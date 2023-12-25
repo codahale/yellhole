@@ -25,7 +25,7 @@ axum-extra = { version = "0.8.0", features = ["cookie"] }
 chrono = { version = "0.4.31", default-features = false, features = ["std", "serde"] }
 clap = { version = "4.4.11", features = ["derive", "env"] }
 elegant-departure = { version = "0.2.1", features = ["tokio"] }
-futures = "0.3.29"
+futures = "0.3.30"
 hex = "0.4.3"
 include_dir = "0.7.3"
 mime = "0.3.17"
