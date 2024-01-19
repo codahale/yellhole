@@ -24,7 +24,6 @@ axum = { version = "0.7.4", features = ["http2", "multipart"] }
 axum-extra = { version = "0.9.2", features = ["cookie"] }
 chrono = { version = "0.4.31", default-features = false, features = ["std", "serde"] }
 clap = { version = "4.4.18", features = ["derive", "env"] }
-elegant-departure = { version = "0.2.1", features = ["tokio"] }
 futures = "0.3.30"
 hex = "0.4.3"
 include_dir = "0.7.3"

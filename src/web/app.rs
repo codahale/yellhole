@@ -11,7 +11,7 @@ use sqlx::{
     SqlitePool,
 };
 use thiserror::Error;
-use tokio::{net::TcpListener, task};
+use tokio::{net::TcpListener, signal, task};
 use tower::ServiceBuilder;
 use tower_http::{
     catch_panic::CatchPanicLayer,
@@ -91,8 +91,9 @@ impl App {
 
         // Listen for requests, handling a graceful shutdown.
         let listener = TcpListener::bind(addr).await?;
-        // TODO handle graceful shutdown
-        axum::serve(listener, app.into_make_service()).await?;
+        axum::serve(listener, app.into_make_service())
+            .with_graceful_shutdown(shutdown_signal())
+            .await?;
 
         // Wait for background task to exit.
         expiry.await??;
@@ -198,4 +199,26 @@ fn handle_panic(err: Box<dyn Any + Send + 'static>) -> Response {
 #[tracing::instrument(err)]
 async fn not_found(_uri: Uri) -> Result<(), AppError> {
     Err(AppError::NotFound)
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        signal::ctrl_c().await.expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
 }

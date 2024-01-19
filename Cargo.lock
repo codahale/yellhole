@@ -847,19 +847,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "elegant-departure"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "91cdb1d8cbd0b09f0e7aca109eacc30b25802e37c0eb7e45ebdb28f61ac181ff"
-dependencies = [
- "futures",
- "lazy_static",
- "pin-project-lite",
- "tokio",
- "tokio-util",
-]
-
-[[package]]
 name = "elliptic-curve"
 version = "0.13.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3819,7 +3806,6 @@ dependencies = [
  "axum-extra",
  "chrono",
  "clap",
- "elegant-departure",
  "futures",
  "hex",
  "include_dir",
