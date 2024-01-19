@@ -1,22 +1,31 @@
 use std::time::Duration;
 
 use askama::Template;
-use axum::http::{Request, StatusCode};
-use axum::middleware::Next;
-use axum::response::{IntoResponse, Redirect, Response};
-use axum::routing::{get, post};
-use axum::{body::Body, extract::State};
-use axum::{Json, Router};
-use axum_extra::extract::cookie::{Cookie, SameSite};
-use axum_extra::extract::CookieJar;
+use axum::{
+    body::Body,
+    extract::State,
+    http::{Request, StatusCode},
+    middleware::Next,
+    response::{IntoResponse, Redirect, Response},
+    routing::{get, post},
+    Json, Router,
+};
+use axum_extra::extract::{
+    cookie::{Cookie, SameSite},
+    CookieJar,
+};
 use uuid::Uuid;
 
-use crate::services::passkeys::{
-    AuthenticationChallenge, AuthenticationResponse, PasskeyError, PasskeyService,
-    RegistrationChallenge, RegistrationResponse,
+use crate::{
+    services::{
+        passkeys::{
+            AuthenticationChallenge, AuthenticationResponse, PasskeyError, PasskeyService,
+            RegistrationChallenge, RegistrationResponse,
+        },
+        sessions::SessionService,
+    },
+    web::app::{AppError, AppState, Page},
 };
-use crate::services::sessions::SessionService;
-use crate::web::app::{AppError, AppState, Page};
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -143,16 +152,16 @@ async fn is_authenticated(state: &AppState, cookies: &CookieJar) -> Result<bool,
 #[cfg(test)]
 mod tests {
     use axum::middleware;
-    use p256::ecdsa::signature::Signer;
-    use p256::ecdsa::{Signature, SigningKey};
-    use p256::pkcs8::EncodePublicKey;
-    use p256::PublicKey;
+    use p256::{
+        ecdsa::{signature::Signer, Signature, SigningKey},
+        pkcs8::EncodePublicKey,
+        PublicKey,
+    };
     use rand::thread_rng;
     use sha2::{Digest, Sha256};
     use sqlx::SqlitePool;
 
-    use crate::services::passkeys::CollectedClientData;
-    use crate::test::TestEnv;
+    use crate::{services::passkeys::CollectedClientData, test::TestEnv};
 
     use super::*;
 

@@ -1,10 +1,12 @@
 use anyhow::Context;
 use askama::Template;
-use axum::extract::{DefaultBodyLimit, Multipart, State};
-use axum::http::StatusCode;
-use axum::response::{IntoResponse, Redirect, Response};
-use axum::routing::{get, post};
-use axum::{Form, Router};
+use axum::{
+    extract::{DefaultBodyLimit, Multipart, State},
+    http::StatusCode,
+    response::{IntoResponse, Redirect, Response},
+    routing::{get, post},
+    Form, Router,
+};
 use chrono::Utc;
 use mime::Mime;
 use serde::Deserialize;
@@ -13,9 +15,10 @@ use tower_http::limit::RequestBodyLimitLayer;
 use url::Url;
 use uuid::Uuid;
 
-use crate::services::images::Image;
-use crate::services::notes::Note;
-use crate::web::app::{AppError, AppState, Page};
+use crate::{
+    services::{images::Image, notes::Note},
+    web::app::{AppError, AppState, Page},
+};
 
 pub fn router() -> Router<AppState> {
     Router::new()

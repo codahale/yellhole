@@ -4,20 +4,17 @@ use std::net::SocketAddr;
 
 use axum::Router;
 use clap::Parser;
-use reqwest::redirect::Policy;
-use reqwest::{Client, ClientBuilder, RequestBuilder, Url};
+use reqwest::{redirect::Policy, Client, ClientBuilder, RequestBuilder, Url};
 use sqlx::SqlitePool;
 use tempfile::TempDir;
 use tokio::net::TcpListener;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
 use tracing::Level;
-use tracing_subscriber::fmt::format::FmtSpan;
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::EnvFilter;
+use tracing_subscriber::{
+    fmt::format::FmtSpan, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter,
+};
 
-use crate::config::Config;
-use crate::web::AppState;
+use crate::{config::Config, web::AppState};
 
 pub struct TestEnv {
     pub state: AppState,

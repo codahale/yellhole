@@ -1,21 +1,20 @@
-use axum::middleware::Next;
-use axum::response::Response;
-use axum::routing::get_service;
 use axum::{
     body::Body,
+    http,
     http::{Request, StatusCode},
+    middleware,
+    middleware::Next,
+    response::Response,
+    routing::get_service,
+    Router,
 };
-use axum::{http, middleware, Router};
 use tokio::io;
 use tower::ServiceBuilder;
-use tower_http::services::ServeDir;
-use tower_http::set_header::SetResponseHeaderLayer;
+use tower_http::{services::ServeDir, set_header::SetResponseHeaderLayer};
 
-use crate::services::assets::AssetService;
-use crate::services::images::ImageService;
+use crate::services::{assets::AssetService, images::ImageService};
 
-use super::app::AppState;
-use super::AppError;
+use super::{app::AppState, AppError};
 
 pub fn router(images: &ImageService, assets: &AssetService) -> io::Result<Router<AppState>> {
     let assets = get_service(

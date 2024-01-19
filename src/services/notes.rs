@@ -4,8 +4,7 @@ use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone, Utc};
 use pulldown_cmark::{Event, Options, Parser, Tag};
 use sqlx::SqlitePool;
 use url::Url;
-use uuid::fmt::Hyphenated;
-use uuid::Uuid;
+use uuid::{fmt::Hyphenated, Uuid};
 
 /// A service for creating and viewing [`Note`]s.
 #[derive(Debug, Clone)]

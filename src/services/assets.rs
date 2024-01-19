@@ -1,6 +1,4 @@
-use std::io;
-use std::path::Path;
-use std::sync::Arc;
+use std::{io, path::Path, sync::Arc};
 
 use include_dir::{include_dir, Dir};
 use tempfile::TempDir;

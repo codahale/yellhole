@@ -1,14 +1,17 @@
 use std::time::Duration;
 
-use p256::ecdsa::signature::Verifier;
-use p256::ecdsa::{Signature, VerifyingKey};
-use p256::elliptic_curve::subtle::ConstantTimeEq;
-use p256::pkcs8::DecodePublicKey;
+use p256::{
+    ecdsa::{signature::Verifier, Signature, VerifyingKey},
+    elliptic_curve::subtle::ConstantTimeEq,
+    pkcs8::DecodePublicKey,
+};
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
-use serde_with::base64::{Base64, UrlSafe};
-use serde_with::formats::Unpadded;
-use serde_with::{serde_as, PickFirst};
+use serde_with::{
+    base64::{Base64, UrlSafe},
+    formats::Unpadded,
+    serde_as, PickFirst,
+};
 use sha2::{Digest, Sha256};
 use sqlx::SqlitePool;
 use thiserror::Error;

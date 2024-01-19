@@ -1,21 +1,24 @@
-use std::ops::Range;
-use std::sync::Arc;
+use std::{ops::Range, sync::Arc};
 
 use askama::Template;
 use atom_syndication::{Content, Entry, Feed, Link, Person, Text};
-use axum::extract::{Path, Query, State};
-use axum::http;
-use axum::response::{IntoResponse, Response};
-use axum::routing::get;
-use axum::Router;
+use axum::{
+    extract::{Path, Query, State},
+    http,
+    response::{IntoResponse, Response},
+    routing::get,
+    Router,
+};
 use chrono::{DateTime, Days, FixedOffset, NaiveDate, Utc};
 use serde::Deserialize;
 use tower_http::set_header::SetResponseHeaderLayer;
 use uuid::Uuid;
 
-use crate::config::Config;
-use crate::services::notes::Note;
-use crate::web::app::{AppError, AppState, Page};
+use crate::{
+    config::Config,
+    services::notes::Note,
+    web::app::{AppError, AppState, Page},
+};
 
 pub fn router() -> Router<AppState> {
     Router::new()

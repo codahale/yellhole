@@ -1,21 +1,23 @@
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::process::ExitStatus;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    process::ExitStatus,
+};
 
 use anyhow::Context;
-use axum::body::Bytes;
-use axum::BoxError;
+use axum::{body::Bytes, BoxError};
 use chrono::{DateTime, Utc};
 use futures::{Stream, TryStreamExt};
 use mime::Mime;
 use sqlx::SqlitePool;
-use tokio::fs::File;
-use tokio::io::{self, BufWriter};
-use tokio::process::Command;
+use tokio::{
+    fs::File,
+    io::{self, BufWriter},
+    process::Command,
+};
 use tokio_util::io::StreamReader;
 use url::Url;
-use uuid::fmt::Hyphenated;
-use uuid::Uuid;
+use uuid::{fmt::Hyphenated, Uuid};
 
 /// A service for adding news images.
 #[derive(Debug, Clone)]

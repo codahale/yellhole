@@ -1,10 +1,7 @@
 use clap::Parser;
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::EnvFilter;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
-use crate::config::Config;
-use crate::web::App;
+use crate::{config::Config, web::App};
 
 mod config;
 mod services;

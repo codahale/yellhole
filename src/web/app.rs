@@ -1,32 +1,34 @@
-use std::any::Any;
-use std::net::SocketAddr;
-use std::sync::Arc;
-use std::{fs, io};
+use std::{any::Any, fs, io, net::SocketAddr, sync::Arc};
 
 use askama::Template;
-use axum::http::{self, StatusCode, Uri};
-use axum::middleware::{self};
-use axum::response::{Html, IntoResponse, Response};
-use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
-use sqlx::SqlitePool;
+use axum::{
+    http::{self, StatusCode, Uri},
+    middleware::{self},
+    response::{Html, IntoResponse, Response},
+};
+use sqlx::{
+    sqlite::{SqliteConnectOptions, SqlitePoolOptions},
+    SqlitePool,
+};
 use thiserror::Error;
 use tokio::{net::TcpListener, task};
 use tower::ServiceBuilder;
-use tower_http::catch_panic::CatchPanicLayer;
-use tower_http::request_id::MakeRequestUuid;
-use tower_http::sensitive_headers::{
-    SetSensitiveRequestHeadersLayer, SetSensitiveResponseHeadersLayer,
+use tower_http::{
+    catch_panic::CatchPanicLayer,
+    request_id::MakeRequestUuid,
+    sensitive_headers::{SetSensitiveRequestHeadersLayer, SetSensitiveResponseHeadersLayer},
+    trace::TraceLayer,
+    ServiceBuilderExt,
 };
-use tower_http::trace::TraceLayer;
-use tower_http::ServiceBuilderExt;
 
-use crate::config::Config;
-use crate::services::assets::AssetService;
-use crate::services::images::ImageService;
-use crate::services::notes::NoteService;
-use crate::services::passkeys::PasskeyService;
-use crate::services::sessions::SessionService;
-use crate::web::{admin, asset, auth, feed};
+use crate::{
+    config::Config,
+    services::{
+        assets::AssetService, images::ImageService, notes::NoteService, passkeys::PasskeyService,
+        sessions::SessionService,
+    },
+    web::{admin, asset, auth, feed},
+};
 
 /// The Yellhole application.
 #[derive(Debug)]
