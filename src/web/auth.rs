@@ -1,11 +1,11 @@
 use std::time::Duration;
 
 use askama::Template;
-use axum::extract::State;
 use axum::http::{Request, StatusCode};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
+use axum::{body::Body, extract::State};
 use axum::{Json, Router};
 use axum_extra::extract::cookie::{Cookie, SameSite};
 use axum_extra::extract::CookieJar;
@@ -28,11 +28,11 @@ pub fn router() -> Router<AppState> {
         .route("/login/finish", post(login_finish))
 }
 
-pub async fn require_auth<B>(
+pub async fn require_auth(
     state: State<AppState>,
     cookies: CookieJar,
-    req: Request<B>,
-    next: Next<B>,
+    req: Request<Body>,
+    next: Next,
 ) -> Response {
     match is_authenticated(&state, &cookies).await {
         Ok(true) => next.run(req).await,
@@ -111,7 +111,7 @@ async fn login_finish(
         return Ok((cookies, StatusCode::BAD_REQUEST));
     };
 
-    let cookies = cookies.remove(Cookie::build("challenge", "").path("/").finish());
+    let cookies = cookies.remove(Cookie::build(("challenge", "")).path("/"));
     match state.passkeys.finish_authentication(auth, &challenge_id).await {
         Ok(()) => {
             let session_id = state.sessions.create().await?;
@@ -124,13 +124,13 @@ async fn login_finish(
 }
 
 fn cookie<'c>(state: &AppState, name: &'c str, value: Uuid, max_age: Duration) -> Cookie<'c> {
-    Cookie::build(name, value.as_hyphenated().to_string())
+    Cookie::build((name, value.as_hyphenated().to_string()))
         .http_only(true)
         .same_site(SameSite::Strict)
         .max_age(max_age.try_into().expect("invalid duration"))
         .secure(state.config.base_url.scheme() == "https")
         .path("/")
-        .finish()
+        .into()
 }
 
 async fn is_authenticated(state: &AppState, cookies: &CookieJar) -> Result<bool, sqlx::Error> {
@@ -142,7 +142,7 @@ async fn is_authenticated(state: &AppState, cookies: &CookieJar) -> Result<bool,
 
 #[cfg(test)]
 mod tests {
-    use axum::{http, middleware};
+    use axum::middleware;
     use p256::ecdsa::signature::Signer;
     use p256::ecdsa::{Signature, SigningKey};
     use p256::pkcs8::EncodePublicKey;
@@ -160,16 +160,16 @@ mod tests {
     async fn fresh_pages(db: SqlitePool) -> Result<(), anyhow::Error> {
         let env = TestEnv::new(db)?;
         let app = app(&env.state);
-        let ts = env.into_server(app)?;
+        let ts = env.into_server(app).await?;
 
         let resp = ts.get("/register").send().await?;
-        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(resp.status(), reqwest::StatusCode::OK);
 
         let resp = ts.get("/login").send().await?;
-        assert_eq!(resp.status(), StatusCode::SEE_OTHER);
+        assert_eq!(resp.status(), reqwest::StatusCode::SEE_OTHER);
         assert_eq!(
-            resp.headers().get(http::header::LOCATION),
-            Some(&http::HeaderValue::from_static("/register"))
+            resp.headers().get(reqwest::header::LOCATION).map(|h| h.as_bytes()),
+            Some("/register".as_bytes())
         );
 
         Ok(())
@@ -179,17 +179,17 @@ mod tests {
     async fn registered_pages(db: SqlitePool) -> Result<(), anyhow::Error> {
         let env = TestEnv::new(db)?;
         let app = app(&env.state);
-        let ts = env.into_server(app)?;
+        let ts = env.into_server(app).await?;
 
         let resp = ts.get("/register").send().await?;
-        assert_eq!(resp.status(), StatusCode::SEE_OTHER);
+        assert_eq!(resp.status(), reqwest::StatusCode::SEE_OTHER);
         assert_eq!(
-            resp.headers().get(http::header::LOCATION),
-            Some(&http::HeaderValue::from_static("/login"))
+            resp.headers().get(reqwest::header::LOCATION).map(|h| h.as_bytes()),
+            Some("/login".as_bytes())
         );
 
         let resp = ts.get("/login").send().await?;
-        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(resp.status(), reqwest::StatusCode::OK);
 
         Ok(())
     }
@@ -198,11 +198,11 @@ mod tests {
     async fn passkey_registration_and_login(db: SqlitePool) -> Result<(), anyhow::Error> {
         let env = TestEnv::new(db)?;
         let app = app(&env.state);
-        let ts = env.into_server(app)?;
+        let ts = env.into_server(app).await?;
 
         // Try a protected route. We should be blocked.
         let protected = ts.get("/protected").send().await?;
-        assert_eq!(protected.status(), StatusCode::SEE_OTHER);
+        assert_eq!(protected.status(), reqwest::StatusCode::SEE_OTHER);
 
         // Generate a P-256 ECDSA key pair.
         let signing_key = SigningKey::random(&mut thread_rng());
@@ -234,7 +234,7 @@ mod tests {
             .json(&RegistrationResponse { authenticator_data, client_data_json, public_key })
             .send()
             .await?;
-        assert_eq!(reg_finish.status(), StatusCode::CREATED);
+        assert_eq!(reg_finish.status(), reqwest::StatusCode::CREATED);
 
         // Start the login process.
         let login_start = ts.post("/login/start").send().await?;
@@ -272,11 +272,11 @@ mod tests {
             })
             .send()
             .await?;
-        assert_eq!(login_finish.status(), StatusCode::ACCEPTED);
+        assert_eq!(login_finish.status(), reqwest::StatusCode::ACCEPTED);
 
         // Try the protected resource again.
         let protected = ts.get("/protected").send().await?;
-        assert_eq!(protected.status(), StatusCode::OK);
+        assert_eq!(protected.status(), reqwest::StatusCode::OK);
 
         Ok(())
     }

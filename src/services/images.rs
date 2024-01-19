@@ -4,7 +4,7 @@ use std::process::ExitStatus;
 
 use anyhow::Context;
 use axum::body::Bytes;
-use axum::{http, BoxError};
+use axum::BoxError;
 use chrono::{DateTime, Utc};
 use futures::{Stream, TryStreamExt};
 use mime::Mime;
@@ -117,7 +117,7 @@ impl ImageService {
         // Get the image's content type.
         let content_type = image
             .headers()
-            .get(http::header::CONTENT_TYPE)
+            .get(reqwest::header::CONTENT_TYPE)
             .and_then(|v| v.to_str().ok())
             .ok_or_else(|| anyhow::anyhow!("no Content-Type header"))
             .and_then(|s| s.parse::<Mime>().context("invalid Content-Type header"))?;

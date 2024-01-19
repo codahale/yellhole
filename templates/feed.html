@@ -75,7 +75,8 @@
 {% for n in notes %}
 <article>
     <div class="content">
-        {{ n.to_html() | safe }}
+        <!--  n.to_html() | safe  -->
+        {{ n.to_html()|safe }}
     </div>
     <footer>
         <a href="{{n|to_note_url(config.base_url)}}">

@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use std::net::{SocketAddr, TcpListener};
+use std::net::SocketAddr;
 
 use axum::Router;
 use clap::Parser;
@@ -8,6 +8,7 @@ use reqwest::redirect::Policy;
 use reqwest::{Client, ClientBuilder, RequestBuilder, Url};
 use sqlx::SqlitePool;
 use tempfile::TempDir;
+use tokio::net::TcpListener;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
 use tracing::Level;
 use tracing_subscriber::fmt::format::FmtSpan;
@@ -34,13 +35,13 @@ impl TestEnv {
         Ok(TestEnv { state, temp_dir })
     }
 
-    pub fn into_server(self, app: Router<AppState>) -> Result<TestServer, anyhow::Error> {
+    pub async fn into_server(self, app: Router<AppState>) -> Result<TestServer, anyhow::Error> {
         let _ = tracing_subscriber::registry()
             .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("off")))
             .with(tracing_subscriber::fmt::layer().with_span_events(FmtSpan::FULL).pretty())
             .try_init();
 
-        let listener = TcpListener::bind::<SocketAddr>(([127, 0, 0, 1], 0).into())?;
+        let listener = TcpListener::bind::<SocketAddr>(([127, 0, 0, 1], 0).into()).await?;
         let addr = listener.local_addr()?;
         let app = app.layer(
             TraceLayer::new_for_http()
@@ -55,11 +56,7 @@ impl TestEnv {
         };
 
         tokio::spawn(async move {
-            axum::Server::from_tcp(listener)
-                .unwrap()
-                .serve(app.with_state(self.state).into_make_service())
-                .await
-                .unwrap();
+            axum::serve(listener, app.with_state(self.state).into_make_service()).await.unwrap()
         });
 
         Ok(server)

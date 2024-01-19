@@ -1,7 +1,10 @@
-use axum::http::{Request, StatusCode};
 use axum::middleware::Next;
 use axum::response::Response;
 use axum::routing::get_service;
+use axum::{
+    body::Body,
+    http::{Request, StatusCode},
+};
 use axum::{http, middleware, Router};
 use tokio::io;
 use tower::ServiceBuilder;
@@ -48,7 +51,7 @@ async fn io_error(err: io::Error) -> StatusCode {
     StatusCode::INTERNAL_SERVER_ERROR
 }
 
-async fn not_found<B>(req: Request<B>, next: Next<B>) -> Result<Response, AppError> {
+async fn not_found(req: Request<Body>, next: Next) -> Result<Response, AppError> {
     let resp = next.run(req).await;
     if resp.status() == StatusCode::NOT_FOUND {
         Err(AppError::NotFound)
@@ -71,18 +74,18 @@ mod tests {
     async fn static_asset(db: SqlitePool) -> Result<(), anyhow::Error> {
         let ts = TestEnv::new(db)?;
         let app = router(&ts.state.images, &ts.state.assets)?;
-        let ts = ts.into_server(app)?;
+        let ts = ts.into_server(app).await?;
 
         let resp =
             ts.get("/assets/css/pico-1.5.6.min.css").header("Accept-Encoding", "br").send().await?;
-        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(resp.status(), reqwest::StatusCode::OK);
         assert_eq!(
-            resp.headers().get(http::header::CONTENT_TYPE),
-            Some(&http::HeaderValue::from_static("text/css")),
+            resp.headers().get(reqwest::header::CONTENT_TYPE).map(|h| h.as_bytes()),
+            Some("text/css".as_bytes()),
         );
         assert_eq!(
-            resp.headers().get(http::header::CONTENT_ENCODING),
-            Some(&http::HeaderValue::from_static("br")),
+            resp.headers().get(reqwest::header::CONTENT_ENCODING).map(|h| h.as_bytes()),
+            Some("br".as_bytes()),
         );
 
         Ok(())
@@ -93,10 +96,10 @@ mod tests {
         let ts = TestEnv::new(db)?;
         fs::copy("./yellhole.webp", ts.state.images.images_dir().join("yellhole.webp")).unwrap();
         let app = router(&ts.state.images, &ts.state.assets)?;
-        let ts = ts.into_server(app)?;
+        let ts = ts.into_server(app).await?;
 
         let resp = ts.get("/images/yellhole.webp").send().await?;
-        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(resp.status(), reqwest::StatusCode::OK);
 
         Ok(())
     }

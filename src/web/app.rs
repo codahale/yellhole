@@ -10,7 +10,7 @@ use axum::response::{Html, IntoResponse, Response};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use sqlx::SqlitePool;
 use thiserror::Error;
-use tokio::task;
+use tokio::{net::TcpListener, task};
 use tower::ServiceBuilder;
 use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::request_id::MakeRequestUuid;
@@ -88,10 +88,9 @@ impl App {
             );
 
         // Listen for requests, handling a graceful shutdown.
-        axum::Server::bind(&addr)
-            .serve(app.into_make_service())
-            .with_graceful_shutdown(elegant_departure::tokio::depart().on_termination())
-            .await?;
+        let listener = TcpListener::bind(addr).await?;
+        // TODO handle graceful shutdown
+        axum::serve(listener, app.into_make_service()).await?;
 
         // Wait for background task to exit.
         expiry.await??;

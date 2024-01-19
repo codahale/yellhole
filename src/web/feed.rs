@@ -163,7 +163,6 @@ const fn atom_xml() -> http::HeaderValue {
 mod tests {
     use std::io::Cursor;
 
-    use axum::http::{self, StatusCode};
     use sqlx::SqlitePool;
 
     use crate::test::TestEnv;
@@ -172,10 +171,10 @@ mod tests {
 
     #[sqlx::test(fixtures("notes"))]
     async fn main(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestEnv::new(db)?.into_server(router())?;
+        let ts = TestEnv::new(db)?.into_server(router()).await?;
 
         let resp = ts.get("/").send().await?;
-        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(resp.status(), reqwest::StatusCode::OK);
 
         let body = resp.text().await?;
         assert!(body.contains("Hello, it is a header"));
@@ -185,11 +184,14 @@ mod tests {
 
     #[sqlx::test(fixtures("notes"))]
     async fn atom_feed(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestEnv::new(db)?.into_server(router())?;
+        let ts = TestEnv::new(db)?.into_server(router()).await?;
 
         let resp = ts.get("/atom.xml").send().await?;
-        assert_eq!(resp.status(), StatusCode::OK);
-        assert_eq!(resp.headers().get(http::header::CONTENT_TYPE), Some(&atom_xml()));
+        assert_eq!(resp.status(), reqwest::StatusCode::OK);
+        assert_eq!(
+            resp.headers().get(reqwest::header::CONTENT_TYPE).map(|h| h.as_bytes()),
+            Some(atom_xml().as_bytes())
+        );
 
         let feed = Feed::read_from(Cursor::new(&resp.bytes().await?))?;
         assert_eq!(
@@ -202,10 +204,10 @@ mod tests {
 
     #[sqlx::test(fixtures("notes"))]
     async fn weekly_view(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestEnv::new(db)?.into_server(router())?;
+        let ts = TestEnv::new(db)?.into_server(router()).await?;
 
         let resp = ts.get("/notes/2022-10-09").send().await?;
-        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(resp.status(), reqwest::StatusCode::OK);
 
         let body = resp.text().await?;
         assert!(body.contains("Hello, it is a header"));
@@ -215,10 +217,10 @@ mod tests {
 
     #[sqlx::test(fixtures("notes"))]
     async fn single_note(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestEnv::new(db)?.into_server(router())?;
+        let ts = TestEnv::new(db)?.into_server(router()).await?;
 
         let resp = ts.get("/note/c1449d6c-6b5b-4ce4-a4d7-98853562fbf1").send().await?;
-        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(resp.status(), reqwest::StatusCode::OK);
 
         let body = resp.text().await?;
         assert!(body.contains("Hello, it is a header"));
@@ -228,20 +230,20 @@ mod tests {
 
     #[sqlx::test(fixtures("notes"))]
     async fn bad_note_id(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestEnv::new(db)?.into_server(router())?;
+        let ts = TestEnv::new(db)?.into_server(router()).await?;
 
         let resp = ts.get("/note/not-a-uuid").send().await?;
-        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+        assert_eq!(resp.status(), reqwest::StatusCode::NOT_FOUND);
 
         Ok(())
     }
 
     #[sqlx::test(fixtures("notes"))]
     async fn missing_note_id(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestEnv::new(db)?.into_server(router())?;
+        let ts = TestEnv::new(db)?.into_server(router()).await?;
 
         let resp = ts.get("/note/37c615b0-bb55-424d-a813-69e14ca5c20c").send().await?;
-        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+        assert_eq!(resp.status(), reqwest::StatusCode::NOT_FOUND);
 
         Ok(())
     }
