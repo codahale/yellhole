@@ -63,6 +63,7 @@ async fn not_found(req: Request<Body>, next: Next) -> Result<Response, AppError>
 mod tests {
     use std::fs;
 
+    use reqwest::{header, StatusCode};
     use sqlx::SqlitePool;
 
     use crate::test::TestEnv;
@@ -77,13 +78,13 @@ mod tests {
 
         let resp =
             ts.get("/assets/css/pico-1.5.6.min.css").header("Accept-Encoding", "br").send().await?;
-        assert_eq!(resp.status(), reqwest::StatusCode::OK);
+        assert_eq!(resp.status(), StatusCode::OK);
         assert_eq!(
-            resp.headers().get(reqwest::header::CONTENT_TYPE).map(|h| h.as_bytes()),
+            resp.headers().get(header::CONTENT_TYPE).map(|h| h.as_bytes()),
             Some("text/css".as_bytes()),
         );
         assert_eq!(
-            resp.headers().get(reqwest::header::CONTENT_ENCODING).map(|h| h.as_bytes()),
+            resp.headers().get(header::CONTENT_ENCODING).map(|h| h.as_bytes()),
             Some("br".as_bytes()),
         );
 
@@ -98,7 +99,7 @@ mod tests {
         let ts = ts.into_server(app).await?;
 
         let resp = ts.get("/images/yellhole.webp").send().await?;
-        assert_eq!(resp.status(), reqwest::StatusCode::OK);
+        assert_eq!(resp.status(), StatusCode::OK);
 
         Ok(())
     }

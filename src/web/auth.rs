@@ -158,6 +158,7 @@ mod tests {
         PublicKey,
     };
     use rand::thread_rng;
+    use reqwest::{header, StatusCode};
     use sha2::{Digest, Sha256};
     use sqlx::SqlitePool;
 
@@ -172,12 +173,12 @@ mod tests {
         let ts = env.into_server(app).await?;
 
         let resp = ts.get("/register").send().await?;
-        assert_eq!(resp.status(), reqwest::StatusCode::OK);
+        assert_eq!(resp.status(), StatusCode::OK);
 
         let resp = ts.get("/login").send().await?;
-        assert_eq!(resp.status(), reqwest::StatusCode::SEE_OTHER);
+        assert_eq!(resp.status(), StatusCode::SEE_OTHER);
         assert_eq!(
-            resp.headers().get(reqwest::header::LOCATION).map(|h| h.as_bytes()),
+            resp.headers().get(header::LOCATION).map(|h| h.as_bytes()),
             Some("/register".as_bytes())
         );
 
@@ -191,14 +192,14 @@ mod tests {
         let ts = env.into_server(app).await?;
 
         let resp = ts.get("/register").send().await?;
-        assert_eq!(resp.status(), reqwest::StatusCode::SEE_OTHER);
+        assert_eq!(resp.status(), StatusCode::SEE_OTHER);
         assert_eq!(
-            resp.headers().get(reqwest::header::LOCATION).map(|h| h.as_bytes()),
+            resp.headers().get(header::LOCATION).map(|h| h.as_bytes()),
             Some("/login".as_bytes())
         );
 
         let resp = ts.get("/login").send().await?;
-        assert_eq!(resp.status(), reqwest::StatusCode::OK);
+        assert_eq!(resp.status(), StatusCode::OK);
 
         Ok(())
     }
@@ -211,7 +212,7 @@ mod tests {
 
         // Try a protected route. We should be blocked.
         let protected = ts.get("/protected").send().await?;
-        assert_eq!(protected.status(), reqwest::StatusCode::SEE_OTHER);
+        assert_eq!(protected.status(), StatusCode::SEE_OTHER);
 
         // Generate a P-256 ECDSA key pair.
         let signing_key = SigningKey::random(&mut thread_rng());
@@ -243,7 +244,7 @@ mod tests {
             .json(&RegistrationResponse { authenticator_data, client_data_json, public_key })
             .send()
             .await?;
-        assert_eq!(reg_finish.status(), reqwest::StatusCode::CREATED);
+        assert_eq!(reg_finish.status(), StatusCode::CREATED);
 
         // Start the login process.
         let login_start = ts.post("/login/start").send().await?;
@@ -281,11 +282,11 @@ mod tests {
             })
             .send()
             .await?;
-        assert_eq!(login_finish.status(), reqwest::StatusCode::ACCEPTED);
+        assert_eq!(login_finish.status(), StatusCode::ACCEPTED);
 
         // Try the protected resource again.
         let protected = ts.get("/protected").send().await?;
-        assert_eq!(protected.status(), reqwest::StatusCode::OK);
+        assert_eq!(protected.status(), StatusCode::OK);
 
         Ok(())
     }

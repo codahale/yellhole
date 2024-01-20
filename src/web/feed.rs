@@ -166,6 +166,7 @@ const fn atom_xml() -> http::HeaderValue {
 mod tests {
     use std::io::Cursor;
 
+    use reqwest::{header, StatusCode};
     use sqlx::SqlitePool;
 
     use crate::test::TestEnv;
@@ -177,7 +178,7 @@ mod tests {
         let ts = TestEnv::new(db)?.into_server(router()).await?;
 
         let resp = ts.get("/").send().await?;
-        assert_eq!(resp.status(), reqwest::StatusCode::OK);
+        assert_eq!(resp.status(), StatusCode::OK);
 
         let body = resp.text().await?;
         assert!(body.contains("Hello, it is a header"));
@@ -190,9 +191,9 @@ mod tests {
         let ts = TestEnv::new(db)?.into_server(router()).await?;
 
         let resp = ts.get("/atom.xml").send().await?;
-        assert_eq!(resp.status(), reqwest::StatusCode::OK);
+        assert_eq!(resp.status(), StatusCode::OK);
         assert_eq!(
-            resp.headers().get(reqwest::header::CONTENT_TYPE).map(|h| h.as_bytes()),
+            resp.headers().get(header::CONTENT_TYPE).map(|h| h.as_bytes()),
             Some(atom_xml().as_bytes())
         );
 
@@ -210,7 +211,7 @@ mod tests {
         let ts = TestEnv::new(db)?.into_server(router()).await?;
 
         let resp = ts.get("/notes/2022-10-09").send().await?;
-        assert_eq!(resp.status(), reqwest::StatusCode::OK);
+        assert_eq!(resp.status(), StatusCode::OK);
 
         let body = resp.text().await?;
         assert!(body.contains("Hello, it is a header"));
@@ -223,7 +224,7 @@ mod tests {
         let ts = TestEnv::new(db)?.into_server(router()).await?;
 
         let resp = ts.get("/note/c1449d6c-6b5b-4ce4-a4d7-98853562fbf1").send().await?;
-        assert_eq!(resp.status(), reqwest::StatusCode::OK);
+        assert_eq!(resp.status(), StatusCode::OK);
 
         let body = resp.text().await?;
         assert!(body.contains("Hello, it is a header"));
@@ -236,7 +237,7 @@ mod tests {
         let ts = TestEnv::new(db)?.into_server(router()).await?;
 
         let resp = ts.get("/note/not-a-uuid").send().await?;
-        assert_eq!(resp.status(), reqwest::StatusCode::NOT_FOUND);
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
 
         Ok(())
     }
@@ -246,7 +247,7 @@ mod tests {
         let ts = TestEnv::new(db)?.into_server(router()).await?;
 
         let resp = ts.get("/note/37c615b0-bb55-424d-a813-69e14ca5c20c").send().await?;
-        assert_eq!(resp.status(), reqwest::StatusCode::NOT_FOUND);
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
 
         Ok(())
     }

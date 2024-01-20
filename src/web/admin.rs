@@ -107,7 +107,7 @@ async fn download_image(
 #[cfg(test)]
 mod tests {
     use axum::routing::get_service;
-    use reqwest::multipart;
+    use reqwest::{header, multipart, StatusCode};
     use sqlx::SqlitePool;
     use tokio::fs;
     use tower_http::services::ServeFile;
@@ -122,7 +122,7 @@ mod tests {
         let ts = TestEnv::new(db)?.into_server(router()).await?;
 
         let resp = ts.get("/admin/new").send().await?;
-        assert_eq!(resp.status(), reqwest::StatusCode::OK);
+        assert_eq!(resp.status(), StatusCode::OK);
 
         let body = resp.text().await?;
         assert!(body.contains("/images/cbdc5a69-abba-4d75-9679-44259c48b272.thumb.webp"));
@@ -139,8 +139,8 @@ mod tests {
             .form(&[("body", "This is a note."), ("preview", "false")])
             .send()
             .await?;
-        assert_eq!(resp.status(), reqwest::StatusCode::SEE_OTHER);
-        let location = resp.headers().get(reqwest::header::LOCATION).expect("missing header");
+        assert_eq!(resp.status(), StatusCode::SEE_OTHER);
+        let location = resp.headers().get(header::LOCATION).expect("missing header");
         let note_id = location.to_str()?.split('/').last().expect("bad URI").parse::<Uuid>()?;
 
         assert_eq!(ts.state.notes.most_recent(20).await?.len(), 1);
@@ -160,7 +160,7 @@ mod tests {
             multipart::Part::bytes(img).file_name("example.webp").mime_str("image/webp")?,
         );
         let resp = ts.post("/admin/upload-images").multipart(form).send().await?;
-        assert_eq!(resp.status(), reqwest::StatusCode::SEE_OTHER);
+        assert_eq!(resp.status(), StatusCode::SEE_OTHER);
 
         let recent = ts.state.images.most_recent(1).await?;
         assert_eq!(recent.len(), 1);
@@ -183,7 +183,7 @@ mod tests {
             .form(&[("url", ts.url.join("/logo.webp")?.to_string())])
             .send()
             .await?;
-        assert_eq!(resp.status(), reqwest::StatusCode::SEE_OTHER);
+        assert_eq!(resp.status(), StatusCode::SEE_OTHER);
 
         let recent = ts.state.images.most_recent(1).await?;
         assert_eq!(recent.len(), 1);
