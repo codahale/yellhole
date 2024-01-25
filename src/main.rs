@@ -1,4 +1,5 @@
 use clap::Parser;
+use tikv_jemallocator::Jemalloc;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 use crate::{config::Config, web::App};
@@ -7,6 +8,9 @@ mod config;
 mod services;
 mod test;
 mod web;
+
+#[global_allocator]
+static GLOBAL: Jemalloc = Jemalloc;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
