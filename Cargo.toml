@@ -30,7 +30,7 @@ include_dir = "0.7.3"
 mime = "0.3.17"
 mime_guess = "2.0.4"
 p256 = "0.13.2"
-pulldown-cmark = { version = "0.9.3", default-features = false, features = ["simd"] }
+pulldown-cmark = { version = "0.9.6", default-features = false, features = ["simd"] }
 rand = { version = "0.8.5", features = ["min_const_gen"] }
 reqwest = { version = "0.11.23", features = ["stream", "rustls-tls"], default-features = false }
 serde = { version = "1.0.195", features = ["derive"] }
