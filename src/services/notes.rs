@@ -130,11 +130,11 @@ impl Note {
     pub fn images(&self, base_url: &Url) -> Vec<Url> {
         parse_md(&self.body)
             .flat_map(|e| match e {
-                Event::Start(Tag::Image(_, url, _)) => {
-                    if url.starts_with("http://") || url.starts_with("https://") {
-                        url.parse().ok()
+                Event::Start(Tag::Image { dest_url, .. }) => {
+                    if dest_url.starts_with("http://") || dest_url.starts_with("https://") {
+                        dest_url.parse().ok()
                     } else {
-                        base_url.join(url.as_ref()).ok()
+                        base_url.join(dest_url.as_ref()).ok()
                     }
                 }
                 _ => None,
@@ -147,9 +147,9 @@ impl Note {
         let mut out = String::with_capacity(256);
         for e in parse_md(&self.body) {
             match e {
-                Event::Text(s)
-                | Event::Start(Tag::Image(_, _, s))
-                | Event::Start(Tag::Link(_, _, s)) => out.push_str(s.as_ref()),
+                Event::Text(dest_url)
+                | Event::Start(Tag::Image { dest_url, .. })
+                | Event::Start(Tag::Link { dest_url, .. }) => out.push_str(dest_url.as_ref()),
                 Event::SoftBreak
                 | Event::HardBreak
                 | Event::Start(Tag::Paragraph)
