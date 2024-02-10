@@ -114,8 +114,8 @@ pub struct AppState {
 }
 
 impl AppState {
-    /// The timestamp of the build, injected by vergen via build.rs.
-    pub const BUILD_TIMESTAMP: &'static str = env!("VERGEN_BUILD_TIMESTAMP");
+    /// The timestamp of the build, injected by build.rs.
+    pub const BUILD_TIMESTAMP: &'static str = env!("BUILD_TIMESTAMP");
 
     /// Create a new [`AppState`] with the given database and config.
     pub fn new(db: SqlitePool, config: Config) -> Result<AppState, io::Error> {
