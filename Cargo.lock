@@ -186,7 +186,7 @@ checksum = "571832dcff775e26562e8e6930cd483de5587301d40d3a3b85d532b6383e15a7"
 dependencies = [
  "chrono",
  "diligent-date-parser",
- "quick-xml",
+ "quick-xml 0.30.0",
 ]
 
 [[package]]
@@ -1771,6 +1771,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "quick-xml"
+version = "0.31.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1004a344b30a54e2ee58d66a71b32d2db2feb0a31f9a2d302bf0536f15de2a33"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3270,7 +3279,6 @@ dependencies = [
  "atom_syndication",
  "axum",
  "axum-extra",
- "chrono",
  "clap",
  "futures",
  "hex",
@@ -3279,6 +3287,7 @@ dependencies = [
  "mime_guess",
  "p256",
  "pulldown-cmark",
+ "quick-xml 0.31.0",
  "rand",
  "reqwest",
  "serde",
