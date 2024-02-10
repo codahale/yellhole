@@ -92,6 +92,6 @@
 
 {% block footer %}
 <p>
-    <small>Copyright &copy; 2022 {{config.author}}</small>
+    <small>Copyright &copy; {{time::OffsetDateTime::now_utc().year()}} {{config.author}}</small>
 </p>
 {% endblock %}
