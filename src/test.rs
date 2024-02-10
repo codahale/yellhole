@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use std::net::SocketAddr;
+use std::{ffi::OsString, io, net::SocketAddr};
 
 use axum::Router;
 use clap::Parser;
@@ -24,10 +24,10 @@ pub struct TestEnv {
 impl TestEnv {
     pub fn new(db: SqlitePool) -> Result<TestEnv, anyhow::Error> {
         let temp_dir = TempDir::new()?;
-        let config = Config::parse_from([
-            format!("--data-dir={}", temp_dir.path().to_str().unwrap()),
-            "--base-url=http://example.com".into(),
-        ]);
+        let mut config =
+            Config::try_parse_from::<_, OsString>([]).expect("should parse empty command line");
+        config.data_dir = temp_dir.path().to_path_buf();
+        config.base_url = "http://example.com".parse().expect("should be a valid URL");
         let state = AppState::new(db, config)?;
         Ok(TestEnv { state, temp_dir })
     }
