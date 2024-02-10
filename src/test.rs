@@ -7,7 +7,7 @@ use clap::Parser;
 use reqwest::{redirect::Policy, Client, ClientBuilder, RequestBuilder, Url};
 use sqlx::SqlitePool;
 use tempfile::TempDir;
-use tokio::net::TcpListener;
+use tokio::{net::TcpListener, task::JoinHandle};
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
 use tracing::Level;
 use tracing_subscriber::{
@@ -50,11 +50,10 @@ impl TestEnv {
             client: ClientBuilder::new().redirect(Policy::none()).cookie_store(true).build()?,
             _temp_dir: self.temp_dir,
             state: self.state.clone(),
+            handle: tokio::spawn(async move {
+                axum::serve(listener, app.with_state(self.state).into_make_service()).await
+            }),
         };
-
-        tokio::spawn(async move {
-            axum::serve(listener, app.with_state(self.state).into_make_service()).await.unwrap()
-        });
 
         Ok(server)
     }
@@ -65,6 +64,7 @@ pub struct TestServer {
     client: Client,
     _temp_dir: TempDir,
     pub state: AppState,
+    handle: JoinHandle<io::Result<()>>,
 }
 
 impl TestServer {
@@ -74,5 +74,11 @@ impl TestServer {
 
     pub fn post(&self, path: &str) -> RequestBuilder {
         self.client.post(self.url.join(path).unwrap())
+    }
+}
+
+impl Drop for TestServer {
+    fn drop(&mut self) {
+        self.handle.abort();
     }
 }
