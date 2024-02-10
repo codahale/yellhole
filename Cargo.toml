@@ -25,7 +25,6 @@ clap = { version = "4.5.0", features = ["derive", "env"] }
 futures = "0.3.30"
 include_dir = "0.7.3"
 mime = "0.3.17"
-mime_guess = "2.0.4"
 p256 = "0.13.2"
 pulldown-cmark = { version = "0.10.0", default-features = false, features = ["simd", "html"] }
 quick-xml = "0.31.0"

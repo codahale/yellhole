@@ -3261,7 +3261,6 @@ dependencies = [
  "futures",
  "include_dir",
  "mime",
- "mime_guess",
  "p256",
  "pulldown-cmark",
  "quick-xml 0.31.0",
