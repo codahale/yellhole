@@ -9,8 +9,9 @@ use axum::{
     routing::get,
     Router,
 };
-use chrono::{DateTime, Days, FixedOffset, NaiveDate, Utc};
+use chrono::{DateTime, FixedOffset, Utc};
 use serde::Deserialize;
+use time::{Date, Duration};
 use tower_http::set_header::SetResponseHeaderLayer;
 use uuid::Uuid;
 
@@ -41,24 +42,36 @@ pub fn router() -> Router<AppState> {
 struct FeedPage {
     config: Arc<Config>,
     notes: Vec<Note>,
-    weeks: Vec<Range<NaiveDate>>,
+    weeks: Vec<Range<Date>>,
 }
 
 impl FeedPage {
-    fn new(state: AppState, notes: Vec<Note>, weeks: Vec<Range<NaiveDate>>) -> FeedPage {
+    fn new(state: AppState, notes: Vec<Note>, weeks: Vec<Range<Date>>) -> FeedPage {
         FeedPage { config: state.config, notes, weeks }
     }
 }
 
 mod filters {
     use askama::{Error::Custom, Result};
-    use chrono::{DateTime, Local, NaiveDate, Utc};
+    use time::{format_description::well_known::Rfc3339, Date, OffsetDateTime, UtcOffset};
     use url::Url;
 
     use crate::services::notes::Note;
 
-    pub fn to_local_tz(t: &DateTime<Utc>) -> Result<DateTime<Local>> {
-        Ok(t.with_timezone(&Local))
+    pub fn to_rfc3339(t: &OffsetDateTime) -> Result<String> {
+        t.format(&Rfc3339).map_err(|e| Custom(Box::new(e)))
+    }
+
+    pub fn to_local_tz(t: &OffsetDateTime) -> Result<OffsetDateTime> {
+        let local = tz::TimeZone::local()
+            .map_err(|e| Custom(Box::new(e)))?
+            .find_current_local_time_type()
+            .map_err(|e| Custom(Box::new(e)))?
+            .ut_offset();
+        Ok(t.checked_to_offset(
+            UtcOffset::from_whole_seconds(local).map_err(|e| Custom(Box::new(e)))?,
+        )
+        .expect("should convert"))
     }
 
     pub fn to_note_url(note: &Note, base_url: &Url) -> Result<Url> {
@@ -72,7 +85,7 @@ mod filters {
         base_url.join("atom.xml").map_err(|e| Custom(Box::new(e)))
     }
 
-    pub fn to_weekly_url(week: &NaiveDate, base_url: &Url) -> Result<Url> {
+    pub fn to_weekly_url(week: &Date, base_url: &Url) -> Result<Url> {
         base_url
             .join("notes/")
             .and_then(|u| u.join(&week.to_string()))
@@ -96,11 +109,12 @@ async fn index(
 
 async fn week(
     State(state): State<AppState>,
-    start: Option<Path<NaiveDate>>,
+    start: Option<Path<Date>>,
 ) -> Result<Page<FeedPage>, AppError> {
     let weeks = state.notes.weeks().await?;
     let start = start.ok_or(AppError::NotFound)?.0;
-    let notes = state.notes.date_range(start..(start + Days::new(7))).await?;
+    let end = start.checked_add(Duration::days(7)).expect("should allow week addition");
+    let notes = state.notes.date_range(start..end).await?;
     Ok(Page(FeedPage::new(state, notes, weeks)))
 }
 
@@ -131,7 +145,9 @@ async fn atom(State(state): State<AppState>) -> Result<Response, AppError> {
                     value: Some(n.to_html()),
                     ..Default::default()
                 }),
-                updated: n.created_at.with_timezone(&FixedOffset::east_opt(0).unwrap()),
+                updated: DateTime::from_timestamp_millis(n.created_at.unix_timestamp())
+                    .expect("should convert Unix timestamps")
+                    .fixed_offset(),
                 ..Default::default()
             }
         })

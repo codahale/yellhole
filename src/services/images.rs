@@ -6,10 +6,10 @@ use std::{
 
 use anyhow::Context;
 use axum::{body::Bytes, BoxError};
-use chrono::{DateTime, Utc};
 use futures::{Stream, TryStreamExt};
 use mime::Mime;
 use sqlx::SqlitePool;
+use time::OffsetDateTime;
 use tokio::{
     fs::File,
     io::{self, BufWriter},
@@ -45,7 +45,7 @@ impl ImageService {
             select
               image_id as "image_id: Hyphenated",
               original_filename,
-              created_at as "created_at: DateTime<Utc>"
+              created_at as "created_at: OffsetDateTime"
             from image
             order by created_at desc
             limit ?
@@ -138,7 +138,7 @@ impl ImageService {
 pub struct Image {
     image_id: Hyphenated,
     pub original_filename: String,
-    pub created_at: DateTime<Utc>,
+    pub created_at: OffsetDateTime,
 }
 
 impl Image {

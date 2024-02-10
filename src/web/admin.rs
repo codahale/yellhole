@@ -7,9 +7,9 @@ use axum::{
     routing::{get, post},
     Form, Router,
 };
-use chrono::Utc;
 use mime::Mime;
 use serde::Deserialize;
+use time::OffsetDateTime;
 use tower::ServiceBuilder;
 use tower_http::limit::RequestBodyLimitLayer;
 use url::Url;
@@ -63,7 +63,7 @@ async fn create_note(
         let note = Note {
             note_id: Uuid::new_v4().hyphenated(),
             body: new_note.body,
-            created_at: Utc::now(),
+            created_at: OffsetDateTime::now_utc(),
         };
         Ok(Page(PreviewPage { note }).into_response())
     } else {

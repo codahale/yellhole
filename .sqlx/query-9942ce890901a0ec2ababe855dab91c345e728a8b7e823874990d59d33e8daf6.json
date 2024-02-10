@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            select\n              date(local, 'weekday 0', '-7 days') as \"start!: Date\",\n              date(local, 'weekday 0') as \"end!: Date\"\n            from (select datetime(created_at, 'localtime') as local from note)\n            group by 1 order by 1 desc\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "start!: Date",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "end!: Date",
+        "ordinal": 1,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true,
+      true
+    ]
+  },
+  "hash": "9942ce890901a0ec2ababe855dab91c345e728a8b7e823874990d59d33e8daf6"
+}

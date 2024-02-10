@@ -1,8 +1,8 @@
 use std::ops::Range;
 
-use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone, Utc};
 use pulldown_cmark::{Event, Options, Parser, Tag};
 use sqlx::SqlitePool;
+use time::{Date, OffsetDateTime, Time};
 use url::Url;
 use uuid::{fmt::Hyphenated, Uuid};
 
@@ -37,7 +37,7 @@ impl NoteService {
         sqlx::query_as!(
             Note,
             r#"
-            select note_id as "note_id: Hyphenated", body, created_at as "created_at: DateTime<Utc>"
+            select note_id as "note_id: Hyphenated", body, created_at as "created_at: OffsetDateTime"
             from note
             where note_id = ?
             "#,
@@ -54,7 +54,7 @@ impl NoteService {
         sqlx::query_as!(
             Note,
             r#"
-            select note_id as "note_id: Hyphenated", body, created_at as "created_at: DateTime<Utc>"
+            select note_id as "note_id: Hyphenated", body, created_at as "created_at: OffsetDateTime"
             from note
             order by created_at desc
             limit ?
@@ -68,12 +68,12 @@ impl NoteService {
     /// Return a vec of all week-long date ranges in which notes were created.
     #[must_use]
     #[tracing::instrument(skip(self), err)]
-    pub async fn weeks(&self) -> Result<Vec<Range<NaiveDate>>, sqlx::Error> {
+    pub async fn weeks(&self) -> Result<Vec<Range<Date>>, sqlx::Error> {
         Ok(sqlx::query!(
             r#"
             select
-              date(local, 'weekday 0', '-7 days') as "start!: NaiveDate",
-              date(local, 'weekday 0') as "end!: NaiveDate"
+              date(local, 'weekday 0', '-7 days') as "start!: Date",
+              date(local, 'weekday 0') as "end!: Date"
             from (select datetime(created_at, 'localtime') as local from note)
             group by 1 order by 1 desc
             "#,
@@ -88,13 +88,13 @@ impl NoteService {
     /// Return all [`Note`]s which were created in the given date range.
     #[must_use]
     #[tracing::instrument(skip(self), err)]
-    pub async fn date_range(&self, range: Range<NaiveDate>) -> Result<Vec<Note>, sqlx::Error> {
-        let start = local_date_to_utc(&range.start);
-        let end = local_date_to_utc(&range.end);
+    pub async fn date_range(&self, range: Range<Date>) -> Result<Vec<Note>, sqlx::Error> {
+        let start = OffsetDateTime::new_utc(range.start, Time::MIDNIGHT);
+        let end = OffsetDateTime::new_utc(range.end, Time::MIDNIGHT);
         sqlx::query_as!(
             Note,
             r#"
-            select note_id as "note_id: Hyphenated", body, created_at as "created_at: DateTime<Utc>"
+            select note_id as "note_id: Hyphenated", body, created_at as "created_at: OffsetDateTime"
             from note
             where created_at >= ? and created_at < ?
             order by created_at desc
@@ -115,7 +115,7 @@ pub struct Note {
     // The note's Markdown body.
     pub body: String,
     /// The date and time at which the note was created.
-    pub created_at: DateTime<Utc>,
+    pub created_at: OffsetDateTime,
 }
 
 impl Note {
@@ -165,10 +165,6 @@ fn parse_md(md: &str) -> Parser {
     Parser::new_ext(md, Options::ENABLE_SMART_PUNCTUATION | Options::ENABLE_STRIKETHROUGH)
 }
 
-fn local_date_to_utc(d: &NaiveDate) -> DateTime<Utc> {
-    Local.from_local_datetime(&d.and_time(NaiveTime::default())).unwrap().with_timezone(&Utc)
-}
-
 #[cfg(test)]
 mod tests {
     use uuid::Uuid;
@@ -180,7 +176,7 @@ mod tests {
         let note = Note {
             note_id: Uuid::new_v4().hyphenated(),
             body: r#"It's ~~not~~ _electric_!"#.into(),
-            created_at: Utc::now(),
+            created_at: OffsetDateTime::now_utc(),
         };
 
         assert_eq!(note.to_html(), "<p>It’s <del>not</del> <em>electric</em>!</p>\n");
@@ -191,7 +187,7 @@ mod tests {
         let note = Note {
             note_id: Uuid::new_v4().hyphenated(),
             body: "It's _electric_!\n\nBoogie woogie woogie.".into(),
-            created_at: Utc::now(),
+            created_at: OffsetDateTime::now_utc(),
         };
 
         assert_eq!(note.description(), r#"It’s electric! Boogie woogie woogie."#);

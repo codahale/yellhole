@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            select note_id as \"note_id: Hyphenated\", body, created_at as \"created_at: DateTime<Utc>\"\n            from note\n            where created_at >= ? and created_at < ?\n            order by created_at desc\n            ",
+  "query": "\n            select note_id as \"note_id: Hyphenated\", body, created_at as \"created_at: OffsetDateTime\"\n            from note\n            order by created_at desc\n            limit ?\n            ",
   "describe": {
     "columns": [
       {
@@ -14,13 +14,13 @@
         "type_info": "Text"
       },
       {
-        "name": "created_at: DateTime<Utc>",
+        "name": "created_at: OffsetDateTime",
         "ordinal": 2,
         "type_info": "Datetime"
       }
     ],
     "parameters": {
-      "Right": 2
+      "Right": 1
     },
     "nullable": [
       false,
@@ -28,5 +28,5 @@
       false
     ]
   },
-  "hash": "637a30ab20aa25fe979b55fabd0bf2c701a6e04f18627c8ff335e3c5f89b3583"
+  "hash": "e024d72408b5ae0997411d9750cdcd8d5aad810f723ab16669ad016120f72d79"
 }
