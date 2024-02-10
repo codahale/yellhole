@@ -3259,7 +3259,6 @@ dependencies = [
  "axum-extra",
  "clap",
  "futures",
- "hex",
  "include_dir",
  "mime",
  "mime_guess",
