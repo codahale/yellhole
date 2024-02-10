@@ -32,7 +32,7 @@ impl PasskeyService {
 
     /// Creates a new [`PasskeyService`] with the given database and base URL.
     pub fn new(db: SqlitePool, base_url: Url) -> PasskeyService {
-        let rp_id = base_url.host_str().unwrap().into();
+        let rp_id = base_url.host_str().expect("should have a host").into();
         PasskeyService { db, rp_id, origin: base_url }
     }
 
@@ -337,7 +337,8 @@ fn parse_authenticator_data(ad: &[u8], rp_id: &str) -> Result<Option<Vec<u8>>, a
     anyhow::ensure!(bool::from(rp_hash.ct_eq(&ad[..32])), "invalid RP ID hash");
     anyhow::ensure!(ad[32] & 1 != 0, "user presence flag not set");
     if ad.len() > 55 {
-        let cred_id_len = u16::from_be_bytes(ad[53..55].try_into().unwrap()) as usize;
+        let cred_id_len =
+            u16::from_be_bytes(ad[53..55].try_into().expect("should be 4 bytes")) as usize;
         anyhow::ensure!(ad.len() >= 55 + cred_id_len, "bad credential ID size");
         Ok(Some(ad[55..55 + cred_id_len].to_vec()))
     } else {

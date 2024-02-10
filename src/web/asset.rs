@@ -94,7 +94,7 @@ mod tests {
     #[sqlx::test]
     async fn image(db: SqlitePool) -> Result<(), anyhow::Error> {
         let ts = TestEnv::new(db)?;
-        fs::copy("./yellhole.webp", ts.state.images.images_dir().join("yellhole.webp")).unwrap();
+        fs::copy("./yellhole.webp", ts.state.images.images_dir().join("yellhole.webp"))?;
         let app = router(&ts.state.images, &ts.state.assets)?;
         let ts = ts.into_server(app).await?;
 

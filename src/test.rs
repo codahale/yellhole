@@ -69,11 +69,11 @@ pub struct TestServer {
 
 impl TestServer {
     pub fn get(&self, path: &str) -> RequestBuilder {
-        self.client.get(self.url.join(path).unwrap())
+        self.client.get(self.url.join(path).expect("should be a valid URL"))
     }
 
     pub fn post(&self, path: &str) -> RequestBuilder {
-        self.client.post(self.url.join(path).unwrap())
+        self.client.post(self.url.join(path).expect("should be a valid URL"))
     }
 }
 

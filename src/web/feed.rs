@@ -132,7 +132,7 @@ async fn single(
 
 async fn atom(State(state): State<AppState>) -> Result<Response, AppError> {
     let notes = state.notes.most_recent(20).await?;
-    let atom_url = filters::to_atom_url(&state.config.base_url).unwrap();
+    let atom_url = filters::to_atom_url(&state.config.base_url).expect("should be a valid URL");
     let mut xml = XmlWriter::new(Vec::<u8>::with_capacity(1024));
     xml.write_event(Event::Decl(BytesDecl::new("1.0", None, None))).map_err(anyhow::Error::new)?;
     xml.create_element("feed")
@@ -165,7 +165,8 @@ async fn atom(State(state): State<AppState>) -> Result<Response, AppError> {
             }
 
             for note in notes {
-                let url = filters::to_note_url(&note, &state.config.base_url).unwrap();
+                let url = filters::to_note_url(&note, &state.config.base_url)
+                    .expect("should be a valid URL");
                 feed.create_element("entry").write_inner_content(
                     |entry| -> anyhow::Result<()> {
                         entry
@@ -234,7 +235,11 @@ mod tests {
 
         let feed = Feed::read_from(Cursor::new(&resp.bytes().await?))?;
         assert_eq!(
-            feed.entries[0].content().unwrap().value().unwrap(),
+            feed.entries[0]
+                .content()
+                .expect("should have content")
+                .value()
+                .expect("should have a value"),
             "<p>It’s a me, <em>Mario</em>.</p>\n"
         );
 
