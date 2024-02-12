@@ -21,7 +21,7 @@ anyhow = "1.0.79"
 askama = "0.12.1"
 axum = { version = "0.7.4", features = ["http2", "multipart"] }
 axum-extra = { version = "0.9.2", features = ["cookie"] }
-clap = { version = "4.5.0", features = ["derive", "env"] }
+clap = { version = "4.5.0", features = ["deprecated", "derive", "env"] }
 futures = "0.3.30"
 include_dir = "0.7.3"
 mime = "0.3.17"
