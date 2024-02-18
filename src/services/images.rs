@@ -8,6 +8,7 @@ use anyhow::Context;
 use axum::{body::Bytes, BoxError};
 use futures::{Stream, TryStreamExt};
 use mime::Mime;
+use reqwest::header;
 use sqlx::SqlitePool;
 use time::OffsetDateTime;
 use tokio::{
@@ -119,7 +120,7 @@ impl ImageService {
         // Get the image's content type.
         let content_type = image
             .headers()
-            .get(reqwest::header::CONTENT_TYPE)
+            .get(header::CONTENT_TYPE)
             .and_then(|v| v.to_str().ok())
             .ok_or_else(|| anyhow::anyhow!("no Content-Type header"))
             .and_then(|s| s.parse::<Mime>().context("invalid Content-Type header"))?;
