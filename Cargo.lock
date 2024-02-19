@@ -1807,7 +1807,7 @@ checksum = "c08c74e62047bb2de4ff487b251e4a92e24f48745648451635cec7d591162d9f"
 [[package]]
 name = "reqwest"
 version = "0.11.24"
-source = "git+https://github.com/seanmonstar/reqwest?branch=hyper-v1#6694e8237db8954ddf59febb02f6a82f18e7eef9"
+source = "git+https://github.com/seanmonstar/reqwest?branch=hyper-v1#a819add89c7129a4eeaa5feab1c43a8d724215cd"
 dependencies = [
  "base64",
  "bytes",
