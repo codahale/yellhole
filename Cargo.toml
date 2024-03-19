@@ -60,7 +60,7 @@ tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 tz-rs = "0.6.14"
 url = { version = "2.5.0", features = ["serde"] }
-uuid = { version = "1.7.0", features = ["serde", "std", "v4"] }
+uuid = { version = "1.8.0", features = ["serde", "std", "v4"] }
 
 [dev-dependencies]
 atom_syndication = { version = "0.12.2", default-features = false }
