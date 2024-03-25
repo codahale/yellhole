@@ -29,7 +29,7 @@ p256 = "0.13.2"
 pulldown-cmark = { version = "0.10.0", default-features = false, features = ["simd", "html"] }
 quick-xml = "0.31.0"
 rand = { version = "0.8.5", features = ["min_const_gen"] }
-reqwest = { version = "0.12.1", features = ["stream", "rustls-tls"], default-features = false }
+reqwest = { version = "0.12.2", features = ["stream", "rustls-tls"], default-features = false }
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.114"
 serde_with = { version = "3.7.0", features = ["base64"] }
@@ -61,7 +61,7 @@ uuid = { version = "1.8.0", features = ["serde", "std", "v4"] }
 
 [dev-dependencies]
 atom_syndication = { version = "0.12.2", default-features = false }
-reqwest = { version = "0.12.1", features = ["json", "cookies", "multipart"], default-features = false }
+reqwest = { version = "0.12.2", features = ["json", "cookies", "multipart"], default-features = false }
 
 [workspace]
 members = ["xtask"]
