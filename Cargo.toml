@@ -19,7 +19,7 @@ include = [
 [dependencies]
 anyhow = "1.0.81"
 askama = "0.12.1"
-axum = { version = "0.7.4", features = ["http2", "multipart"] }
+axum = { version = "0.7.5", features = ["http2", "multipart"] }
 axum-extra = { version = "0.9.3", features = ["cookie"] }
 clap = { version = "4.5.3", features = ["deprecated", "derive", "env"] }
 futures = "0.3.30"
