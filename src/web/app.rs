@@ -50,7 +50,15 @@ impl App {
         // Connect to the DB.
         let db_path = config.data_dir.join("yellhole.db");
         tracing::info!(?db_path, "opening database");
-        let db_opts = SqliteConnectOptions::new().create_if_missing(true).filename(db_path);
+        let db_opts = SqliteConnectOptions::new()
+            .create_if_missing(true)
+            .filename(db_path)
+            .pragma("journal_mode", "WAL")
+            .pragma("busy_timeout", "5000")
+            .pragma("synchronous", "NORMAL")
+            .pragma("cache_size", "1000000000")
+            .pragma("foreign_keys", "true")
+            .pragma("temp_sore", "memory");
         let db = SqlitePoolOptions::new().connect_with(db_opts).await?;
 
         // Run any pending migrations.
