@@ -1,30 +1,36 @@
 use std::ops::Range;
 
 use pulldown_cmark::{Event, Options, Parser, Tag};
-use sqlx::SqlitePool;
+use rusqlite::{params, OptionalExtension};
 use time::{Date, OffsetDateTime, Time};
+use tokio_rusqlite::Connection;
 use url::Url;
-use uuid::{fmt::Hyphenated, Uuid};
+use uuid::Uuid;
 
 /// A service for creating and viewing [`Note`]s.
 #[derive(Debug, Clone)]
 pub struct NoteService {
-    db: SqlitePool,
+    db: Connection,
 }
 
 impl NoteService {
     /// Create a new [`NoteService`] using the given database.
-    pub fn new(db: SqlitePool) -> NoteService {
+    pub fn new(db: Connection) -> NoteService {
         NoteService { db }
     }
 
     /// Create a new [`Note`], returning the new note's ID.
     #[must_use]
     #[tracing::instrument(skip(self, body), ret(Display), err)]
-    pub async fn create(&self, body: &str) -> Result<Hyphenated, sqlx::Error> {
-        let note_id = Uuid::new_v4().hyphenated();
-        sqlx::query!(r#"insert into note (note_id, body) values (?, ?)"#, note_id, body)
-            .execute(&self.db)
+    pub async fn create(&self, body: &str) -> Result<String, tokio_rusqlite::Error> {
+        let note_id = Uuid::new_v4().hyphenated().to_string();
+        let note_id_p = note_id.clone();
+        let body = body.to_string();
+        self.db
+            .call_unwrap(move |conn| {
+                conn.prepare_cached(r#"insert into note (note_id, body) values (?, ?)"#)?
+                    .execute(params![note_id_p, body])
+            })
             .await?;
         Ok(note_id)
     }
@@ -32,78 +38,99 @@ impl NoteService {
     /// Find a [`Note`] by ID.
     #[must_use]
     #[tracing::instrument(skip(self), err)]
-    pub async fn by_id(&self, note_id: &Uuid) -> Result<Option<Note>, sqlx::Error> {
-        let note_id = note_id.as_hyphenated();
-        sqlx::query_as!(
-            Note,
-            r#"
-            select note_id as "note_id: Hyphenated", body, created_at as "created_at: OffsetDateTime"
-            from note
-            where note_id = ?
-            "#,
-            note_id
-        )
-        .fetch_optional(&self.db)
-        .await
+    pub async fn by_id(&self, note_id: &str) -> Result<Option<Note>, tokio_rusqlite::Error> {
+        let note_id = note_id.to_string();
+        Ok(self
+            .db
+            .call_unwrap(move |conn| {
+                conn.prepare_cached(
+                    r#"
+                    select note_id, body, created_at
+                    from note
+                    where note_id = ?
+                    "#,
+                )?
+                .query_row(params![note_id], |row| {
+                    Ok(Note { note_id: row.get(0)?, body: row.get(1)?, created_at: row.get(2)? })
+                })
+            })
+            .await
+            .optional()?)
     }
 
     /// Find the `n` most recent [`Note`]s in reverse chronological order.
     #[must_use]
     #[tracing::instrument(skip(self), err)]
-    pub async fn most_recent(&self, n: u16) -> Result<Vec<Note>, sqlx::Error> {
-        sqlx::query_as!(
-            Note,
-            r#"
-            select note_id as "note_id: Hyphenated", body, created_at as "created_at: OffsetDateTime"
-            from note
-            order by created_at desc
-            limit ?
-            "#,
-            n
-        )
-        .fetch_all(&self.db)
-        .await
+    pub async fn most_recent(&self, n: u16) -> Result<Vec<Note>, tokio_rusqlite::Error> {
+        Ok(self
+            .db
+            .call_unwrap(move |conn| {
+                conn.prepare_cached(
+                    r#"
+                    select note_id, body, created_at
+                    from note
+                    order by created_at desc
+                    limit ?
+                    "#,
+                )?
+                .query_map(params![n], |row| {
+                    Ok(Note { note_id: row.get(0)?, body: row.get(1)?, created_at: row.get(2)? })
+                })?
+                .collect::<Result<Vec<_>, _>>()
+            })
+            .await?)
     }
 
     /// Return a vec of all week-long date ranges in which notes were created.
     #[must_use]
     #[tracing::instrument(skip(self), err)]
-    pub async fn weeks(&self) -> Result<Vec<Range<Date>>, sqlx::Error> {
-        Ok(sqlx::query!(
-            r#"
+    pub async fn weeks(&self) -> Result<Vec<Range<Date>>, tokio_rusqlite::Error> {
+        Ok(self
+            .db
+            .call_unwrap(move |conn| {
+                conn.prepare_cached(
+                    r#"
             select
-              date(local, 'weekday 0', '-7 days') as "start!: Date",
-              date(local, 'weekday 0') as "end!: Date"
+              date(local, 'weekday 0', '-7 days'),
+              date(local, 'weekday 0')
             from (select datetime(created_at, 'localtime') as local from note)
             group by 1 order by 1 desc
             "#,
-        )
-        .fetch_all(&self.db)
-        .await?
-        .into_iter()
-        .map(|r| r.start..r.end)
-        .collect())
+                )?
+                .query_map([], |row| {
+                    let start = row.get::<_, Date>(0)?;
+                    let end = row.get::<_, Date>(1)?;
+                    Ok(start..end)
+                })?
+                .collect::<Result<Vec<_>, _>>()
+            })
+            .await?)
     }
 
     /// Return all [`Note`]s which were created in the given date range.
     #[must_use]
     #[tracing::instrument(skip(self), err)]
-    pub async fn date_range(&self, range: Range<Date>) -> Result<Vec<Note>, sqlx::Error> {
+    pub async fn date_range(&self, range: Range<Date>) -> Result<Vec<Note>, tokio_rusqlite::Error> {
         let start = OffsetDateTime::new_utc(range.start, Time::MIDNIGHT);
         let end = OffsetDateTime::new_utc(range.end, Time::MIDNIGHT);
-        sqlx::query_as!(
-            Note,
-            r#"
-            select note_id as "note_id: Hyphenated", body, created_at as "created_at: OffsetDateTime"
+
+        Ok(self
+            .db
+            .call_unwrap(move |conn| {
+                conn.prepare_cached(
+                    r#"
+            select note_id, body, created_at
             from note
             where created_at >= ? and created_at < ?
             order by created_at desc
             "#,
-            start,
-            end,
-        )
-        .fetch_all(&self.db)
-        .await
+                )?
+                .query_map(params![start, end], |row| {
+                    Ok(Note { note_id: row.get(0)?, body: row.get(1)?, created_at: row.get(2)? })
+                })?
+                .collect::<Result<Vec<_>, _>>()
+            })
+            .await?)
     }
 }
 
@@ -111,7 +138,7 @@ impl NoteService {
 #[derive(Debug)]
 pub struct Note {
     /// The note's unique ID.
-    pub note_id: Hyphenated,
+    pub note_id: String,
     // The note's Markdown body.
     pub body: String,
     /// The date and time at which the note was created.
@@ -167,14 +194,12 @@ fn parse_md(md: &str) -> Parser {
 
 #[cfg(test)]
 mod tests {
-    use uuid::Uuid;
-
     use super::*;
 
     #[test]
     fn body_to_html() {
         let note = Note {
-            note_id: Uuid::new_v4().hyphenated(),
+            note_id: "".into(),
             body: r#"It's ~~not~~ _electric_!"#.into(),
             created_at: OffsetDateTime::now_utc(),
         };
@@ -185,7 +210,7 @@ mod tests {
     #[test]
     fn body_to_description() {
         let note = Note {
-            note_id: Uuid::new_v4().hyphenated(),
+            note_id: "".into(),
             body: "It's _electric_!\n\nBoogie woogie woogie.".into(),
             created_at: OffsetDateTime::now_utc(),
         };

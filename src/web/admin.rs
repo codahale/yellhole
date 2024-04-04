@@ -61,7 +61,7 @@ async fn create_note(
 ) -> Result<Response, AppError> {
     if new_note.preview {
         let note = Note {
-            note_id: Uuid::new_v4().hyphenated(),
+            note_id: Uuid::new_v4().hyphenated().to_string(),
             body: new_note.body,
             created_at: OffsetDateTime::now_utc(),
         };
@@ -108,18 +108,26 @@ async fn download_image(
 mod tests {
     use axum::routing::get_service;
     use reqwest::{header, multipart, StatusCode};
-    use sqlx::SqlitePool;
     use tokio::fs;
     use tower_http::services::ServeFile;
-    use uuid::Uuid;
 
     use crate::test::TestEnv;
 
     use super::*;
 
-    #[sqlx::test(fixtures("notes", "images"))]
-    async fn new_note_ui(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestEnv::new(db)?.into_server(router()).await?;
+    #[tokio::test]
+    async fn new_note_ui() -> Result<(), anyhow::Error> {
+        let ts = TestEnv::new().await?.into_server(router()).await?;
+        ts.db.call_unwrap(|conn| conn.execute_batch(r#"
+insert into image (image_id, original_filename, content_type, created_at)
+values ('4c89cfef-9031-49c0-8b91-2578c0e227f3', 'garfield-pantless.webp', 'image/webp', datetime('now', '-1 day'));
+
+insert into image (image_id, original_filename, content_type, created_at)
+values ('7963d8bc-9cf8-4459-a593-b6d49b94b541', 'garfield-john-rodeo.jpg', 'image/jpeg', datetime('now', '-2 days'));
+
+insert into image (image_id, original_filename, content_type, created_at)
+values ('cbdc5a69-abba-4d75-9679-44259c48b272', 'garfield-odie-whips.bmp', 'image/bmp', datetime('now', '-3 days'));
+"#)).await?;
 
         let resp = ts.get("/admin/new").send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
@@ -130,9 +138,9 @@ mod tests {
         Ok(())
     }
 
-    #[sqlx::test]
-    async fn creating_a_note(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestEnv::new(db)?.into_server(router()).await?;
+    #[tokio::test]
+    async fn creating_a_note() -> Result<(), anyhow::Error> {
+        let ts = TestEnv::new().await?.into_server(router()).await?;
 
         let resp = ts
             .post("/admin/new-note")
@@ -141,7 +149,7 @@ mod tests {
             .await?;
         assert_eq!(resp.status(), StatusCode::SEE_OTHER);
         let location = resp.headers().get(header::LOCATION).expect("missing header");
-        let note_id = location.to_str()?.split('/').last().expect("bad URI").parse::<Uuid>()?;
+        let note_id = location.to_str()?.split('/').last().expect("bad URI").parse::<String>()?;
 
         assert_eq!(ts.state.notes.most_recent(20).await?.len(), 1);
         let note = ts.state.notes.by_id(&note_id).await?.expect("missing note");
@@ -150,9 +158,9 @@ mod tests {
         Ok(())
     }
 
-    #[sqlx::test]
-    async fn uploading_an_image(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestEnv::new(db)?.into_server(router()).await?;
+    #[tokio::test]
+    async fn uploading_an_image() -> Result<(), anyhow::Error> {
+        let ts = TestEnv::new().await?.into_server(router()).await?;
 
         let img = fs::read("yellhole.webp").await?;
         let form = multipart::Form::new().part(
@@ -168,15 +176,15 @@ mod tests {
         Ok(())
     }
 
-    #[sqlx::test]
-    async fn downloading_an_image(db: SqlitePool) -> Result<(), anyhow::Error> {
+    #[tokio::test]
+    async fn downloading_an_image() -> Result<(), anyhow::Error> {
         fn app() -> Router<AppState> {
             Router::new()
                 .route_service("/logo.webp", get_service(ServeFile::new("yellhole.webp")))
                 .merge(router())
         }
 
-        let ts = TestEnv::new(db)?.into_server(app()).await?;
+        let ts = TestEnv::new().await?.into_server(app()).await?;
 
         let resp = ts
             .post("/admin/download-image")

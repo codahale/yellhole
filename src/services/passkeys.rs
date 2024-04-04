@@ -6,6 +6,7 @@ use p256::{
     pkcs8::DecodePublicKey,
 };
 use rand::{thread_rng, Rng};
+use rusqlite::{params, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use serde_with::{
     base64::{Base64, UrlSafe},
@@ -13,15 +14,15 @@ use serde_with::{
     serde_as, PickFirst,
 };
 use sha2::{Digest, Sha256};
-use sqlx::SqlitePool;
 use thiserror::Error;
+use tokio_rusqlite::Connection;
 use url::Url;
 use uuid::Uuid;
 
 /// A service for handling passkey registration and authentication.
 #[derive(Debug, Clone)]
 pub struct PasskeyService {
-    db: SqlitePool,
+    db: Connection,
     rp_id: String,
     origin: Url,
 }
@@ -31,7 +32,7 @@ impl PasskeyService {
     pub const TTL: Duration = Duration::from_secs(5 * 60);
 
     /// Creates a new [`PasskeyService`] with the given database and base URL.
-    pub fn new(db: SqlitePool, base_url: Url) -> PasskeyService {
+    pub fn new(db: Connection, base_url: Url) -> PasskeyService {
         let rp_id = base_url.host_str().expect("should have a host").into();
         PasskeyService { db, rp_id, origin: base_url }
     }
@@ -39,10 +40,14 @@ impl PasskeyService {
     /// Returns `true` if any passkeys are registered.
     #[must_use]
     #[tracing::instrument(skip(self), ret, err)]
-    pub async fn any_registered(&self) -> Result<bool, sqlx::Error> {
-        sqlx::query_scalar!(r#"select count(passkey_id) > 0 as "has_passkey: bool" from passkey"#)
-            .fetch_one(&self.db)
-            .await
+    pub async fn any_registered(&self) -> Result<bool, tokio_rusqlite::Error> {
+        Ok(self
+            .db
+            .call_unwrap(|con| {
+                con.prepare_cached(r#"select count(passkey_id) > 0 from passkey"#)?
+                    .query_row([], |row| row.get(0))
+            })
+            .await?)
     }
 
     /// Starts a passkey registration flow for the given username/user ID.
@@ -52,7 +57,7 @@ impl PasskeyService {
         &self,
         username: &str,
         user_id: &[u8],
-    ) -> Result<RegistrationChallenge, sqlx::Error> {
+    ) -> Result<RegistrationChallenge, tokio_rusqlite::Error> {
         Ok(RegistrationChallenge {
             rp_id: self.rp_id.clone(),
             username: username.into(),
@@ -80,18 +85,21 @@ impl PasskeyService {
         }
 
         // Decode and validate the authenticator data.
-        let Ok(passkey_id) = parse_authenticator_data(&resp.authenticator_data, &self.rp_id) else {
+        let Ok(Some(passkey_id)) = parse_authenticator_data(&resp.authenticator_data, &self.rp_id)
+        else {
             return Err(PasskeyError::InvalidAuthenticatorData);
         };
 
         // Insert the passkey ID and DER-encoded public key into the database.
-        sqlx::query!(
-            r#"insert into passkey (passkey_id, public_key_spki) values (?, ?)"#,
-            passkey_id,
-            resp.public_key,
-        )
-        .execute(&self.db)
-        .await?;
+        self.db
+            .call_unwrap(move |conn| {
+                conn.prepare_cached(
+                    r#"insert into passkey (passkey_id, public_key_spki) values (?, ?)"#,
+                )?
+                .execute(params![passkey_id, resp.public_key])
+            })
+            .await
+            .map_err(tokio_rusqlite::Error::from)?;
 
         Ok(())
     }
@@ -101,25 +109,20 @@ impl PasskeyService {
     #[tracing::instrument(skip(self), err)]
     pub async fn start_authentication(
         &self,
-    ) -> Result<(Uuid, AuthenticationChallenge), sqlx::Error> {
+    ) -> Result<(String, AuthenticationChallenge), tokio_rusqlite::Error> {
         // Find all passkey IDs.
         let passkey_ids = self.passkey_ids().await?;
 
         // Generate and store a random challenge.
-        let challenge_id = Uuid::new_v4();
+        let challenge_id = Uuid::new_v4().as_hyphenated().to_string();
+        let challenge_id_p = challenge_id.clone();
         let challenge = thread_rng().gen::<[u8; 32]>();
-        {
-            // Convert to basic types for sqlx.
-            let challenge_id = challenge_id.as_hyphenated().to_string();
-            let challenge = challenge.to_vec();
-            sqlx::query!(
-                r#"insert into challenge (challenge_id, bytes) values (?, ?)"#,
-                challenge_id,
-                challenge
-            )
-            .execute(&self.db)
+        self.db
+            .call_unwrap(move |conn| {
+                conn.prepare_cached(r#"insert into challenge (challenge_id, bytes) values (?, ?)"#)?
+                    .execute(params![challenge_id_p, challenge.to_vec()])
+            })
             .await?;
-        }
 
         let rp_id = self.rp_id.clone();
         Ok((challenge_id, AuthenticationChallenge { rp_id, challenge, passkey_ids }))
@@ -135,16 +138,20 @@ impl PasskeyService {
     ) -> Result<(), PasskeyError> {
         // Get and remove the challenge value from the database.
         let challenge_id = challenge_id.as_hyphenated().to_string();
-        let Some(challenge) = sqlx::query_scalar!(
-            r#"
-            delete from challenge
-            where challenge_id = ? and created_at > datetime('now', '-5 minutes')
-            returning bytes
-            "#,
-            challenge_id
-        )
-        .fetch_optional(&self.db)
-        .await?
+        let Ok(challenge) = self
+            .db
+            .call_unwrap(move |conn| {
+                conn.prepare_cached(
+                    r#"
+                    delete from challenge
+                    where challenge_id = ? and created_at > datetime('now', '-5 minutes')
+                    returning bytes
+                    "#,
+                )?
+                .query_row(params![challenge_id], |row| row.get::<_, Vec<u8>>(0))
+            })
+            .await
+            .map_err(tokio_rusqlite::Error::from)
         else {
             return Err(PasskeyError::InvalidChallengeId);
         };
@@ -165,12 +172,16 @@ impl PasskeyService {
         }
 
         // Find the passkey by ID.
-        let Some(public_key_spki) = sqlx::query_scalar!(
-            r#"select public_key_spki from passkey where passkey_id = ?"#,
-            resp.raw_id,
-        )
-        .fetch_optional(&self.db)
-        .await?
+        let raw_id = resp.raw_id.clone();
+        let Some(public_key_spki) = self
+            .db
+            .call_unwrap(move |conn| {
+                conn.prepare_cached(r#"select public_key_spki from passkey where passkey_id = ?"#)?
+                    .query_row(params![raw_id], |row| row.get::<_, Vec<u8>>(0))
+            })
+            .await
+            .optional()
+            .map_err(tokio_rusqlite::Error::from)?
         else {
             tracing::warn!(passkey_id=?resp.raw_id, "unable to find passkey");
             return Err(PasskeyError::InvalidPasskeyId);
@@ -204,12 +215,15 @@ impl PasskeyService {
 
     #[must_use]
     #[tracing::instrument(skip(self), err)]
-    async fn passkey_ids(&self) -> Result<Vec<Vec<u8>>, sqlx::Error> {
-        Ok(sqlx::query_scalar!(r#"select passkey_id from passkey"#)
-            .fetch_all(&self.db)
-            .await?
-            .into_iter()
-            .collect::<Vec<Vec<u8>>>())
+    async fn passkey_ids(&self) -> Result<Vec<Vec<u8>>, tokio_rusqlite::Error> {
+        Ok(self
+            .db
+            .call_unwrap(move |conn| {
+                conn.prepare_cached(r#"select passkey_id from passkey"#)?
+                    .query_map([], |row| row.get::<_, Vec<u8>>(0))?
+                    .collect::<Result<Vec<_>, _>>()
+            })
+            .await?)
     }
 }
 
@@ -234,7 +248,7 @@ pub enum PasskeyError {
     InvalidAuthenticatorData,
 
     #[error(transparent)]
-    DatabaseError(#[from] sqlx::Error),
+    DatabaseError(#[from] tokio_rusqlite::Error),
 }
 
 #[serde_as]

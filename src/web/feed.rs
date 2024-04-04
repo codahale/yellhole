@@ -15,7 +15,6 @@ use quick_xml::{
 use serde::Deserialize;
 use time::{format_description::well_known::Rfc3339, Date, Duration};
 use tower_http::set_header::SetResponseHeaderLayer;
-use uuid::Uuid;
 
 use crate::{
     config::Config,
@@ -122,7 +121,7 @@ async fn week(
 
 async fn single(
     State(state): State<AppState>,
-    note_id: Option<Path<Uuid>>,
+    note_id: Option<Path<String>>,
 ) -> Result<Page<FeedPage>, AppError> {
     let weeks = state.notes.weeks().await?;
     let note_id = note_id.ok_or(AppError::NotFound)?;
@@ -203,15 +202,33 @@ mod tests {
 
     use atom_syndication::Feed;
     use reqwest::{header, StatusCode};
-    use sqlx::SqlitePool;
 
-    use crate::test::TestEnv;
+    use crate::test::{TestEnv, TestServer};
 
     use super::*;
 
-    #[sqlx::test(fixtures("notes"))]
-    async fn main(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestEnv::new(db)?.into_server(router()).await?;
+    async fn note_fixtures(ts: &TestServer) -> anyhow::Result<()> {
+        ts.db.call_unwrap(|conn| {
+            conn.execute_batch(r#"
+insert into note (note_id, body, created_at)
+values ('69b124f0-a4fa-40d0-83f4-06bc4213f3ca', 'It''s a me, _Mario_.', '2022-11-14 18:22:00');
+
+insert into note (note_id, body, created_at)
+values ('c1449d6c-6b5b-4ce4-a4d7-98853562fbf1', '# Hello, it is a header.
+
+## A Subheader', '2022-10-14 20:17:31');
+
+insert into note (note_id, body, created_at)
+values ('b0a2170c-5e91-42ad-aa1b-dabc3c6ea5b9', 'Ok, I *guess* this is fine.', '2022-09-07 09:43:16');
+        "#)
+    }).await?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn main() -> Result<(), anyhow::Error> {
+        let ts = TestEnv::new().await?.into_server(router()).await?;
+        note_fixtures(&ts).await?;
 
         let resp = ts.get("/").send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
@@ -222,9 +239,10 @@ mod tests {
         Ok(())
     }
 
-    #[sqlx::test(fixtures("notes"))]
-    async fn atom_feed(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestEnv::new(db)?.into_server(router()).await?;
+    #[tokio::test]
+    async fn atom_feed() -> Result<(), anyhow::Error> {
+        let ts = TestEnv::new().await?.into_server(router()).await?;
+        note_fixtures(&ts).await?;
 
         let resp = ts.get("/atom.xml").send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
@@ -246,9 +264,10 @@ mod tests {
         Ok(())
     }
 
-    #[sqlx::test(fixtures("notes"))]
-    async fn weekly_view(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestEnv::new(db)?.into_server(router()).await?;
+    #[tokio::test]
+    async fn weekly_view() -> Result<(), anyhow::Error> {
+        let ts = TestEnv::new().await?.into_server(router()).await?;
+        note_fixtures(&ts).await?;
 
         let resp = ts.get("/notes/2022-10-09").send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
@@ -259,9 +278,10 @@ mod tests {
         Ok(())
     }
 
-    #[sqlx::test(fixtures("notes"))]
-    async fn single_note(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestEnv::new(db)?.into_server(router()).await?;
+    #[tokio::test]
+    async fn single_note() -> Result<(), anyhow::Error> {
+        let ts = TestEnv::new().await?.into_server(router()).await?;
+        note_fixtures(&ts).await?;
 
         let resp = ts.get("/note/c1449d6c-6b5b-4ce4-a4d7-98853562fbf1").send().await?;
         assert_eq!(resp.status(), StatusCode::OK);
@@ -272,9 +292,9 @@ mod tests {
         Ok(())
     }
 
-    #[sqlx::test(fixtures("notes"))]
-    async fn bad_note_id(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestEnv::new(db)?.into_server(router()).await?;
+    #[tokio::test]
+    async fn bad_note_id() -> Result<(), anyhow::Error> {
+        let ts = TestEnv::new().await?.into_server(router()).await?;
 
         let resp = ts.get("/note/not-a-uuid").send().await?;
         assert_eq!(resp.status(), StatusCode::NOT_FOUND);
@@ -282,9 +302,9 @@ mod tests {
         Ok(())
     }
 
-    #[sqlx::test(fixtures("notes"))]
-    async fn missing_note_id(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestEnv::new(db)?.into_server(router()).await?;
+    #[tokio::test]
+    async fn missing_note_id() -> Result<(), anyhow::Error> {
+        let ts = TestEnv::new().await?.into_server(router()).await?;
 
         let resp = ts.get("/note/37c615b0-bb55-424d-a813-69e14ca5c20c").send().await?;
         assert_eq!(resp.status(), StatusCode::NOT_FOUND);

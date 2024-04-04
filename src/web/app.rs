@@ -6,12 +6,11 @@ use axum::{
     middleware::{self},
     response::{Html, IntoResponse, Response},
 };
-use sqlx::{
-    sqlite::{SqliteConnectOptions, SqlitePoolOptions},
-    SqlitePool,
-};
+use include_dir::{include_dir, Dir};
+use rusqlite_migration::AsyncMigrations;
 use thiserror::Error;
 use tokio::{net::TcpListener, signal, task};
+use tokio_rusqlite::Connection;
 use tower::ServiceBuilder;
 use tower_http::{
     catch_panic::CatchPanicLayer,
@@ -33,7 +32,7 @@ use crate::{
 /// The Yellhole application.
 #[derive(Debug)]
 pub struct App {
-    db: SqlitePool,
+    db: Connection,
     config: Config,
 }
 
@@ -50,20 +49,22 @@ impl App {
         // Connect to the DB.
         let db_path = config.data_dir.join("yellhole.db");
         tracing::info!(?db_path, "opening database");
-        let db_opts = SqliteConnectOptions::new()
-            .create_if_missing(true)
-            .filename(db_path)
-            .pragma("journal_mode", "WAL")
-            .pragma("busy_timeout", "5000")
-            .pragma("synchronous", "NORMAL")
-            .pragma("cache_size", "1000000000")
-            .pragma("foreign_keys", "true")
-            .pragma("temp_sore", "memory");
-        let db = SqlitePoolOptions::new().connect_with(db_opts).await?;
+        let mut db = Connection::open(&db_path).await?;
+        db.call_unwrap(|conn| -> Result<(), tokio_rusqlite::Error> {
+            conn.pragma_update(None, "journal_mode", "WAL")?;
+            conn.pragma_update(None, "busy_timeout", "5000")?;
+            conn.pragma_update(None, "synchronous", "NORMAL")?;
+            conn.pragma_update(None, "cache_size", "1000000000")?;
+            conn.pragma_update(None, "foreign_keys", "true")?;
+            conn.pragma_update(None, "temp_store", "memory")?;
+            Ok(())
+        })
+        .await?;
 
         // Run any pending migrations.
         tracing::info!("running migrations");
-        sqlx::migrate!().run(&db).await?;
+        let migrations = AsyncMigrations::from_directory(&MIGRATIONS_DIR)?;
+        migrations.to_latest(&mut db).await?;
 
         Ok(App { db, config })
     }
@@ -110,6 +111,8 @@ impl App {
     }
 }
 
+static MIGRATIONS_DIR: Dir = include_dir!("migrations");
+
 /// The shared state of a running Yellhole instance.
 #[derive(Debug, Clone)]
 pub struct AppState {
@@ -126,7 +129,7 @@ impl AppState {
     pub const BUILD_TIMESTAMP: &'static str = env!("BUILD_TIMESTAMP");
 
     /// Create a new [`AppState`] with the given database and config.
-    pub fn new(db: SqlitePool, config: Config) -> Result<AppState, io::Error> {
+    pub fn new(db: Connection, config: Config) -> Result<AppState, io::Error> {
         let images = ImageService::new(db.clone(), &config.data_dir)?;
         let passkeys = PasskeyService::new(db.clone(), config.base_url.clone());
         Ok(AppState {
@@ -149,7 +152,7 @@ pub enum AppError {
 
     /// Any failure of an interaction with the database. Returns a 500.
     #[error(transparent)]
-    QueryFailure(#[from] sqlx::Error),
+    QueryFailure(#[from] tokio_rusqlite::Error),
 
     /// When a page doesn't exist. Returns a 404.
     #[error("resource not found")]

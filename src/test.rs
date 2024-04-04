@@ -4,10 +4,12 @@ use std::{ffi::OsString, io, net::SocketAddr};
 
 use axum::Router;
 use clap::Parser;
+use include_dir::{include_dir, Dir};
 use reqwest::{redirect::Policy, Client, ClientBuilder, RequestBuilder, Url};
-use sqlx::SqlitePool;
+use rusqlite_migration::AsyncMigrations;
 use tempfile::TempDir;
 use tokio::{net::TcpListener, task::JoinHandle};
+use tokio_rusqlite::Connection;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
 use tracing::Level;
 use tracing_subscriber::{
@@ -17,19 +19,24 @@ use tracing_subscriber::{
 use crate::{config::Config, web::AppState};
 
 pub struct TestEnv {
+    pub db: Connection,
     pub state: AppState,
     pub temp_dir: TempDir,
 }
 
 impl TestEnv {
-    pub fn new(db: SqlitePool) -> Result<TestEnv, anyhow::Error> {
+    pub async fn new() -> Result<TestEnv, anyhow::Error> {
+        // TODO add fixture support
         let temp_dir = TempDir::new()?;
         let mut config =
             Config::try_parse_from::<_, OsString>([]).expect("should parse empty command line");
         config.data_dir = temp_dir.path().to_path_buf();
         config.base_url = "http://example.com".parse().expect("should be a valid URL");
-        let state = AppState::new(db, config)?;
-        Ok(TestEnv { state, temp_dir })
+        let mut db = Connection::open_in_memory().await?;
+        let migrations = AsyncMigrations::from_directory(&MIGRATIONS_DIR)?;
+        migrations.to_latest(&mut db).await?;
+        let state = AppState::new(db.clone(), config)?;
+        Ok(TestEnv { db, state, temp_dir })
     }
 
     pub async fn into_server(self, app: Router<AppState>) -> Result<TestServer, anyhow::Error> {
@@ -46,6 +53,7 @@ impl TestEnv {
                 .on_response(DefaultOnResponse::new().level(Level::INFO).include_headers(true)),
         );
         let server = TestServer {
+            db: self.db,
             url: Url::parse(&format!("http://{addr}/"))?,
             client: ClientBuilder::new().redirect(Policy::none()).cookie_store(true).build()?,
             _temp_dir: self.temp_dir,
@@ -59,7 +67,10 @@ impl TestEnv {
     }
 }
 
+static MIGRATIONS_DIR: Dir = include_dir!("migrations");
+
 pub struct TestServer {
+    pub db: Connection,
     pub url: Url,
     client: Client,
     _temp_dir: TempDir,

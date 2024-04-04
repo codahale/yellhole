@@ -69,7 +69,7 @@ async fn register_start(state: State<AppState>) -> Result<Json<RegistrationChall
         .passkeys
         .start_registration(
             &state.config.author,
-            Uuid::default().as_hyphenated().to_string().as_bytes(),
+            Uuid::new_v4().as_hyphenated().to_string().as_bytes(),
         )
         .await
         .map(Json)?)
@@ -132,8 +132,8 @@ async fn login_finish(
     }
 }
 
-fn cookie<'c>(state: &AppState, name: &'c str, value: Uuid, max_age: Duration) -> Cookie<'c> {
-    Cookie::build((name, value.as_hyphenated().to_string()))
+fn cookie<'c>(state: &AppState, name: &'c str, value: String, max_age: Duration) -> Cookie<'c> {
+    Cookie::build((name, value))
         .http_only(true)
         .same_site(SameSite::Strict)
         .max_age(max_age.try_into().expect("invalid duration"))
@@ -142,7 +142,10 @@ fn cookie<'c>(state: &AppState, name: &'c str, value: Uuid, max_age: Duration) -
         .into()
 }
 
-async fn is_authenticated(state: &AppState, cookies: &CookieJar) -> Result<bool, sqlx::Error> {
+async fn is_authenticated(
+    state: &AppState,
+    cookies: &CookieJar,
+) -> Result<bool, tokio_rusqlite::Error> {
     match cookies.get("session") {
         Some(cookie) => state.sessions.exists(cookie.value()).await,
         None => Ok(false),
@@ -160,15 +163,14 @@ mod tests {
     use rand::thread_rng;
     use reqwest::{header, StatusCode};
     use sha2::{Digest, Sha256};
-    use sqlx::SqlitePool;
 
     use crate::{services::passkeys::CollectedClientData, test::TestEnv};
 
     use super::*;
 
-    #[sqlx::test]
-    async fn fresh_pages(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let env = TestEnv::new(db)?;
+    #[tokio::test]
+    async fn fresh_pages() -> Result<(), anyhow::Error> {
+        let env = TestEnv::new().await?;
         let app = app(&env.state);
         let ts = env.into_server(app).await?;
 
@@ -185,11 +187,20 @@ mod tests {
         Ok(())
     }
 
-    #[sqlx::test(fixtures("passkeys"))]
-    async fn registered_pages(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let env = TestEnv::new(db)?;
+    #[tokio::test]
+    async fn registered_pages() -> Result<(), anyhow::Error> {
+        let env = TestEnv::new().await?;
         let app = app(&env.state);
         let ts = env.into_server(app).await?;
+        ts.db
+            .call_unwrap(|conn| {
+                conn.execute_batch(
+                    r#"
+insert into passkey (passkey_id, public_key_spki) values (randomblob(16), randomblob(33));
+        "#,
+                )
+            })
+            .await?;
 
         let resp = ts.get("/register").send().await?;
         assert_eq!(resp.status(), StatusCode::SEE_OTHER);
@@ -204,9 +215,9 @@ mod tests {
         Ok(())
     }
 
-    #[sqlx::test]
-    async fn passkey_registration_and_login(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let env = TestEnv::new(db)?;
+    #[tokio::test]
+    async fn passkey_registration_and_login() -> Result<(), anyhow::Error> {
+        let env = TestEnv::new().await?;
         let app = app(&env.state);
         let ts = env.into_server(app).await?;
 

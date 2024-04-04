@@ -64,15 +64,14 @@ mod tests {
     use std::fs;
 
     use reqwest::{header, StatusCode};
-    use sqlx::SqlitePool;
 
     use crate::test::TestEnv;
 
     use super::*;
 
-    #[sqlx::test]
-    async fn static_asset(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestEnv::new(db)?;
+    #[tokio::test]
+    async fn static_asset() -> Result<(), anyhow::Error> {
+        let ts = TestEnv::new().await?;
         let app = router(&ts.state.images, &ts.state.assets)?;
         let ts = ts.into_server(app).await?;
 
@@ -91,9 +90,9 @@ mod tests {
         Ok(())
     }
 
-    #[sqlx::test]
-    async fn image(db: SqlitePool) -> Result<(), anyhow::Error> {
-        let ts = TestEnv::new(db)?;
+    #[tokio::test]
+    async fn image() -> Result<(), anyhow::Error> {
+        let ts = TestEnv::new().await?;
         fs::copy("./yellhole.webp", ts.state.images.images_dir().join("yellhole.webp"))?;
         let app = router(&ts.state.images, &ts.state.assets)?;
         let ts = ts.into_server(app).await?;

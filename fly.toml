@@ -12,7 +12,7 @@ AUTHOR = "Coda Hale"
 BASE_URL = "https://www.yellhole.com"
 DATA_DIR = "/data"
 PORT = "8080"
-RUST_LOG = "info,sqlx=warn,tower_http=debug"
+RUST_LOG = "info,tower_http=debug"
 
 [[mounts]]
 source = "yellhole_data_machines"

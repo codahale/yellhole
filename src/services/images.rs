@@ -9,27 +9,28 @@ use axum::{body::Bytes, BoxError};
 use futures::{Stream, TryStreamExt};
 use mime::Mime;
 use reqwest::header;
-use sqlx::SqlitePool;
+use rusqlite::params;
 use time::OffsetDateTime;
 use tokio::{
     fs::File,
     io::{self, BufWriter},
     process::Command,
 };
+use tokio_rusqlite::Connection;
 use tokio_util::io::StreamReader;
 use url::Url;
-use uuid::{fmt::Hyphenated, Uuid};
+use uuid::Uuid;
 
 /// A service for adding news images.
 #[derive(Debug, Clone)]
 pub struct ImageService {
-    db: SqlitePool,
+    db: Connection,
     data_dir: PathBuf,
 }
 
 impl ImageService {
     /// Create a new [`ImageService`] using the given database and data directory.
-    pub fn new(db: SqlitePool, data_dir: impl AsRef<Path>) -> Result<ImageService, io::Error> {
+    pub fn new(db: Connection, data_dir: impl AsRef<Path>) -> Result<ImageService, io::Error> {
         let data_dir = data_dir.as_ref().to_path_buf();
         fs::create_dir_all(data_dir.join(IMAGES_DIR))?;
         fs::create_dir_all(data_dir.join(UPLOADS_DIR))?;
@@ -39,22 +40,31 @@ impl ImageService {
     /// Returns the `n` most recent images, in reverse chronological order.
     #[must_use]
     #[tracing::instrument(skip(self), err)]
-    pub async fn most_recent(&self, n: u16) -> Result<Vec<Image>, sqlx::Error> {
-        sqlx::query_as!(
-            Image,
-            r#"
-            select
-              image_id as "image_id: Hyphenated",
-              original_filename,
-              created_at as "created_at: OffsetDateTime"
-            from image
-            order by created_at desc
-            limit ?
-            "#,
-            n
-        )
-        .fetch_all(&self.db)
-        .await
+    pub async fn most_recent(&self, n: u16) -> Result<Vec<Image>, tokio_rusqlite::Error> {
+        Ok(self
+            .db
+            .call_unwrap(move |conn| {
+                conn.prepare_cached(
+                    r#"
+                    select
+                      image_id,
+                      original_filename,
+                      created_at
+                    from image
+                    order by created_at desc
+                    limit ?
+                    "#,
+                )?
+                .query_map(params![n], |row| {
+                    Ok(Image {
+                        image_id: row.get(0)?,
+                        original_filename: row.get(1)?,
+                        created_at: row.get(2)?,
+                    })
+                })?
+                .collect::<Result<Vec<_>, _>>()
+            })
+            .await?)
     }
 
     /// Processes the given stream as an image file and adds it to the database. Generates a main
@@ -66,13 +76,13 @@ impl ImageService {
         original_filename: &str,
         content_type: &Mime,
         stream: S,
-    ) -> Result<Hyphenated, anyhow::Error>
+    ) -> Result<String, anyhow::Error>
     where
         S: Stream<Item = Result<Bytes, E>>,
         E: Into<BoxError>,
     {
         // Create a unique ID for the image.
-        let image_id = Uuid::new_v4().hyphenated();
+        let image_id = Uuid::new_v4().hyphenated().to_string();
 
         // Stream the image file to the uploads directory.
         let original_path = self
@@ -94,15 +104,20 @@ impl ImageService {
         thumbnail.await.context("error generating thumbnail image")?;
 
         // Add image to the database.
+        let image_id_p = image_id.clone();
         let content_type = content_type.to_string();
-        sqlx::query!(
-            r#"insert into image (image_id, original_filename, content_type) values (?, ?, ?)"#,
-            image_id,
-            original_filename,
-            content_type
-        )
-        .execute(&self.db)
-        .await?;
+        let original_filename = original_filename.to_string();
+        self.db
+            .call_unwrap(move |conn| {
+                conn.prepare_cached(
+                    r#"
+                    insert into image (image_id, original_filename, content_type)
+                    values (?, ?, ?)
+                    "#,
+                )?
+                .execute(params![image_id_p, original_filename, content_type])
+            })
+            .await?;
 
         Ok(image_id)
     }
@@ -110,7 +125,7 @@ impl ImageService {
     /// Downloads the image at the given URL and adds it via [`add`].
     #[must_use]
     #[tracing::instrument(skip(self), fields(image_url=%image_url), ret(Display), err)]
-    pub async fn download(&self, image_url: Url) -> Result<Hyphenated, anyhow::Error> {
+    pub async fn download(&self, image_url: Url) -> Result<String, anyhow::Error> {
         let original_filename = image_url.to_string();
 
         // Start the request to download the image.
@@ -137,7 +152,7 @@ impl ImageService {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Image {
-    image_id: Hyphenated,
+    image_id: String,
     pub original_filename: String,
     pub created_at: OffsetDateTime,
 }
@@ -155,12 +170,12 @@ impl Image {
 }
 
 /// The canonical filename of the main version of an image.
-fn main_filename(image_id: &Hyphenated) -> String {
+fn main_filename(image_id: &str) -> String {
     format!("{image_id}.main.webp")
 }
 
 /// The canonical filename of the thumbnail version of an image.
-fn thumbnail_filename(image_id: &Hyphenated) -> String {
+fn thumbnail_filename(image_id: &str) -> String {
     format!("{image_id}.thumb.webp")
 }
 

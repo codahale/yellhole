@@ -18,23 +18,8 @@ enum Command {
     /// Format, build, test, and lint.
     Ci,
 
-    /// Database commands.
-    Db {
-        #[clap(subcommand)]
-        cmd: DatabaseCommand,
-    },
-
     /// Run the server, watch for changes, and restart as needed.
     Watch,
-}
-
-#[derive(Debug, Subcommand)]
-enum DatabaseCommand {
-    Setup,
-    Reset,
-    Drop,
-    Migrate,
-    Prepare,
 }
 
 fn main() -> Result<()> {
@@ -45,54 +30,15 @@ fn main() -> Result<()> {
 
     match xtask.cmd.unwrap_or(Command::Ci) {
         Command::Ci => ci(&sh),
-        Command::Db { cmd } => match cmd {
-            DatabaseCommand::Setup => db_setup(&sh),
-            DatabaseCommand::Reset => db_reset(&sh),
-            DatabaseCommand::Drop => db_drop(&sh),
-            DatabaseCommand::Migrate => db_migrate(&sh),
-            DatabaseCommand::Prepare => db_prepare(&sh),
-        },
         Command::Watch => watch(&sh),
     }
 }
 
 fn ci(sh: &Shell) -> Result<(), anyhow::Error> {
-    cmd!(sh, "cargo fmt --check").env("SQLX_OFFLINE", "true").run()?;
-    cmd!(sh, "cargo build --all-targets --all-features").env("SQLX_OFFLINE", "true").run()?;
-    cmd!(sh, "cargo test --all-features").env("SQLX_OFFLINE", "true").run()?;
-    cmd!(sh, "cargo clippy --all-features --tests --benches").env("SQLX_OFFLINE", "true").run()?;
-    Ok(())
-}
-
-const DB_URL: &str = "sqlite:./data/yellhole.db";
-
-fn db_setup(sh: &Shell) -> Result<(), anyhow::Error> {
-    cmd!(sh, "sqlx db setup --database-url={DB_URL}").run()?;
-    Ok(())
-}
-
-fn db_reset(sh: &Shell) -> Result<(), anyhow::Error> {
-    cmd!(sh, "rm -rf ./data/*").run()?;
-    cmd!(sh, "touch ./data/.keep").run()?;
-    cmd!(sh, "sqlx db reset --database-url={DB_URL}").run()?;
-    Ok(())
-}
-
-fn db_drop(sh: &Shell) -> Result<(), anyhow::Error> {
-    cmd!(sh, "rm -rf ./data/*").run()?;
-    cmd!(sh, "touch ./data/.keep").run()?;
-    cmd!(sh, "sqlx db drop --database-url={DB_URL}").run()?;
-    Ok(())
-}
-
-fn db_migrate(sh: &Shell) -> Result<(), anyhow::Error> {
-    cmd!(sh, "sqlx migrate run --database-url={DB_URL}").run()?;
-    Ok(())
-}
-
-fn db_prepare(sh: &Shell) -> Result<(), anyhow::Error> {
-    cmd!(sh, "rm -rf .sqlx").run()?;
-    cmd!(sh, "cargo sqlx prepare -- --tests").env("DATABASE_URL", DB_URL).run()?;
+    cmd!(sh, "cargo fmt --check").run()?;
+    cmd!(sh, "cargo build --all-targets --all-features").run()?;
+    cmd!(sh, "cargo test --all-features").run()?;
+    cmd!(sh, "cargo clippy --all-features --tests --benches").run()?;
     Ok(())
 }
 
