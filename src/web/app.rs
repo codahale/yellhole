@@ -78,7 +78,7 @@ impl App {
         let state = AppState::new(self.db, self.config)?;
 
         // Spawn a background task for deleting expired sessions.
-        let expiry = task::spawn(state.sessions.clone().continuously_delete_expired());
+        task::spawn(state.sessions.clone().continuously_delete_expired());
 
         // Create a full stack of routers, state, and middleware.
         let app = admin::router()
@@ -103,9 +103,6 @@ impl App {
         axum::serve(listener, app.into_make_service())
             .with_graceful_shutdown(shutdown_signal())
             .await?;
-
-        // Wait for background task to exit.
-        expiry.await??;
 
         Ok(())
     }
