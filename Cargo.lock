@@ -1682,7 +1682,6 @@ dependencies = [
  "libsqlite3-sys",
  "smallvec",
  "time",
- "uuid",
 ]
 
 [[package]]

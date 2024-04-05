@@ -20,7 +20,7 @@ pulldown-cmark = { version = "0.10.2", default-features = false, features = ["si
 quick-xml = "0.31.0"
 rand = { version = "0.8.5", features = ["min_const_gen"] }
 reqwest = { workspace = true, features = ["stream", "rustls-tls"] }
-rusqlite = { version = "0.31.0", features = ["bundled", "time", "trace", "uuid"] }
+rusqlite = { version = "0.31.0", features = ["bundled", "time", "trace"] }
 rusqlite_migration = { version = "1.2.0", features = ["from-directory", "alpha-async-tokio-rusqlite"] }
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.115"
