@@ -13,9 +13,9 @@ use time::OffsetDateTime;
 use tower::ServiceBuilder;
 use tower_http::limit::RequestBodyLimitLayer;
 use url::Url;
-use uuid::Uuid;
 
 use crate::{
+    id::PublicId,
     services::{images::Image, notes::Note},
     web::app::{AppError, AppState, Page},
 };
@@ -61,7 +61,7 @@ async fn create_note(
 ) -> Result<Response, AppError> {
     if new_note.preview {
         let note = Note {
-            note_id: Uuid::new_v4().hyphenated().to_string(),
+            note_id: PublicId::random(),
             body: new_note.body,
             created_at: OffsetDateTime::now_utc(),
         };

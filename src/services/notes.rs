@@ -5,7 +5,8 @@ use rusqlite::{params, OptionalExtension};
 use time::{Date, OffsetDateTime, Time};
 use tokio_rusqlite::Connection;
 use url::Url;
-use uuid::Uuid;
+
+use crate::id::PublicId;
 
 /// A service for creating and viewing [`Note`]s.
 #[derive(Debug, Clone)]
@@ -22,14 +23,13 @@ impl NoteService {
     /// Create a new [`Note`], returning the new note's ID.
     #[must_use]
     #[tracing::instrument(skip(self, body), ret(Display), err)]
-    pub async fn create(&self, body: &str) -> Result<String, tokio_rusqlite::Error> {
-        let note_id = Uuid::new_v4().hyphenated().to_string();
-        let note_id_p = note_id.clone();
+    pub async fn create(&self, body: &str) -> Result<PublicId, tokio_rusqlite::Error> {
+        let note_id = PublicId::random();
         let body = body.to_string();
         self.db
             .call_unwrap(move |conn| {
                 conn.prepare_cached(r#"insert into note (note_id, body) values (?, ?)"#)?
-                    .execute(params![note_id_p, body])
+                    .execute(params![note_id, body])
             })
             .await?;
         Ok(note_id)
@@ -138,7 +138,7 @@ impl NoteService {
 #[derive(Debug)]
 pub struct Note {
     /// The note's unique ID.
-    pub note_id: String,
+    pub note_id: PublicId,
     // The note's Markdown body.
     pub body: String,
     /// The date and time at which the note was created.
@@ -199,7 +199,7 @@ mod tests {
     #[test]
     fn body_to_html() {
         let note = Note {
-            note_id: "".into(),
+            note_id: PublicId::random(),
             body: r#"It's ~~not~~ _electric_!"#.into(),
             created_at: OffsetDateTime::now_utc(),
         };
@@ -210,7 +210,7 @@ mod tests {
     #[test]
     fn body_to_description() {
         let note = Note {
-            note_id: "".into(),
+            note_id: PublicId::random(),
             body: "It's _electric_!\n\nBoogie woogie woogie.".into(),
             created_at: OffsetDateTime::now_utc(),
         };

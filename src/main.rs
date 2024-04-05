@@ -5,6 +5,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilte
 use crate::{config::Config, web::App};
 
 mod config;
+mod id;
 mod services;
 mod test;
 mod web;

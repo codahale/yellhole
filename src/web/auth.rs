@@ -17,6 +17,7 @@ use axum_extra::extract::{
 use uuid::Uuid;
 
 use crate::{
+    id::PublicId,
     services::{
         passkeys::{
             AuthenticationChallenge, AuthenticationResponse, PasskeyError, PasskeyService,
@@ -132,8 +133,8 @@ async fn login_finish(
     }
 }
 
-fn cookie<'c>(state: &AppState, name: &'c str, value: String, max_age: Duration) -> Cookie<'c> {
-    Cookie::build((name, value))
+fn cookie<'c>(state: &AppState, name: &'c str, value: PublicId, max_age: Duration) -> Cookie<'c> {
+    Cookie::build((name, value.to_string()))
         .http_only(true)
         .same_site(SameSite::Strict)
         .max_age(max_age.try_into().expect("invalid duration"))

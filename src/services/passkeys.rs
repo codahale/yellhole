@@ -19,6 +19,8 @@ use tokio_rusqlite::Connection;
 use url::Url;
 use uuid::Uuid;
 
+use crate::id::PublicId;
+
 /// A service for handling passkey registration and authentication.
 #[derive(Debug, Clone)]
 pub struct PasskeyService {
@@ -109,18 +111,17 @@ impl PasskeyService {
     #[tracing::instrument(skip(self), err)]
     pub async fn start_authentication(
         &self,
-    ) -> Result<(String, AuthenticationChallenge), tokio_rusqlite::Error> {
+    ) -> Result<(PublicId, AuthenticationChallenge), tokio_rusqlite::Error> {
         // Find all passkey IDs.
         let passkey_ids = self.passkey_ids().await?;
 
         // Generate and store a random challenge.
-        let challenge_id = Uuid::new_v4().as_hyphenated().to_string();
-        let challenge_id_p = challenge_id.clone();
+        let challenge_id = PublicId::random();
         let challenge = thread_rng().gen::<[u8; 32]>();
         self.db
             .call_unwrap(move |conn| {
                 conn.prepare_cached(r#"insert into challenge (challenge_id, bytes) values (?, ?)"#)?
-                    .execute(params![challenge_id_p, challenge.to_vec()])
+                    .execute(params![challenge_id, challenge.to_vec()])
             })
             .await?;
 

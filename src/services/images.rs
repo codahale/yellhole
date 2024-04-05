@@ -19,7 +19,8 @@ use tokio::{
 use tokio_rusqlite::Connection;
 use tokio_util::io::StreamReader;
 use url::Url;
-use uuid::Uuid;
+
+use crate::id::PublicId;
 
 /// A service for adding news images.
 #[derive(Debug, Clone)]
@@ -76,13 +77,13 @@ impl ImageService {
         original_filename: &str,
         content_type: &Mime,
         stream: S,
-    ) -> Result<String, anyhow::Error>
+    ) -> Result<PublicId, anyhow::Error>
     where
         S: Stream<Item = Result<Bytes, E>>,
         E: Into<BoxError>,
     {
         // Create a unique ID for the image.
-        let image_id = Uuid::new_v4().hyphenated().to_string();
+        let image_id = PublicId::random();
 
         // Stream the image file to the uploads directory.
         let original_path = self
@@ -104,7 +105,6 @@ impl ImageService {
         thumbnail.await.context("error generating thumbnail image")?;
 
         // Add image to the database.
-        let image_id_p = image_id.clone();
         let content_type = content_type.to_string();
         let original_filename = original_filename.to_string();
         self.db
@@ -115,7 +115,7 @@ impl ImageService {
                     values (?, ?, ?)
                     "#,
                 )?
-                .execute(params![image_id_p, original_filename, content_type])
+                .execute(params![image_id, original_filename, content_type])
             })
             .await?;
 
@@ -125,7 +125,7 @@ impl ImageService {
     /// Downloads the image at the given URL and adds it via [`add`].
     #[must_use]
     #[tracing::instrument(skip(self), fields(image_url=%image_url), ret(Display), err)]
-    pub async fn download(&self, image_url: Url) -> Result<String, anyhow::Error> {
+    pub async fn download(&self, image_url: Url) -> Result<PublicId, anyhow::Error> {
         let original_filename = image_url.to_string();
 
         // Start the request to download the image.
@@ -152,7 +152,7 @@ impl ImageService {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Image {
-    image_id: String,
+    image_id: PublicId,
     pub original_filename: String,
     pub created_at: OffsetDateTime,
 }
@@ -170,12 +170,12 @@ impl Image {
 }
 
 /// The canonical filename of the main version of an image.
-fn main_filename(image_id: &str) -> String {
+fn main_filename(image_id: &PublicId) -> String {
     format!("{image_id}.main.webp")
 }
 
 /// The canonical filename of the thumbnail version of an image.
-fn thumbnail_filename(image_id: &str) -> String {
+fn thumbnail_filename(image_id: &PublicId) -> String {
     format!("{image_id}.thumb.webp")
 }
 

@@ -3,7 +3,8 @@ use std::time::Duration;
 use rusqlite::params;
 use tokio::time;
 use tokio_rusqlite::Connection;
-use uuid::Uuid;
+
+use crate::id::PublicId;
 
 /// A service which manages authenticated sessions.
 #[derive(Debug, Clone)]
@@ -23,9 +24,8 @@ impl SessionService {
     /// Creates an authenticated session and returns its ID.
     #[must_use]
     #[tracing::instrument(skip(self), err)]
-    pub async fn create(&self) -> Result<String, tokio_rusqlite::Error> {
-        let session_id = Uuid::new_v4().as_hyphenated().to_string();
-        let session_id_p = session_id.clone();
+    pub async fn create(&self) -> Result<PublicId, tokio_rusqlite::Error> {
+        let session_id = PublicId::random();
         self.db
             .call_unwrap(move |conn| {
                 conn.prepare_cached(
@@ -34,7 +34,7 @@ impl SessionService {
                     values (?)
                     "#,
                 )?
-                .execute(params![session_id_p])
+                .execute(params![session_id])
             })
             .await?;
         Ok(session_id)
