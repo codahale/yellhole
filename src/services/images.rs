@@ -74,8 +74,8 @@ impl ImageService {
     #[tracing::instrument(skip(self, stream), ret(Display), err)]
     pub async fn add<S, E>(
         &self,
-        original_filename: &str,
-        content_type: &Mime,
+        original_filename: String,
+        content_type: Mime,
         stream: S,
     ) -> Result<PublicId, anyhow::Error>
     where
@@ -105,8 +105,6 @@ impl ImageService {
         thumbnail.await.context("error generating thumbnail image")?;
 
         // Add image to the database.
-        let content_type = content_type.to_string();
-        let original_filename = original_filename.to_string();
         self.db
             .call_unwrap(move |conn| {
                 conn.prepare_cached(
@@ -115,7 +113,11 @@ impl ImageService {
                     values (?, ?, ?)
                     "#,
                 )?
-                .execute(params![image_id, original_filename, content_type])
+                .execute(params![
+                    image_id,
+                    original_filename,
+                    content_type.to_string()
+                ])
             })
             .await?;
 
@@ -141,7 +143,7 @@ impl ImageService {
             .and_then(|s| s.parse::<Mime>().context("invalid Content-Type header"))?;
 
         // Add the response body as an image.
-        self.add(&original_filename, &content_type, image.bytes_stream()).await
+        self.add(original_filename, content_type, image.bytes_stream()).await
     }
 
     /// Returns the directory containing the processed images.

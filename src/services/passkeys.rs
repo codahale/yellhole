@@ -17,7 +17,6 @@ use sha2::{Digest, Sha256};
 use thiserror::Error;
 use tokio_rusqlite::Connection;
 use url::Url;
-use uuid::Uuid;
 
 use crate::id::PublicId;
 
@@ -135,10 +134,9 @@ impl PasskeyService {
     pub async fn finish_authentication(
         &self,
         resp: AuthenticationResponse,
-        challenge_id: &Uuid,
+        challenge_id: PublicId,
     ) -> Result<(), PasskeyError> {
         // Get and remove the challenge value from the database.
-        let challenge_id = challenge_id.as_hyphenated().to_string();
         let Ok(challenge) = self
             .db
             .call_unwrap(move |conn| {

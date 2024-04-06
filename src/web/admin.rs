@@ -67,7 +67,7 @@ async fn create_note(
         };
         Ok(Page(PreviewPage { note }).into_response())
     } else {
-        let note_id = state.notes.create(&new_note.body).await?;
+        let note_id = state.notes.create(new_note.body).await?;
         Ok(Redirect::to(&format!("/note/{note_id}")).into_response())
     }
 }
@@ -80,7 +80,7 @@ async fn upload_images(
         if let Some(content_type) = field.content_type().and_then(|s| s.parse::<Mime>().ok()) {
             if content_type.type_() == mime::IMAGE {
                 let original_filename = field.file_name().unwrap_or("none").to_string();
-                state.images.add(&original_filename, &content_type, field).await?;
+                state.images.add(original_filename, content_type, field).await?;
             }
         }
     }

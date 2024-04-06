@@ -43,8 +43,7 @@ impl SessionService {
     /// Returns `true` if a session with the given ID exists.
     #[must_use]
     #[tracing::instrument(skip_all, ret, err)]
-    pub async fn exists(&self, session_id: &str) -> Result<bool, tokio_rusqlite::Error> {
-        let session_id = session_id.to_string();
+    pub async fn exists(&self, session_id: PublicId) -> Result<bool, tokio_rusqlite::Error> {
         Ok(self
             .db
             .call_unwrap(move |conn| {

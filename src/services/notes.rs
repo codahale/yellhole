@@ -23,9 +23,8 @@ impl NoteService {
     /// Create a new [`Note`], returning the new note's ID.
     #[must_use]
     #[tracing::instrument(skip(self, body), ret(Display), err)]
-    pub async fn create(&self, body: &str) -> Result<PublicId, tokio_rusqlite::Error> {
+    pub async fn create(&self, body: String) -> Result<PublicId, tokio_rusqlite::Error> {
         let note_id = PublicId::random();
-        let body = body.to_string();
         self.db
             .call_unwrap(move |conn| {
                 conn.prepare_cached(r#"insert into note (note_id, body) values (?, ?)"#)?

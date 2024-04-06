@@ -14,7 +14,6 @@ use axum_extra::extract::{
     cookie::{Cookie, SameSite},
     CookieJar,
 };
-use uuid::Uuid;
 
 use crate::{
     id::PublicId,
@@ -68,10 +67,7 @@ async fn register(state: State<AppState>, cookies: CookieJar) -> Result<Response
 async fn register_start(state: State<AppState>) -> Result<Json<RegistrationChallenge>, AppError> {
     Ok(state
         .passkeys
-        .start_registration(
-            &state.config.author,
-            Uuid::new_v4().as_hyphenated().to_string().as_bytes(),
-        )
+        .start_registration(&state.config.author, PublicId::random().to_string().as_bytes())
         .await
         .map(Json)?)
 }
@@ -122,7 +118,7 @@ async fn login_finish(
     };
 
     let cookies = cookies.remove(Cookie::build(("challenge", "")).path("/"));
-    match state.passkeys.finish_authentication(auth, &challenge_id).await {
+    match state.passkeys.finish_authentication(auth, challenge_id).await {
         Ok(()) => {
             let session_id = state.sessions.create().await?;
             let cookies = cookies.add(cookie(&state, "session", session_id, SessionService::TTL));
@@ -143,12 +139,9 @@ fn cookie<'c>(state: &AppState, name: &'c str, value: PublicId, max_age: Duratio
         .into()
 }
 
-async fn is_authenticated(
-    state: &AppState,
-    cookies: &CookieJar,
-) -> Result<bool, tokio_rusqlite::Error> {
+async fn is_authenticated(state: &AppState, cookies: &CookieJar) -> Result<bool, anyhow::Error> {
     match cookies.get("session") {
-        Some(cookie) => state.sessions.exists(cookie.value()).await,
+        Some(cookie) => Ok(state.sessions.exists(cookie.value().parse()?).await?),
         None => Ok(false),
     }
 }
