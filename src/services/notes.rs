@@ -89,12 +89,12 @@ impl NoteService {
             .call_unwrap(move |conn| {
                 conn.prepare_cached(
                     r#"
-            select
-              date(local, 'weekday 0', '-7 days'),
-              date(local, 'weekday 0')
-            from (select datetime(created_at, 'localtime') as local from note)
-            group by 1 order by 1 desc
-            "#,
+                    select
+                        date(local, 'weekday 0', '-7 days'),
+                        date(local, 'weekday 0')
+                    from (select datetime(created_at, 'localtime') as local from note)
+                    group by 1 order by 1 desc
+                    "#,
                 )?
                 .query_map([], |row| {
                     let start = row.get::<_, Date>(0)?;
@@ -118,11 +118,11 @@ impl NoteService {
             .call_unwrap(move |conn| {
                 conn.prepare_cached(
                     r#"
-            select note_id, body, created_at
-            from note
-            where created_at >= ? and created_at < ?
-            order by created_at desc
-            "#,
+                    select note_id, body, created_at
+                    from note
+                    where created_at >= ? and created_at < ?
+                    order by created_at desc
+                    "#,
                 )?
                 .query_map(params![start, end], |row| {
                     Ok(Note { note_id: row.get(0)?, body: row.get(1)?, created_at: row.get(2)? })
