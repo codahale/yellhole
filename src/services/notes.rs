@@ -1,7 +1,7 @@
 use std::ops::Range;
 
 use pulldown_cmark::{Event, Options, Parser, Tag};
-use rusqlite::{params, OptionalExtension};
+use rusqlite::{params, OptionalExtension, Row};
 use time::{Date, OffsetDateTime, Time};
 use tokio_rusqlite::Connection;
 use url::Url;
@@ -49,9 +49,7 @@ impl NoteService {
                     where note_id = ?
                     "#,
                 )?
-                .query_row(params![note_id], |row| {
-                    Ok(Note { note_id: row.get(0)?, body: row.get(1)?, created_at: row.get(2)? })
-                })
+                .query_row(params![note_id], |row| row.try_into())
             })
             .await
             .optional()?)
@@ -72,9 +70,7 @@ impl NoteService {
                     limit ?
                     "#,
                 )?
-                .query_map(params![n], |row| {
-                    Ok(Note { note_id: row.get(0)?, body: row.get(1)?, created_at: row.get(2)? })
-                })?
+                .query_map(params![n], |row| row.try_into())?
                 .collect::<Result<Vec<_>, _>>()
             })
             .await?)
@@ -124,9 +120,7 @@ impl NoteService {
                     order by created_at desc
                     "#,
                 )?
-                .query_map(params![start, end], |row| {
-                    Ok(Note { note_id: row.get(0)?, body: row.get(1)?, created_at: row.get(2)? })
-                })?
+                .query_map(params![start, end], |row| row.try_into())?
                 .collect::<Result<Vec<_>, _>>()
             })
             .await?)
@@ -184,6 +178,14 @@ impl Note {
             }
         }
         out.trim().into()
+    }
+}
+
+impl<'stmt> TryFrom<&'stmt Row<'stmt>> for Note {
+    type Error = rusqlite::Error;
+
+    fn try_from(row: &'stmt Row<'stmt>) -> Result<Self, Self::Error> {
+        Ok(Note { note_id: row.get(0)?, body: row.get(1)?, created_at: row.get(2)? })
     }
 }
 
