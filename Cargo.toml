@@ -7,7 +7,7 @@ license = "AGPL-3.0-or-later"
 include = ["LICENSE", "README.md", "assets/*", "build.rs", "migrations/*", "src/**/*", "templates/*"]
 
 [dependencies]
-anyhow = "1.0.81"
+anyhow = "1.0.82"
 askama = "0.12.1"
 axum = { version = "0.7.5", features = ["http2", "multipart"] }
 axum-extra = { version = "0.9.3", features = ["cookie"] }
