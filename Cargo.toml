@@ -59,4 +59,4 @@ reqwest = { workspace = true, features = ["json", "cookies", "multipart"] }
 members = ["xtask"]
 
 [workspace.dependencies]
-reqwest = { version = "0.12.3", default-features = false }
+reqwest = { version = "0.12.4", default-features = false }
