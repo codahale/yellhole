@@ -16,7 +16,7 @@ futures = "0.3.30"
 include_dir = "0.7.3"
 mime = "0.3.17"
 p256 = "0.13.2"
-pulldown-cmark = { version = "0.10.2", default-features = false, features = ["simd", "html"] }
+pulldown-cmark = { version = "0.10.3", default-features = false, features = ["simd", "html"] }
 quick-xml = "0.31.0"
 rand = { version = "0.8.5", features = ["min_const_gen"] }
 reqwest = { workspace = true, features = ["stream", "rustls-tls"] }
