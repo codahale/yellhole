@@ -22,7 +22,7 @@ rand = { version = "0.8.5", features = ["min_const_gen"] }
 reqwest = { workspace = true, features = ["stream", "rustls-tls"] }
 rusqlite = { version = "0.31.0", features = ["bundled", "time", "trace"] }
 rusqlite_migration = { version = "1.2.0", features = ["from-directory", "alpha-async-tokio-rusqlite"] }
-serde = { version = "1.0.199", features = ["derive"] }
+serde = { version = "1.0.200", features = ["derive"] }
 serde_json = "1.0.116"
 serde_with = { version = "3.8.1", features = ["base64"] }
 sha2 = "0.10.8"
