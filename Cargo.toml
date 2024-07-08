@@ -17,7 +17,7 @@ include_dir = "0.7.4"
 mime = "0.3.17"
 p256 = "0.13.2"
 pulldown-cmark = { version = "0.11.0", default-features = false, features = ["simd", "html"] }
-quick-xml = "0.35.0"
+quick-xml = "0.36.0"
 rand = { version = "0.8.5", features = ["min_const_gen"] }
 reqwest = { workspace = true, features = ["stream", "rustls-tls"] }
 rusqlite = { version = "0.31.0", features = ["bundled", "time", "trace"] }
