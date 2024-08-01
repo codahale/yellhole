@@ -209,7 +209,7 @@ async fn process_image<'a>(
     output: &'a Path,
     geometry: &'static str,
 ) -> io::Result<ExitStatus> {
-    let mut proc = Command::new("convert")
+    let mut proc = Command::new("magick")
         .arg(input)
         .arg("-auto-orient")
         .arg("-strip")

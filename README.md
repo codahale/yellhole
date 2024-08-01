@@ -29,7 +29,7 @@ cargo install --locked yellhole
 
 Requires SQLite and a TLS stack as build dependencies.
 
-Requires ImageMagick as system dependency (specifically, `convert` must be in `$PATH`).
+Requires ImageMagick as system dependency (specifically, `magick` must be in `$PATH`).
 
 ## Operation
 
