@@ -1,6 +1,5 @@
 use std::time::Duration;
 
-use askama::Template;
 use axum::{
     body::Body,
     extract::State,
@@ -14,6 +13,7 @@ use axum_extra::extract::{
     cookie::{Cookie, SameSite},
     CookieJar,
 };
+use rinja::Template;
 
 use crate::{
     id::PublicId,
