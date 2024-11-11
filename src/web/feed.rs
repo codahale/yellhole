@@ -139,14 +139,14 @@ async fn atom(State(state): State<AppState>) -> Result<Response, AppError> {
             ("xmlns", "http://www.w3.org/2005/Atom"),
             ("xml:base", atom_url.as_str()),
         ])
-        .write_inner_content(|feed| -> anyhow::Result<()> {
+        .write_inner_content(|feed| {
             feed.create_element("title")
                 .write_text_content(BytesText::new(&state.config.title))?
                 .create_element("id")
                 .write_text_content(BytesText::new(state.config.base_url.as_str()))?;
 
             feed.create_element("author")
-                .write_inner_content(|author| -> anyhow::Result<()> {
+                .write_inner_content(|author| {
                     author
                         .create_element("name")
                         .write_text_content(BytesText::new(&state.config.author))?;
@@ -159,35 +159,37 @@ async fn atom(State(state): State<AppState>) -> Result<Response, AppError> {
                 .write_text_content(BytesText::new(&state.config.description))?;
 
             if !notes.is_empty() {
-                feed.create_element("updated")
-                    .write_text_content(BytesText::new(&notes[0].created_at.format(&Rfc3339)?))?;
+                feed.create_element("updated").write_text_content(BytesText::new(
+                    &notes[0].created_at.format(&Rfc3339).expect("should format"),
+                ))?;
             }
 
             for note in notes {
                 let url = filters::to_note_url(&note, &state.config.base_url)
                     .expect("should be a valid URL");
-                feed.create_element("entry").write_inner_content(
-                    |entry| -> anyhow::Result<()> {
-                        entry
-                            .create_element("title")
-                            .write_text_content(BytesText::new(&note.note_id.to_string()))?
-                            .create_element("id")
-                            .write_text_content(BytesText::new(url.as_str()))?
-                            .create_element("updated")
-                            .write_text_content(BytesText::new(&note.created_at.format(&Rfc3339)?))?
-                            .create_element("link")
-                            .with_attributes([("href", url.as_str()), ("rel", "alternate")])
-                            .write_empty()?
-                            .create_element("content")
-                            .with_attribute(("type", "html"))
-                            .write_text_content(BytesText::new(&note.to_html()))?;
-                        Ok(())
-                    },
-                )?;
+                feed.create_element("entry").write_inner_content(|entry| {
+                    entry
+                        .create_element("title")
+                        .write_text_content(BytesText::new(&note.note_id.to_string()))?
+                        .create_element("id")
+                        .write_text_content(BytesText::new(url.as_str()))?
+                        .create_element("updated")
+                        .write_text_content(BytesText::new(
+                            &note.created_at.format(&Rfc3339).expect("should format"),
+                        ))?
+                        .create_element("link")
+                        .with_attributes([("href", url.as_str()), ("rel", "alternate")])
+                        .write_empty()?
+                        .create_element("content")
+                        .with_attribute(("type", "html"))
+                        .write_text_content(BytesText::new(&note.to_html()))?;
+                    Ok(())
+                })?;
             }
 
             Ok(())
-        })?;
+        })
+        .map_err(anyhow::Error::new)?;
 
     Ok(([(http::header::CONTENT_TYPE, atom_xml())], xml.into_inner()).into_response())
 }
