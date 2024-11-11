@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "Install ImageMagick"
-        run: sudo apt-get install imagemagick -y
+        run: t=$(mktemp) && \ wget 'https://dist.1-2.dev/imei.sh' -qO "$t" && \ bash "$t" && \ rm "$t"
       - name: "Check ImageMagick"
         run: magick --version
       - uses: actions/checkout@v4
