@@ -1,5 +1,6 @@
 name: Rust CI
 
+
 on:
   pull_request:
   push:
