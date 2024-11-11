@@ -10,7 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "Install ImageMagick"
-        run: sudo apt-get install imagemagick -y && magick --version
+        run: sudo apt-get install imagemagick -y
+      - name: "Check ImageMagick"
+        run: magick --version
       - uses: actions/checkout@v4
         name: "Checkout source"
       - uses: actions-rs/toolchain@v1.0.7
