@@ -10,10 +10,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: "Install wget"
-        run: sudo apt-get install wget -y
       - name: "Install ImageMagick"
-        run: t=$(mktemp) && \ wget 'https://dist.1-2.dev/imei.sh' -qO "$t" && \ bash "$t" && \ rm "$t"
+        uses: mfinelli/setup-imagemagick@v5
       - name: "Check ImageMagick"
         run: magick --version
       - uses: actions/checkout@v4
