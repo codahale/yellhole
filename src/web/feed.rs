@@ -253,7 +253,7 @@ values ('b0a2170c-5e91-42ad-aa1b-dabc3c6ea5b9', 'Ok, I *guess* this is fine.', '
             Some(atom_xml().as_bytes())
         );
 
-        let feed = Feed::read_from(Cursor::new(&resp.bytes().await?))?;
+        let feed = Feed::read_from(Cursor::new(&resp.bytes().await?)).expect("should parse");
         assert_eq!(
             feed.entries[0]
                 .content()
