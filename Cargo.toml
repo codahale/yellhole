@@ -10,7 +10,7 @@ include = ["LICENSE", "README.md", "assets/*", "build.rs", "migrations/*", "src/
 anyhow = "1.0.94"
 axum = { version = "0.7.9", features = ["http2", "multipart"] }
 axum-extra = { version = "0.9.6", features = ["cookie"] }
-clap = { version = "4.5.21", features = ["deprecated", "derive", "env"] }
+clap = { version = "4.5.22", features = ["deprecated", "derive", "env"] }
 futures = "0.3.31"
 include_dir = "0.7.4"
 mime = "0.3.17"
