@@ -126,9 +126,9 @@ dependencies = [
 
 [[package]]
 name = "atom_syndication"
-version = "0.12.5"
+version = "0.12.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ee79fb83c725eae67b55218870813d2fc39fd85e4f1583848ef9f4f823cfe7c"
+checksum = "ec03a6e158ee0f38bfba811976ae909bc2505a4a2f4049c7e8df47df3497b119"
 dependencies = [
  "chrono",
  "diligent-date-parser",
