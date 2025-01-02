@@ -24,14 +24,14 @@ use crate::{
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/note/:note_id", get(single))
+        .route("/note/{:note_id}", get(single))
         .layer(SetResponseHeaderLayer::overriding(
             http::header::CACHE_CONTROL,
             http::HeaderValue::from_static("max-age=31536000,immutable"),
         ))
         .route("/", get(index))
         .route("/atom.xml", get(atom))
-        .route("/notes/:start", get(week))
+        .route("/notes/{:start}", get(week))
         .layer(SetResponseHeaderLayer::if_not_present(
             http::header::CACHE_CONTROL,
             http::HeaderValue::from_static("max-age=300"),
