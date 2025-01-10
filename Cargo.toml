@@ -49,7 +49,7 @@ tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 tz-rs = "0.7.0"
 url = { version = "2.5.4", features = ["serde"] }
-uuid = { version = "1.11.0", features = ["serde", "std", "v4"] }
+uuid = { version = "1.11.1", features = ["serde", "std", "v4"] }
 
 [dev-dependencies]
 atom_syndication = { version = "0.12.6", default-features = false }
