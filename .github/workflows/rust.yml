@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "Install ImageMagick"
-        uses: mfinelli/setup-imagemagick@v5
+        uses: mfinelli/setup-imagemagick@v6
       - name: "Check ImageMagick"
         run: magick --version
       - uses: actions/checkout@v4
