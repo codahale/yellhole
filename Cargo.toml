@@ -8,7 +8,7 @@ include = ["LICENSE", "README.md", "assets/*", "build.rs", "migrations/*", "src/
 
 [dependencies]
 anyhow = "1.0.95"
-axum = { version = "0.8.1", features = ["http2", "multipart"] }
+axum = { version = "0.8.2", features = ["http2", "multipart"] }
 axum-extra = { version = "0.10.0", features = ["cookie"] }
 clap = { version = "4.5.27", features = ["deprecated", "derive", "env"] }
 futures = "0.3.31"
