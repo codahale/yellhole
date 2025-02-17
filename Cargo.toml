@@ -52,7 +52,7 @@ url = { version = "2.5.4", features = ["serde"] }
 uuid = { version = "1.13.1", features = ["serde", "std", "v4"] }
 
 [dev-dependencies]
-atom_syndication = { version = "0.12.6", default-features = false }
+atom_syndication = { version = "0.12.7", default-features = false }
 reqwest = { workspace = true, features = ["json", "cookies", "multipart"] }
 
 [workspace]
