@@ -205,9 +205,8 @@ mod tests {
     use atom_syndication::Feed;
     use reqwest::{StatusCode, header};
 
-    use crate::test::{TestEnv, TestServer};
-
     use super::*;
+    use crate::test::{TestEnv, TestServer};
 
     async fn note_fixtures(ts: &TestServer) -> anyhow::Result<()> {
         ts.db.call_unwrap(|conn| {

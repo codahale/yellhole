@@ -158,9 +158,8 @@ mod tests {
     use reqwest::{StatusCode, header};
     use sha2::{Digest, Sha256};
 
-    use crate::{services::passkeys::CollectedClientData, test::TestEnv};
-
     use super::*;
+    use crate::{services::passkeys::CollectedClientData, test::TestEnv};
 
     #[tokio::test]
     async fn fresh_pages() -> Result<(), anyhow::Error> {

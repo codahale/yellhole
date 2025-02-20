@@ -12,9 +12,8 @@ use tokio::io;
 use tower::ServiceBuilder;
 use tower_http::{services::ServeDir, set_header::SetResponseHeaderLayer};
 
-use crate::services::{assets::AssetService, images::ImageService};
-
 use super::{AppError, app::AppState};
+use crate::services::{assets::AssetService, images::ImageService};
 
 pub fn router(images: &ImageService, assets: &AssetService) -> io::Result<Router<AppState>> {
     let assets = get_service(
@@ -61,9 +60,8 @@ mod tests {
 
     use reqwest::{StatusCode, header};
 
-    use crate::test::TestEnv;
-
     use super::*;
+    use crate::test::TestEnv;
 
     #[tokio::test]
     async fn static_asset() -> Result<(), anyhow::Error> {

@@ -111,9 +111,8 @@ mod tests {
     use tokio::fs;
     use tower_http::services::ServeFile;
 
-    use crate::test::TestEnv;
-
     use super::*;
+    use crate::test::TestEnv;
 
     #[tokio::test]
     async fn new_note_ui() -> Result<(), anyhow::Error> {
