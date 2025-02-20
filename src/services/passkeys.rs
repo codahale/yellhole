@@ -1,17 +1,18 @@
 use std::time::Duration;
 
 use p256::{
-    ecdsa::{signature::Verifier, Signature, VerifyingKey},
+    ecdsa::{Signature, VerifyingKey, signature::Verifier},
     elliptic_curve::subtle::ConstantTimeEq,
     pkcs8::DecodePublicKey,
 };
-use rand::{thread_rng, Rng};
-use rusqlite::{params, OptionalExtension};
+use rand::{Rng, thread_rng};
+use rusqlite::{OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use serde_with::{
+    PickFirst,
     base64::{Base64, UrlSafe},
     formats::Unpadded,
-    serde_as, PickFirst,
+    serde_as,
 };
 use sha2::{Digest, Sha256};
 use thiserror::Error;
@@ -116,7 +117,7 @@ impl PasskeyService {
 
         // Generate and store a random challenge.
         let challenge_id = PublicId::random();
-        let challenge = thread_rng().gen::<[u8; 32]>();
+        let challenge = thread_rng().r#gen::<[u8; 32]>();
         self.db
             .call_unwrap(move |conn| {
                 conn.prepare_cached(r#"insert into challenge (challenge_id, bytes) values (?, ?)"#)?

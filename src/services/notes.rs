@@ -1,7 +1,7 @@
 use std::ops::Range;
 
 use pulldown_cmark::{Event, Options, Parser, Tag};
-use rusqlite::{params, OptionalExtension, Row};
+use rusqlite::{OptionalExtension, Row, params};
 use time::{Date, OffsetDateTime, Time};
 use tokio_rusqlite::Connection;
 use url::Url;

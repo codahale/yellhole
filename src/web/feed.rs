@@ -1,19 +1,19 @@
 use std::{ops::Range, sync::Arc};
 
 use axum::{
+    Router,
     extract::{Path, Query, State},
     http,
     response::{IntoResponse, Response},
     routing::get,
-    Router,
 };
 use quick_xml::{
-    events::{BytesDecl, BytesText, Event},
     Writer as XmlWriter,
+    events::{BytesDecl, BytesText, Event},
 };
 use rinja::Template;
 use serde::Deserialize;
-use time::{format_description::well_known::Rfc3339, Date, Duration};
+use time::{Date, Duration, format_description::well_known::Rfc3339};
 use tower_http::set_header::SetResponseHeaderLayer;
 
 use crate::{
@@ -54,7 +54,7 @@ impl FeedPage {
 
 mod filters {
     use rinja::{Error::Custom, Result};
-    use time::{format_description::well_known::Rfc3339, Date, OffsetDateTime, UtcOffset};
+    use time::{Date, OffsetDateTime, UtcOffset, format_description::well_known::Rfc3339};
     use url::Url;
 
     use crate::services::notes::Note;
@@ -203,7 +203,7 @@ mod tests {
     use std::io::Cursor;
 
     use atom_syndication::Feed;
-    use reqwest::{header, StatusCode};
+    use reqwest::{StatusCode, header};
 
     use crate::test::{TestEnv, TestServer};
 

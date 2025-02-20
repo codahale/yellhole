@@ -1,6 +1,6 @@
 use std::{io, path::Path, sync::Arc};
 
-use include_dir::{include_dir, Dir};
+use include_dir::{Dir, include_dir};
 use tempfile::TempDir;
 
 /// A service which extracts static assets into a temporary directory.

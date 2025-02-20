@@ -1,17 +1,17 @@
 use std::time::Duration;
 
 use axum::{
+    Json, Router,
     body::Body,
     extract::State,
     http::{Request, StatusCode},
     middleware::Next,
     response::{IntoResponse, Redirect, Response},
     routing::{get, post},
-    Json, Router,
 };
 use axum_extra::extract::{
-    cookie::{Cookie, SameSite},
     CookieJar,
+    cookie::{Cookie, SameSite},
 };
 use rinja::Template;
 
@@ -150,12 +150,12 @@ async fn is_authenticated(state: &AppState, cookies: &CookieJar) -> Result<bool,
 mod tests {
     use axum::middleware;
     use p256::{
-        ecdsa::{signature::Signer, Signature, SigningKey},
-        pkcs8::EncodePublicKey,
         PublicKey,
+        ecdsa::{Signature, SigningKey, signature::Signer},
+        pkcs8::EncodePublicKey,
     };
     use rand::thread_rng;
-    use reqwest::{header, StatusCode};
+    use reqwest::{StatusCode, header};
     use sha2::{Digest, Sha256};
 
     use crate::{services::passkeys::CollectedClientData, test::TestEnv};

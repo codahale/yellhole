@@ -5,7 +5,7 @@ use std::{
 };
 
 use anyhow::Context;
-use axum::{body::Bytes, BoxError};
+use axum::{BoxError, body::Bytes};
 use futures::{Stream, TryStreamExt};
 use mime::Mime;
 use reqwest::header;

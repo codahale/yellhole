@@ -1,14 +1,14 @@
 [package]
 name = "yellhole"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 description = "A simple tumblelog."
 license = "AGPL-3.0-or-later"
 include = ["LICENSE", "README.md", "assets/*", "build.rs", "migrations/*", "src/**/*", "templates/*"]
 
 [dependencies]
 anyhow = "1.0.96"
-axum = { version = "0.8.2", features = ["http2", "multipart"] }
+axum = { version = "0.8.1", features = ["http2", "multipart"] }
 axum-extra = { version = "0.10.0", features = ["cookie"] }
 clap = { version = "4.5.30", features = ["deprecated", "derive", "env"] }
 futures = "0.3.31"

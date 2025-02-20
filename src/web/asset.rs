@@ -1,4 +1,5 @@
 use axum::{
+    Router,
     body::Body,
     http,
     http::{Request, StatusCode},
@@ -6,7 +7,6 @@ use axum::{
     middleware::Next,
     response::Response,
     routing::get_service,
-    Router,
 };
 use tokio::io;
 use tower::ServiceBuilder;
@@ -14,7 +14,7 @@ use tower_http::{services::ServeDir, set_header::SetResponseHeaderLayer};
 
 use crate::services::{assets::AssetService, images::ImageService};
 
-use super::{app::AppState, AppError};
+use super::{AppError, app::AppState};
 
 pub fn router(images: &ImageService, assets: &AssetService) -> io::Result<Router<AppState>> {
     let assets = get_service(
@@ -52,18 +52,14 @@ async fn io_error(err: io::Error) -> StatusCode {
 
 async fn not_found(req: Request<Body>, next: Next) -> Result<Response, AppError> {
     let resp = next.run(req).await;
-    if resp.status() == StatusCode::NOT_FOUND {
-        Err(AppError::NotFound)
-    } else {
-        Ok(resp)
-    }
+    if resp.status() == StatusCode::NOT_FOUND { Err(AppError::NotFound) } else { Ok(resp) }
 }
 
 #[cfg(test)]
 mod tests {
     use std::fs;
 
-    use reqwest::{header, StatusCode};
+    use reqwest::{StatusCode, header};
 
     use crate::test::TestEnv;
 

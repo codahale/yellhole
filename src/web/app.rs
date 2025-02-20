@@ -5,7 +5,7 @@ use axum::{
     middleware::{self},
     response::{Html, IntoResponse, Response},
 };
-use include_dir::{include_dir, Dir};
+use include_dir::{Dir, include_dir};
 use rinja::Template;
 use rusqlite_migration::AsyncMigrations;
 use thiserror::Error;
@@ -13,11 +13,11 @@ use tokio::{net::TcpListener, signal, task};
 use tokio_rusqlite::Connection;
 use tower::ServiceBuilder;
 use tower_http::{
+    ServiceBuilderExt,
     catch_panic::CatchPanicLayer,
     request_id::MakeRequestUuid,
     sensitive_headers::{SetSensitiveRequestHeadersLayer, SetSensitiveResponseHeadersLayer},
     trace::TraceLayer,
-    ServiceBuilderExt,
 };
 
 use crate::{
@@ -189,12 +189,12 @@ impl ErrorPage {
 
 /// Given a recovered panic value from a handler, log it as an error and return a 500.
 fn handle_panic(err: Box<dyn Any + Send + 'static>) -> Response {
-    let details = if let Some(s) = err.downcast_ref::<String>() {
-        s.as_str()
-    } else if let Some(s) = err.downcast_ref::<&str>() {
-        s
-    } else {
-        "Unknown panic message"
+    let details = match err.downcast_ref::<String>() {
+        Some(s) => s.as_str(),
+        _ => match err.downcast_ref::<&str>() {
+            Some(s) => s,
+            _ => "Unknown panic message",
+        },
     };
     tracing::error!(err = details, "panic in handler");
     ErrorPage::for_status(StatusCode::INTERNAL_SERVER_ERROR).into_response()

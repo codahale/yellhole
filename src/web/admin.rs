@@ -1,10 +1,10 @@
 use anyhow::Context;
 use axum::{
+    Form, Router,
     extract::{DefaultBodyLimit, Multipart, State},
     http::StatusCode,
     response::{IntoResponse, Redirect, Response},
     routing::{get, post},
-    Form, Router,
 };
 use mime::Mime;
 use rinja::Template;
@@ -107,7 +107,7 @@ async fn download_image(
 #[cfg(test)]
 mod tests {
     use axum::routing::get_service;
-    use reqwest::{header, multipart, StatusCode};
+    use reqwest::{StatusCode, header, multipart};
     use tokio::fs;
     use tower_http::services::ServeFile;
 

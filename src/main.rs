@@ -1,6 +1,6 @@
 use clap::Parser;
 use tikv_jemallocator::Jemalloc;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::{config::Config, web::App};
 

@@ -4,8 +4,8 @@ use std::{ffi::OsString, io, net::SocketAddr};
 
 use axum::Router;
 use clap::Parser;
-use include_dir::{include_dir, Dir};
-use reqwest::{redirect::Policy, Client, ClientBuilder, RequestBuilder, Url};
+use include_dir::{Dir, include_dir};
+use reqwest::{Client, ClientBuilder, RequestBuilder, Url, redirect::Policy};
 use rusqlite_migration::AsyncMigrations;
 use tempfile::TempDir;
 use tokio::{net::TcpListener, task::JoinHandle};
@@ -13,7 +13,7 @@ use tokio_rusqlite::Connection;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
 use tracing::Level;
 use tracing_subscriber::{
-    fmt::format::FmtSpan, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter,
+    EnvFilter, fmt::format::FmtSpan, layer::SubscriberExt, util::SubscriberInitExt,
 };
 
 use crate::{config::Config, web::AppState};
