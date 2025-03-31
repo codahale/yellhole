@@ -1,4 +1,5 @@
 use anyhow::Context;
+use askama::Template;
 use axum::{
     Form, Router,
     extract::{DefaultBodyLimit, Multipart, State},
@@ -7,7 +8,6 @@ use axum::{
     routing::{get, post},
 };
 use mime::Mime;
-use rinja::Template;
 use serde::Deserialize;
 use time::OffsetDateTime;
 use tower::ServiceBuilder;

@@ -1,12 +1,12 @@
 use std::{any::Any, fs, io, net::SocketAddr, sync::Arc};
 
+use askama::Template;
 use axum::{
     http::{self, StatusCode, Uri},
     middleware::{self},
     response::{Html, IntoResponse, Response},
 };
 use include_dir::{Dir, include_dir};
-use rinja::Template;
 use rusqlite_migration::AsyncMigrations;
 use thiserror::Error;
 use tokio::{net::TcpListener, signal, task};

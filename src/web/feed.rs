@@ -1,5 +1,6 @@
 use std::{ops::Range, sync::Arc};
 
+use askama::Template;
 use axum::{
     Router,
     extract::{Path, Query, State},
@@ -11,7 +12,6 @@ use quick_xml::{
     Writer as XmlWriter,
     events::{BytesDecl, BytesText, Event},
 };
-use rinja::Template;
 use serde::Deserialize;
 use time::{Date, Duration, format_description::well_known::Rfc3339};
 use tower_http::set_header::SetResponseHeaderLayer;
@@ -53,7 +53,7 @@ impl FeedPage {
 }
 
 mod filters {
-    use rinja::{Error::Custom, Result};
+    use askama::{Error::Custom, Result};
     use time::{Date, OffsetDateTime, UtcOffset, format_description::well_known::Rfc3339};
     use url::Url;
 
