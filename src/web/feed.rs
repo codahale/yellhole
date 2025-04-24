@@ -15,6 +15,7 @@ use quick_xml::{
 use serde::Deserialize;
 use time::{Date, Duration, format_description::well_known::Rfc3339};
 use tower_http::set_header::SetResponseHeaderLayer;
+use url::Url;
 
 use crate::{
     config::Config,
@@ -59,11 +60,11 @@ mod filters {
 
     use crate::services::notes::Note;
 
-    pub fn to_rfc3339(t: &OffsetDateTime) -> Result<String> {
+    pub fn to_rfc3339(t: &OffsetDateTime, _: &dyn askama::Values) -> Result<String> {
         t.format(&Rfc3339).map_err(|e| Custom(Box::new(e)))
     }
 
-    pub fn to_local_tz(t: &OffsetDateTime) -> Result<OffsetDateTime> {
+    pub fn to_local_tz(t: &OffsetDateTime, _: &dyn askama::Values) -> Result<OffsetDateTime> {
         let local = tz::TimeZone::local()
             .map_err(|e| Custom(Box::new(e)))?
             .find_current_local_time_type()
@@ -75,23 +76,28 @@ mod filters {
         .expect("should convert"))
     }
 
-    pub fn to_note_url(note: &Note, base_url: &Url) -> Result<Url> {
-        base_url
-            .join("note/")
-            .and_then(|u| u.join(&note.note_id.to_string()))
-            .map_err(|e| Custom(Box::new(e)))
+    pub fn to_note_url(note: &Note, _: &dyn askama::Values, base_url: &Url) -> Result<Url> {
+        super::to_note_url(note, base_url).map_err(|e| Custom(Box::new(e)))
     }
 
-    pub fn to_atom_url(base_url: &Url) -> Result<Url> {
-        base_url.join("atom.xml").map_err(|e| Custom(Box::new(e)))
+    pub fn to_atom_url(base_url: &Url, _: &dyn askama::Values) -> Result<Url> {
+        super::to_atom_url(base_url).map_err(|e| Custom(Box::new(e)))
     }
 
-    pub fn to_weekly_url(week: &Date, base_url: &Url) -> Result<Url> {
+    pub fn to_weekly_url(week: &Date, _: &dyn askama::Values, base_url: &Url) -> Result<Url> {
         base_url
             .join("notes/")
             .and_then(|u| u.join(&week.to_string()))
             .map_err(|e| Custom(Box::new(e)))
     }
+}
+
+fn to_atom_url(base_url: &Url) -> Result<Url, url::ParseError> {
+    base_url.join("atom.xml")
+}
+
+fn to_note_url(note: &Note, base_url: &Url) -> Result<Url, url::ParseError> {
+    base_url.join("note/").and_then(|u| u.join(&note.note_id.to_string()))
 }
 
 #[derive(Debug, Deserialize)]
@@ -131,7 +137,7 @@ async fn single(
 
 async fn atom(State(state): State<AppState>) -> Result<Response, AppError> {
     let notes = state.notes.most_recent(20).await?;
-    let atom_url = filters::to_atom_url(&state.config.base_url).expect("should be a valid URL");
+    let atom_url = to_atom_url(&state.config.base_url).expect("should be a valid URL");
     let mut xml = XmlWriter::new(Vec::<u8>::with_capacity(1024));
     xml.write_event(Event::Decl(BytesDecl::new("1.0", None, None))).map_err(anyhow::Error::new)?;
     xml.create_element("feed")
@@ -165,8 +171,8 @@ async fn atom(State(state): State<AppState>) -> Result<Response, AppError> {
             }
 
             for note in notes {
-                let url = filters::to_note_url(&note, &state.config.base_url)
-                    .expect("should be a valid URL");
+                let url =
+                    to_note_url(&note, &state.config.base_url).expect("should be a valid URL");
                 feed.create_element("entry").write_inner_content(|entry| {
                     entry
                         .create_element("title")
