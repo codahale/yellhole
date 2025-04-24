@@ -148,7 +148,8 @@ values ('cbdc5a69-abba-4d75-9679-44259c48b272', 'garfield-odie-whips.bmp', 'imag
             .await?;
         assert_eq!(resp.status(), StatusCode::SEE_OTHER);
         let location = resp.headers().get(header::LOCATION).expect("missing header");
-        let note_id = location.to_str()?.split('/').last().expect("bad URI").parse::<String>()?;
+        let note_id =
+            location.to_str()?.split('/').next_back().expect("bad URI").parse::<String>()?;
 
         assert_eq!(ts.state.notes.most_recent(20).await?.len(), 1);
         let note = ts.state.notes.by_id(&note_id).await?.expect("missing note");
