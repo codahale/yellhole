@@ -45,7 +45,7 @@ pub fn router(images: &ImageService, assets: &AssetService) -> io::Result<Router
 }
 
 #[tracing::instrument(level = "warn")]
-async fn io_error(err: io::Error) -> StatusCode {
+async fn io_error(_: io::Error) -> StatusCode {
     StatusCode::INTERNAL_SERVER_ERROR
 }
 

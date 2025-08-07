@@ -5,7 +5,7 @@ use p256::{
     elliptic_curve::subtle::ConstantTimeEq,
     pkcs8::DecodePublicKey,
 };
-use rand::{Rng, thread_rng};
+use rand::random;
 use rusqlite::{OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use serde_with::{
@@ -40,7 +40,6 @@ impl PasskeyService {
     }
 
     /// Returns `true` if any passkeys are registered.
-    #[must_use]
     #[tracing::instrument(skip(self), ret, err)]
     pub async fn any_registered(&self) -> Result<bool, tokio_rusqlite::Error> {
         Ok(self
@@ -53,7 +52,6 @@ impl PasskeyService {
     }
 
     /// Starts a passkey registration flow for the given username/user ID.
-    #[must_use]
     #[tracing::instrument(skip(self), err)]
     pub async fn start_registration(
         &self,
@@ -69,7 +67,6 @@ impl PasskeyService {
     }
 
     /// Finishes a passkey registration flow.
-    #[must_use]
     #[tracing::instrument(skip_all, err)]
     pub async fn finish_registration(
         &self,
@@ -107,7 +104,6 @@ impl PasskeyService {
     }
 
     /// Starts a passkey authentication flow.
-    #[must_use]
     #[tracing::instrument(skip(self), err)]
     pub async fn start_authentication(
         &self,
@@ -117,7 +113,7 @@ impl PasskeyService {
 
         // Generate and store a random challenge.
         let challenge_id = PublicId::random();
-        let challenge = thread_rng().r#gen::<[u8; 32]>();
+        let challenge = random::<[u8; 32]>();
         self.db
             .call_unwrap(move |conn| {
                 conn.prepare_cached(r#"insert into challenge (challenge_id, bytes) values (?, ?)"#)?
@@ -130,7 +126,6 @@ impl PasskeyService {
     }
 
     /// Finishes a passkey authentication flow.
-    #[must_use]
     #[tracing::instrument(skip(self, resp), err)]
     pub async fn finish_authentication(
         &self,
@@ -213,7 +208,6 @@ impl PasskeyService {
         Ok(())
     }
 
-    #[must_use]
     #[tracing::instrument(skip(self), err)]
     async fn passkey_ids(&self) -> Result<Vec<Vec<u8>>, tokio_rusqlite::Error> {
         Ok(self

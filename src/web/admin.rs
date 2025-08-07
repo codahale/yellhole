@@ -77,12 +77,11 @@ async fn upload_images(
     mut multipart: Multipart,
 ) -> Result<Redirect, AppError> {
     while let Some(field) = multipart.next_field().await.context("multipart error")? {
-        if let Some(content_type) = field.content_type().and_then(|s| s.parse::<Mime>().ok()) {
-            if content_type.type_() == mime::IMAGE {
+        if let Some(content_type) = field.content_type().and_then(|s| s.parse::<Mime>().ok())
+            && content_type.type_() == mime::IMAGE {
                 let original_filename = field.file_name().unwrap_or("none").to_string();
                 state.images.add(original_filename, content_type, field).await?;
             }
-        }
     }
     Ok(Redirect::to("/admin/new"))
 }

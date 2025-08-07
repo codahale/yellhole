@@ -21,7 +21,6 @@ impl NoteService {
     }
 
     /// Create a new [`Note`], returning the new note's ID.
-    #[must_use]
     #[tracing::instrument(skip(self, body), ret(Display), err)]
     pub async fn create(&self, body: String) -> Result<PublicId, tokio_rusqlite::Error> {
         let note_id = PublicId::random();
@@ -35,7 +34,6 @@ impl NoteService {
     }
 
     /// Find a [`Note`] by ID.
-    #[must_use]
     #[tracing::instrument(skip(self), err)]
     pub async fn by_id(&self, note_id: &str) -> Result<Option<Note>, tokio_rusqlite::Error> {
         let note_id = note_id.to_string();
@@ -56,7 +54,6 @@ impl NoteService {
     }
 
     /// Find the `n` most recent [`Note`]s in reverse chronological order.
-    #[must_use]
     #[tracing::instrument(skip(self), err)]
     pub async fn most_recent(&self, n: u16) -> Result<Vec<Note>, tokio_rusqlite::Error> {
         Ok(self
@@ -77,7 +74,6 @@ impl NoteService {
     }
 
     /// Return a vec of all week-long date ranges in which notes were created.
-    #[must_use]
     #[tracing::instrument(skip(self), err)]
     pub async fn weeks(&self) -> Result<Vec<Range<Date>>, tokio_rusqlite::Error> {
         Ok(self
@@ -103,7 +99,6 @@ impl NoteService {
     }
 
     /// Return all [`Note`]s which were created in the given date range.
-    #[must_use]
     #[tracing::instrument(skip(self), err)]
     pub async fn date_range(&self, range: Range<Date>) -> Result<Vec<Note>, tokio_rusqlite::Error> {
         let start = OffsetDateTime::new_utc(range.start, Time::MIDNIGHT);
@@ -189,7 +184,7 @@ impl<'stmt> TryFrom<&'stmt Row<'stmt>> for Note {
     }
 }
 
-fn parse_md(md: &str) -> Parser {
+fn parse_md(md: &str) -> Parser<'_> {
     Parser::new_ext(md, Options::ENABLE_SMART_PUNCTUATION | Options::ENABLE_STRIKETHROUGH)
 }
 

@@ -22,7 +22,6 @@ impl SessionService {
     }
 
     /// Creates an authenticated session and returns its ID.
-    #[must_use]
     #[tracing::instrument(skip(self), err)]
     pub async fn create(&self) -> Result<PublicId, tokio_rusqlite::Error> {
         let session_id = PublicId::random();
@@ -41,7 +40,6 @@ impl SessionService {
     }
 
     /// Returns `true` if a session with the given ID exists.
-    #[must_use]
     #[tracing::instrument(skip_all, ret, err)]
     pub async fn exists(&self, session_id: PublicId) -> Result<bool, tokio_rusqlite::Error> {
         Ok(self
@@ -69,7 +67,6 @@ impl SessionService {
         }
     }
 
-    #[must_use]
     #[tracing::instrument(skip(self), ret, err)]
     async fn delete_expired(&self) -> Result<usize, tokio_rusqlite::Error> {
         Ok(self

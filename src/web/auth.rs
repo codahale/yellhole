@@ -298,7 +298,7 @@ insert into passkey (passkey_id, public_key_spki) values (randomblob(16), random
     fn app(state: &AppState) -> Router<AppState> {
         Router::<AppState>::new()
             .route("/protected", get(protected))
-            .route_layer(middleware::from_fn_with_state(state.clone(), super::require_auth))
+            .route_layer(middleware::from_fn_with_state(state.clone(), require_auth))
             .merge(router())
     }
 
