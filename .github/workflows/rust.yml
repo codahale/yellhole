@@ -14,7 +14,7 @@ jobs:
         uses: mfinelli/setup-imagemagick@v6
       - name: "Check ImageMagick"
         run: magick --version
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         name: "Checkout source"
       - uses: actions-rs/toolchain@v1.0.7
         name: "Install Rust"
